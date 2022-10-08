@@ -2,6 +2,19 @@ using ContinuumArrays
 using QuasiArrays: domain
 using QuadGK
 
+# Each basis set `f` should define the following functions:
+# `Base.axes(f)`: domain of the basis, and the allowed indices of the basis functions
+# `Base.getindex(f, x, n)`: value of the `n`-th basis function at `x`
+# `support_domain(f, n)`: support of the `n`-th basis function
+
+struct ConstantBasis{T} <: Basis{T}
+end
+ConstantBasis(::Type{T}=Float64) where {T} = ConstantBasis{T}()
+Base.axes(::ConstantBasis) = (Inclusion(-Inf..Inf), 1:1)
+Base.getindex(::ConstantBasis{T}, x::Number, n::Integer) where {T} = (n == 1 || throw(BoundsError()); one(T))
+support_domain(::ConstantBasis, n::Integer) = (n == 1 || throw(BoundsError()); -Inf..Inf)
+
+
 struct LinearSplineAndTailBasis{T, FT} <: Basis{T}
     nmin::Int
     nmax::Int

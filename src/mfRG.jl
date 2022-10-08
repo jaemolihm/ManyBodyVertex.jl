@@ -1,4 +1,5 @@
 module mfRG
+export ConstantBasis
 export LinearSplineAndTailBasis
 export basis_integral
 
