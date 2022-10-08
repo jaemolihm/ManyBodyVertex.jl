@@ -2,5 +2,5 @@ using mfRG
 using Test
 
 @testset "mfRG.jl" begin
-    # Write your tests here.
+    include("test_basis.jl")
 end

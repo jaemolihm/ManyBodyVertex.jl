@@ -3,11 +3,18 @@ uuid = "b4e83365-0810-4a8c-bf3e-44294fc5608d"
 authors = ["Jae-Mo Lihm <jaemolim96@gmail.com> and contributors"]
 version = "0.1.0"
 
-[extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+[deps]
+ContinuumArrays = "7ae1f121-cc2c-504b-ac30-9b923412ae5c"
+DomainSets = "5b8099bc-c8ec-5219-889f-1d9e522a28bf"
+IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
+QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
+QuasiArrays = "c4ea9172-b204-11e9-377d-29865faadc5c"
 
 [compat]
 julia = "1.7"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test"]
