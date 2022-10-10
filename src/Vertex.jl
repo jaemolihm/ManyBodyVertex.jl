@@ -35,7 +35,7 @@ abstract type AbstractFrequencyVertex{F} end
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
 
-struct Vertex4P{F, DT, BF1, BF2, BB} <: AbstractFrequencyVertex{F}
+struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F}
     # Basis for fermionic frequencies
     basis_f1::BF1
     basis_f2::BF2
@@ -45,12 +45,12 @@ struct Vertex4P{F, DT, BF1, BF2, BB} <: AbstractFrequencyVertex{F}
     norb::Int
     # Data array
     data::DT
-    function Vertex4P{F, DT}(basis_f1::BF1, basis_f2::BF2, basis_b::BB, norb, data::DT) where {F, DT, BF1, BF2, BB}
-        new{F, DT, BF1, BF2, BB}(basis_f1, basis_f2, basis_b, norb, data)
+    function Vertex4P{F}(basis_f1::BF1, basis_f2::BF2, basis_b::BB, norb, data::DT) where {F, DT <: AbstractArray{T}, BF1, BF2, BB} where {T}
+        new{F, T, BF1, BF2, BB, DT}(basis_f1, basis_f2, basis_b, norb, data)
     end
 end
 
-struct Bubble{F, DT, BF, BB} <: AbstractFrequencyVertex{F}
+struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F}
     # Basis for fermionic frequencies
     basis_f::BF
     # Basis for bosonic frequency
@@ -59,8 +59,8 @@ struct Bubble{F, DT, BF, BB} <: AbstractFrequencyVertex{F}
     norb::Int
     # Data array
     data::DT
-    function Bubble{F, DT}(basis_f::BF, basis_b::BB, norb, data::DT) where {F, DT, BF, BB}
-        new{F, DT, BF, BB}(basis_f, basis_b, norb, data)
+    function Bubble{F}(basis_f::BF, basis_b::BB, norb, data::DT) where {F, DT <: AbstractArray{T}, BF, BB} where {T}
+        new{F, T, BF, BB, DT}(basis_f, basis_b, norb, data)
     end
 end
 
@@ -81,7 +81,7 @@ function Vertex4P{F}(::Type{T}, basis_f1, basis_f2, basis_b, norb=1) where {F, T
     nb_b = size(basis_b, 2)
     nk = nkeldysh(F)
     data = zeros(T, nb_f1 * (norb * nk)^2, nb_f2 * (norb * nk)^2, nb_b)
-    Vertex4P{F, typeof(data)}(basis_f1, basis_f2, basis_b, norb, data)
+    Vertex4P{F}(basis_f1, basis_f2, basis_b, norb, data)
 end
 
 function Bubble{F}(::Type{T}, basis_f, basis_b, norb=1) where {F, T}
@@ -89,7 +89,7 @@ function Bubble{F}(::Type{T}, basis_f, basis_b, norb=1) where {F, T}
     nb_b = size(basis_b, 2)
     nk = nkeldysh(F)
     data = zeros(T, nb_f, (norb * nk)^2, (norb * nk)^2, nb_b)
-    Bubble{F, typeof(data)}(basis_f, basis_b, norb, data)
+    Bubble{F}(basis_f, basis_b, norb, data)
 end
 
 # Customize printing
