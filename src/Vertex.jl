@@ -35,7 +35,22 @@ abstract type AbstractFrequencyVertex{F} end
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
 
-struct Vertex4P{F, DT, BF, BB} <: AbstractFrequencyVertex{F}
+struct Vertex4P{F, DT, BF1, BF2, BB} <: AbstractFrequencyVertex{F}
+    # Basis for fermionic frequencies
+    basis_f1::BF1
+    basis_f2::BF2
+    # Basis for bosonic frequency
+    basis_b::BB
+    # Number of orbitals
+    norb::Int
+    # Data array
+    data::DT
+    function Vertex4P{F, DT}(basis_f1::BF1, basis_f2::BF2, basis_b::BB, norb, data::DT) where {F, DT, BF1, BF2, BB}
+        new{F, DT, BF1, BF2, BB}(basis_f1, basis_f2, basis_b, norb, data)
+    end
+end
+
+struct Bubble{F, DT, BF, BB} <: AbstractFrequencyVertex{F}
     # Basis for fermionic frequencies
     basis_f::BF
     # Basis for bosonic frequency
@@ -44,41 +59,51 @@ struct Vertex4P{F, DT, BF, BB} <: AbstractFrequencyVertex{F}
     norb::Int
     # Data array
     data::DT
-    function Vertex4P{F}(basis_f::BF, basis_b::BB, norb, data::DT) where {F, DT, BF, BB}
+    function Bubble{F, DT}(basis_f::BF, basis_b::BB, norb, data::DT) where {F, DT, BF, BB}
         new{F, DT, BF, BB}(basis_f, basis_b, norb, data)
     end
 end
 
-nb_f(Γ::Vertex4P) = size(Γ.basis_f, 2)
+nb_f1(Γ::Vertex4P) = size(Γ.basis_f1, 2)
+nb_f2(Γ::Vertex4P) = size(Γ.basis_f2, 2)
 nb_b(Γ::Vertex4P) = size(Γ.basis_b, 2)
 
-zeros_vertex(::Val{F}, basis_f, basis_b, norb=1) where {F} = zeros_vertex(Val(F), ComplexF64, basis_f, basis_b, norb)
+nb_f(Π::Bubble) = size(Π.basis_f, 2)
+nb_b(Π::Bubble) = size(Π.basis_b, 2)
 
-function zeros_vertex(::Val{F}, ::Type{T}, basis_f, basis_b, norb=1) where {F, T}
-    nb_f = size(basis_f, 2)
+Vertex4P{F}(basis_f1, basis_f2, basis_b, norb=1) where {F} = Vertex4P{F}(ComplexF64, basis_f1, basis_f2, basis_b, norb)
+
+Bubble{F}(basis_f, basis_b, norb=1) where {F} = Bubble{F}(ComplexF64, basis_f, basis_b, norb)
+
+function Vertex4P{F}(::Type{T}, basis_f1, basis_f2, basis_b, norb=1) where {F, T}
+    nb_f1 = size(basis_f1, 2)
+    nb_f2 = size(basis_f2, 2)
     nb_b = size(basis_b, 2)
     nk = nkeldysh(F)
-    data = zeros(T, nb_f * (norb * nk)^2, nb_f * (norb * nk)^2, nb_b)
-    Vertex4P{F}(basis_f, basis_b, norb, data)
+    data = zeros(T, nb_f1 * (norb * nk)^2, nb_f2 * (norb * nk)^2, nb_b)
+    Vertex4P{F, typeof(data)}(basis_f1, basis_f2, basis_b, norb, data)
 end
 
-zeros_bubble(::Val{F}, basis_f, basis_b, norb=1) where {F} = zeros_bubble(Val(F), ComplexF64, basis_f, basis_b, norb)
-
-function zeros_bubble(::Val{F}, ::Type{T}, basis_f, basis_b, norb=1) where {F, T}
+function Bubble{F}(::Type{T}, basis_f, basis_b, norb=1) where {F, T}
     nb_f = size(basis_f, 2)
     nb_b = size(basis_b, 2)
     nk = nkeldysh(F)
     data = zeros(T, nb_f, (norb * nk)^2, (norb * nk)^2, nb_b)
-    Vertex4P{F}(basis_f, basis_b, norb, data)
+    Bubble{F, typeof(data)}(basis_f, basis_b, norb, data)
 end
 
 # Customize printing
 function Base.show(io::IO, Γ::Vertex4P)
     print(io, Base.typename(typeof(Γ)).wrapper)
-    print(io, "(nbasis_f=$(nb_f(Γ)), nbasis_b=$(nb_b(Γ)), norb=$(Γ.norb), ")
-    print(io, "data=$(Base.summary(Γ.data)))")
+    print(io, "(nbasis_f1=$(nb_f2(Γ)), nbasis_f2=$(nb_f2(Γ)), nbasis_b=$(nb_b(Γ)), ")
+    print(io, "norb=$(Γ.norb), data=$(Base.summary(Γ.data)))")
 end
 
+function Base.show(io::IO, Π::Bubble)
+    print(io, Base.typename(typeof(Π)).wrapper)
+    print(io, "(nbasis_f=$(nb_f(Π)), nbasis_b=$(nb_b(Π)), ")
+    print(io, "norb=$(Π.norb), data=$(Base.summary(Π.data)))")
+end
 
 """
     vertex_to_matrix(Γ::Vertex4P, w, channel='a')
@@ -112,7 +137,7 @@ Evaluate a 4-point bubble at given bosonic frequency `w` and return in the matri
 - Input `overlap`: `x, x', a`
 - Output: `(x, i, j), (x', i', j')`
 """
-function bubble_to_matrix(Π::Vertex4P, w, overlap)
+function bubble_to_matrix(Π::Bubble, w, overlap)
     @assert ndims(Π.data) == 4
     @assert size(overlap, 3) == nb_f(Π)
     nv_Γ = size(overlap, 1)
@@ -144,6 +169,6 @@ Return a the 4-point KF vertex as a 11-dimensional array.
 """
 function vertex_keldyshview(Γ::Vertex4P{:KF})
     norb = Γ.norb
-    data_size = (nb_f(Γ), norb, 2, norb, 2, nb_f(Γ), norb, 2, norb, 2, nb_b(Γ))
+    data_size = (nb_f1(Γ), norb, 2, norb, 2, nb_f2(Γ), norb, 2, norb, 2, nb_b(Γ))
     PermutedDimsArray(Base.ReshapedArray(Γ.data, data_size, ()), (1, 6, 2, 4, 7, 9, 3, 5, 8, 10, 11))
 end
