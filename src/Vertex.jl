@@ -31,11 +31,11 @@ pairs. We use `Γ(1,2,3,4) → Γ(12, 34)` (which is valid only when we consider
 channel).
 """
 
-abstract type AbstractFrequencyVertex{F} end
+abstract type AbstractFrequencyVertex{F, T} end
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
 
-struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F}
+struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F, T}
     # Basis for fermionic frequencies
     basis_f1::BF1
     basis_f2::BF2
@@ -50,7 +50,7 @@ struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractFrequency
     end
 end
 
-struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F}
+struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F, T}
     # Basis for fermionic frequencies
     basis_f::BF
     # Basis for bosonic frequency
@@ -156,7 +156,7 @@ function bubble_to_matrix(Π::Bubble, w, overlap)
     collect(Π_vertex) .* integral_coeff(Π)
 end
 
-integral_coeff(Π::Bubble{:KF}) = 1 / 2 / eltype(Π.data)(π)
+integral_coeff(Π::Bubble{:KF, T}) where {T} = 1 / 2 / real(T)(π)
 integral_coeff(Π::Bubble{:MF}) = error("MF Not yet implemented")
 integral_coeff(Π::Bubble{:ZF}) = error("ZF Not yet implemented")
 

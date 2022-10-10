@@ -2,6 +2,8 @@ using Test
 using mfRG
 
 @testset "Vertex4P" begin
+    using LinearAlgebra
+
     basis1 = ConstantBasis()
     basis2 = LinearSplineAndTailBasis(2, 4, -2:0.5:2)
     basis3 = LinearSplineAndTailBasis(2, 4, [-1., 1.])
