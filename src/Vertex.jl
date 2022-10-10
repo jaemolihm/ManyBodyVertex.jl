@@ -153,8 +153,12 @@ function bubble_to_matrix(Π::Bubble, w, overlap)
     Π_vertex_tmp = zeros(eltype(Π.data), nv_Γ, nv_Γ, norb2, norb2)
     @tensor Π_vertex_tmp[x1, x2, ij1, ij2] := overlap[x1, x2, a] * Π_w[a, ij1, ij2]
     Π_vertex = reshape(PermutedDimsArray(Π_vertex_tmp, (1, 3, 2, 4)), nv_Γ * norb2, nv_Γ * norb2)
-    collect(Π_vertex)
+    collect(Π_vertex) .* integral_coeff(Π)
 end
+
+integral_coeff(Π::Bubble{:KF}) = 1 / 2 / eltype(Π.data)(π)
+integral_coeff(Π::Bubble{:MF}) = error("MF Not yet implemented")
+integral_coeff(Π::Bubble{:ZF}) = error("ZF Not yet implemented")
 
 
 """
