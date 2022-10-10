@@ -176,3 +176,15 @@ function vertex_keldyshview(Γ::Vertex4P{:KF})
     data_size = (nb_f1(Γ), norb, 2, norb, 2, nb_f2(Γ), norb, 2, norb, 2, nb_b(Γ))
     PermutedDimsArray(Base.ReshapedArray(Γ.data, data_size, ()), (1, 6, 2, 4, 7, 9, 3, 5, 8, 10, 11))
 end
+
+"""
+    fit_bosonic_basis_coeff!(Γ, Γ_data, ws)
+Compute the basis coefficients using the data computed at a grid of bosonic frequencies ws.
+"""
+function fit_bosonic_basis_coeff!(Γ, Γ_data, ws)
+    coeff_fit = Γ.basis_b[ws, :]
+    for inds in Iterators.product(axes(Γ.data)[1:end-1]...)
+        Γ.data[inds..., :] .= coeff_fit \ Γ_data[inds..., :]
+    end
+    Γ
+end
