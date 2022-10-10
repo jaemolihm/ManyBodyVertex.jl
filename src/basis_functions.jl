@@ -78,3 +78,13 @@ function Base.summary(io::IO, f::LinearSplineAndTailBasis)
     print(io, "(nmin=$(f.nmin), nmax=$(f.nmax), ")
     print(io, "grid=$(f.grid[1])..$(f.grid[end]), $(length(f.grid)) points)")
 end
+
+"""
+    get_fitting_points(basis::LinearSplineAndTailBasis)
+Points to be used for fitting the basis coefficients
+"""
+function get_fitting_points(basis::LinearSplineAndTailBasis)
+    left = prevfloat(basis.grid[1])
+    right = nextfloat(basis.grid[end])
+    vcat(left .* (ntails(basis):-1:1), basis.grid, right .* (1:ntails(basis)))
+end

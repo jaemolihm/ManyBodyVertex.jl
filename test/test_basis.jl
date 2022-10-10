@@ -13,6 +13,11 @@ using mfRG
         @test basis[x, :] ≈ [1/x^2, 1/x^3, 0, 0, 0]
     end
 
+    points = get_fitting_points(basis)
+    @test points ≈ [-8, -4, -4, 0, 4, 4, 8]
+    @test points[2] == prevfloat(points[3])
+    @test points[6] == nextfloat(points[5])
+
     basis = ConstantBasis()
     @test all(basis[-1:1, 1] .≈ 1)
     @test_throws BoundsError basis[1, 2]
