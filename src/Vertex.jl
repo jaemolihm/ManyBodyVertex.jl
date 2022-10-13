@@ -120,7 +120,6 @@ function vertex_to_matrix(Γ::Vertex4P, w, channel='a')
 
     # Contract the bosonic frequency basis
     coeff_w = Γ.basis_b[w, :]
-    Γ_w = zeros(eltype(Γ.data), size(Γ.data)[1:2])
     @ein Γ_w[aij1, aij2] := Γ.data[aij1, aij2, b] * coeff_w[b]
     Γ_w
 end
@@ -145,11 +144,9 @@ function bubble_to_matrix(Π::Bubble, w, overlap)
     # Contract the bosonic frequency basis
     # Π_w: a, (i, j), (i', j')
     coeff_w = Π.basis_b[w, :]
-    Π_w = zeros(eltype(Π.data), size(Π.data)[1:3])
     @ein Π_w[a, ij1, ij2] := Π.data[a, ij1, ij2, b] * coeff_w[b]
 
     # Contract with the overlap
-    Π_vertex_tmp = zeros(eltype(Π.data), nv_Γ, nv_Γ, norb2, norb2)
     @ein Π_vertex_tmp[x1, x2, ij1, ij2] := overlap[x1, x2, a] * Π_w[a, ij1, ij2]
     Π_vertex = reshape(PermutedDimsArray(Π_vertex_tmp, (1, 3, 2, 4)), nv_Γ * norb2, nv_Γ * norb2)
     collect(Π_vertex) .* integral_coeff(Π)
