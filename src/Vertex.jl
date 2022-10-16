@@ -31,10 +31,11 @@ channel).
 """
 
 abstract type AbstractFrequencyVertex{F, T} end
+abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
 
-struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F, T}
+struct Vertex4P{F, C, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{F, C, T}
     # Basis for fermionic frequencies
     basis_f1::BF1
     basis_f2::BF2
@@ -44,8 +45,9 @@ struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractFrequency
     norb::Int
     # Data array
     data::DT
-    function Vertex4P{F}(basis_f1::BF1, basis_f2::BF2, basis_b::BB, norb, data::DT) where {F, DT <: AbstractArray{T}, BF1, BF2, BB} where {T}
-        new{F, T, BF1, BF2, BB, DT}(basis_f1, basis_f2, basis_b, norb, data)
+    function Vertex4P{F, C}(basis_f1::BF1, basis_f2::BF2, basis_b::BB, norb, data::DT) where {F, C, DT <: AbstractArray{T}, BF1, BF2, BB} where {T}
+        C ∈ (:A, :P, :T) || throw(ArgumentError("Wrong channel $C"))
+        new{F, C, T, BF1, BF2, BB, DT}(basis_f1, basis_f2, basis_b, norb, data)
     end
 end
 
@@ -66,21 +68,24 @@ end
 nb_f1(Γ::Vertex4P) = size(Γ.basis_f1, 2)
 nb_f2(Γ::Vertex4P) = size(Γ.basis_f2, 2)
 nb_b(Γ::Vertex4P) = size(Γ.basis_b, 2)
+nind(Γ::Vertex4P) = nkeldysh(Γ) * Γ.norb
 
 nb_f(Π::Bubble) = size(Π.basis_f, 2)
 nb_b(Π::Bubble) = size(Π.basis_b, 2)
 
-Vertex4P{F}(basis_f1, basis_f2, basis_b, norb=1) where {F} = Vertex4P{F}(ComplexF64, basis_f1, basis_f2, basis_b, norb)
+function Vertex4P{F, C}(basis_f1, basis_f2, basis_b, norb=1) where {F, C}
+    Vertex4P{F, C}(ComplexF64, basis_f1, basis_f2, basis_b, norb)
+end
 
 Bubble{F}(basis_f, basis_b, norb=1) where {F} = Bubble{F}(ComplexF64, basis_f, basis_b, norb)
 
-function Vertex4P{F}(::Type{T}, basis_f1, basis_f2, basis_b, norb=1) where {F, T}
+function Vertex4P{F, C}(::Type{T}, basis_f1, basis_f2, basis_b, norb=1) where {F, C, T}
     nb_f1 = size(basis_f1, 2)
     nb_f2 = size(basis_f2, 2)
     nb_b = size(basis_b, 2)
     nk = nkeldysh(F)
     data = zeros(T, nb_f1 * (norb * nk)^2, nb_f2 * (norb * nk)^2, nb_b)
-    Vertex4P{F}(basis_f1, basis_f2, basis_b, norb, data)
+    Vertex4P{F, C}(basis_f1, basis_f2, basis_b, norb, data)
 end
 
 function Bubble{F}(::Type{T}, basis_f, basis_b, norb=1) where {F, T}
@@ -167,7 +172,8 @@ Return a the 4-point KF vertex as a 11-dimensional array.
 - Input `Γ.data`: `(a, i1, k1, i2, k2), (a', i3, k3, i4, k4), b`
 - Output: `a, a', i1, i2, i3, i4, k1, k2, k3, k4, b`
 """
-function vertex_keldyshview(Γ::Vertex4P{:KF})
+function vertex_keldyshview(Γ::Vertex4P{:KF, C}) where {C}
+    C === :A || error("Channel $C not implemented")
     norb = Γ.norb
     data_size = (nb_f1(Γ), norb, 2, norb, 2, nb_f2(Γ), norb, 2, norb, 2, nb_b(Γ))
     PermutedDimsArray(Base.ReshapedArray(Γ.data, data_size, ()), (1, 6, 2, 4, 7, 9, 3, 5, 8, 10, 11))

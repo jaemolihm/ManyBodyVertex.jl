@@ -2,13 +2,15 @@ using Test
 using mfRG
 
 @testset "BSE static" begin
+    using LinearAlgebra
+
     U = 4.0
     basis1 = ConstantBasis()
     basis2 = LinearSplineAndTailBasis(2, 4, -4:2.:4)
     basis_w = LinearSplineAndTailBasis(1, 3, -4:4.:4)
 
     # Set static vertx
-    Γ0 = Vertex4P{:KF}(basis1, basis1, basis1)
+    Γ0 = Vertex4P{:KF, :A}(basis1, basis1, basis1)
     Γ0_kv = vertex_keldyshview(Γ0)
     for ks in CartesianIndices((2, 2, 2, 2))
         k1, k2, k3, k4 = ks.I
@@ -23,7 +25,7 @@ using mfRG
 
     # Solve BSE by direct inversion
     overlap = basis_integral(basis1, basis1, basis2);
-    Γ_direct = Vertex4P{:KF}(basis1, basis1, basis_w)
+    Γ_direct = Vertex4P{:KF, :A}(basis1, basis1, basis_w)
     for (iw, w) in enumerate(basis_w.grid)
         Γ0_mat = vertex_to_matrix(Γ0, w)
         Π_mat = bubble_to_matrix(Π, w, overlap)
