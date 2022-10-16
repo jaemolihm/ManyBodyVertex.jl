@@ -43,3 +43,18 @@ using mfRG
         end
     end
 end
+
+@testset "Vertex channel" begin
+    # Test evaluation of vertex at different channels
+    basis1 = ConstantBasis()
+    basis2 = LinearSplineAndTailBasis(0, 1, [-2., 2.])
+    Γ = Vertex4P{:ZF, :A}(Float64, basis1, basis1, basis2)
+    vec(Γ.data) .= [1., 2., 3., 4.]
+    @test Γ(1., 1., 3., Val(:A))[1, 1] ≈ 1 + 2/3
+    @test Γ(1., 1., 3., Val(:P))[1, 1] ≈ 3.
+    @test Γ(1., 1., 3., Val(:T))[1, 1] ≈ 3.5
+    @test Γ(0., 1., 3., Val(:A)) == Γ(0., 1., 3.)
+    for c in (:A, :P, :T)
+        @inferred Γ(0., 1., 3., Val(c))
+    end
+end

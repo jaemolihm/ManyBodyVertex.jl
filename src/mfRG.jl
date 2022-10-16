@@ -12,6 +12,7 @@ include("interval_iterable.jl")
 include("basis_functions.jl")
 include("basis_integral.jl")
 
+include("channel.jl")
 include("Vertex.jl")
 include("BSE.jl")
 end

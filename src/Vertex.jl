@@ -1,13 +1,6 @@
 using OMEinsum
 
 """
-    vertex_to_matrix(Γ, w, channel='a')
-Convert a 4-point vertex into a (2-point)×(2-point) matrix format.
-# Inputs
-- `Γ`: Vertex object
-- `channel`: channel parametrization, 'a', 'p', or 't'.
-- `w`: bosonic frequency in the given channel
-
 # Vertex parametrization
 Currently, we only implement a single channel.
 Later, we may implement different
@@ -110,7 +103,26 @@ function Base.show(io::IO, Π::Bubble)
 end
 
 """
-    vertex_to_matrix(Γ::Vertex4P, w, channel='a')
+    (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ, T}
+Evaluate vertex at given frequencies in the channel parametrization.
+"""
+function (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ, T}
+    v1234 = frequency_to_standard(Val(F), c_out, v1, v2, w)
+    v1_Γ, v2_Γ, w_Γ = frequency_to_channel(Val(F), Val(C_Γ), v1234...)
+
+    nind = Γ.norb * nkeldysh(Γ)
+    Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, nb_b(Γ)), ())
+    coeff_f1 = Γ.basis_f1[v1_Γ, :]
+    coeff_f2 = Γ.basis_f2[v2_Γ, :]
+    coeff_b = Γ.basis_b[w_Γ, :]
+    @ein Γ_vvw[i, j] := Γ_array[v1, i, v2, j, w] * coeff_f1[v1] * coeff_f2[v2] * coeff_b[w]
+    Γ_vvw = Γ_vvw::Matrix{T}
+
+    _permute_orbital_indices_matrix_4p(Val(C_Γ), c_out, Γ_vvw, nind)
+end
+
+"""
+    vertex_to_matrix(Γ::Vertex4P, w)
 Evaluate a 4-point vertex at given bosonic frequency `w` and return in the matrix form.
 - `a`: fermionic frequency basis index
 - `b`: frequency basis index
@@ -118,15 +130,11 @@ Evaluate a 4-point vertex at given bosonic frequency `w` and return in the matri
 - Input `Γ.data`: `(a, i, j), (a', i', j'), b`
 - Output: `(a, i, j), (a', i', j')`
 """
-function vertex_to_matrix(Γ::Vertex4P, w, channel='a')
+function vertex_to_matrix(Γ::Vertex4P{F, C, T}, w) where {F, C, T}
     @assert ndims(Γ.data) == 3
-    channel ∉ ('a', 'p', 't') && error("Wrong channel $channel")
-    channel != 'a' && error("Only channel a is implemented")
-
-    # Contract the bosonic frequency basis
-    coeff_w = Γ.basis_b[w, :]
+    coeff_w = Γ.basis_b[w, :]  # Contract the bosonic frequency basis
     @ein Γ_w[aij1, aij2] := Γ.data[aij1, aij2, b] * coeff_w[b]
-    Γ_w
+    Γ_w::Matrix{T}
 end
 
 """
@@ -140,7 +148,7 @@ Evaluate a 4-point bubble at given bosonic frequency `w` and return in the matri
 - Input `overlap`: `x, x', a`
 - Output: `(x, i, j), (x', i', j')`
 """
-function bubble_to_matrix(Π::Bubble, w, overlap)
+function bubble_to_matrix(Π::Bubble{F, T}, w, overlap) where {F, T}
     @assert ndims(Π.data) == 4
     @assert size(overlap, 3) == nb_f(Π)
     nv_Γ = size(overlap, 1)
@@ -150,16 +158,18 @@ function bubble_to_matrix(Π::Bubble, w, overlap)
     # Π_w: a, (i, j), (i', j')
     coeff_w = Π.basis_b[w, :]
     @ein Π_w[a, ij1, ij2] := Π.data[a, ij1, ij2, b] * coeff_w[b]
+    Π_w = Π_w::Array{T, 3}
 
     # Contract with the overlap
     @ein Π_vertex_tmp[x1, x2, ij1, ij2] := overlap[x1, x2, a] * Π_w[a, ij1, ij2]
+    Π_vertex_tmp = Π_vertex_tmp::Array{T, 4}
     Π_vertex = reshape(PermutedDimsArray(Π_vertex_tmp, (1, 3, 2, 4)), nv_Γ * norb2, nv_Γ * norb2)
     collect(Π_vertex) .* integral_coeff(Π)
 end
 
-integral_coeff(Π::Bubble{:KF, T}) where {T} = 1 / 2 / real(T)(π)
-integral_coeff(Π::Bubble{:MF}) = error("MF Not yet implemented")
-integral_coeff(Π::Bubble{:ZF}) = error("ZF Not yet implemented")
+integral_coeff(::Bubble{:KF, T}) where {T} = 1 / 2 / real(T)(π)
+integral_coeff(::Bubble{:MF}) = error("MF Not yet implemented")
+integral_coeff(::Bubble{:ZF}) = error("ZF Not yet implemented")
 
 
 """
