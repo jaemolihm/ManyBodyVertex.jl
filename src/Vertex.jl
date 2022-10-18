@@ -90,8 +90,8 @@ function Bubble{F}(::Type{T}, basis_f, basis_b, norb=1) where {F, T}
 end
 
 # Customize printing
-function Base.show(io::IO, Γ::Vertex4P)
-    print(io, Base.typename(typeof(Γ)).wrapper)
+function Base.show(io::IO, Γ::Vertex4P{F, C}) where {F, C}
+    print(io, Base.typename(typeof(Γ)).wrapper, "{:$F, :$C}")
     print(io, "(nbasis_f1=$(nb_f2(Γ)), nbasis_f2=$(nb_f2(Γ)), nbasis_b=$(nb_b(Γ)), ")
     print(io, "norb=$(Γ.norb), data=$(Base.summary(Γ.data)))")
 end
@@ -162,6 +162,26 @@ function to_matrix(Γ::Vertex4P{F, C, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis
         return Γ_w
     end
 end
+
+"""
+    apply_crossing(Γ::Vertex4P{F, C}) where {F, C}
+Apply the crossing operation: wwap indices 1 and 3. Works for channel A and T.
+"""
+function apply_crossing(Γ::Vertex4P{F, C}) where {F, C}
+    if C === :A
+        C_out = :T
+    elseif C === :T
+        C_out = :A
+    elseif C === :P
+        # For channel P, we need to additionally change v1 -> -v1. This is not implemented.
+        error("Not implemented for channel P")
+    else
+        error("Wrong channel $C")
+    end
+    # Multiply -1 to data to account the fermionic parity.
+    Vertex4P{F, C_out}(Γ.basis_f1, Γ.basis_f2, Γ.basis_b, Γ.norb, .-Γ.data)
+end
+
 
 """
     bubble_to_matrix(Π, w, overlap)

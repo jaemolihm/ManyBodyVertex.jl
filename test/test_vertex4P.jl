@@ -57,4 +57,11 @@ end
     for c in (:A, :P, :T)
         @inferred Γ(0., 1., 3., Val(c))
     end
+
+    # Test apply_crossing
+    Γ_A = Vertex4P{:KF, :A}(Float64, basis1, basis2, basis2)
+    Γ_A.data .= rand(size(Γ_A.data)...)
+    Γ_T = apply_crossing(Γ_A)
+    @test Γ_T isa Vertex4P{:KF, :T}
+    @test Γ_A(0.2, 0.3, 0.4) ≈ .-Γ_T(0.2, 0.3, 0.4)
 end
