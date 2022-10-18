@@ -13,9 +13,9 @@ function vertex_bubble_integral(Γ1::AbstractVertex4P{F, C, T}, Π, Γ2, basis_w
 
     # Compute the bubble integral on a grid of w (bosonic frequency)
     for (iw, w) in enumerate(ws)
-        Γ1_mat = vertex_to_matrix(Γ1, w)
+        Γ1_mat = to_matrix(Γ1, w)
         Π_mat = bubble_to_matrix(Π, w, overlap)
-        Γ2_mat = vertex_to_matrix(Γ2, w)
+        Γ2_mat = to_matrix(Γ2, w)
         Γ_mat[:, :, iw] .= Γ1_mat * Π_mat * Γ2_mat
     end
 
@@ -52,7 +52,7 @@ Base.size(bsemap::BSEMap{F}) where {F} = (prod(bsemap.size_Γ_in), prod(bsemap.s
 
 function set_bosonic_frequency(bsemap::BSEMap, w)
     Π_mat = bubble_to_matrix(bsemap.Π, w, bsemap.overlap)
-    Γ_mat = vertex_to_matrix(bsemap.Γ, w)
+    Γ_mat = to_matrix(bsemap.Γ, w)
     mul!(bsemap.ΓΠ_mat, Γ_mat, Π_mat)
 end
 
@@ -79,7 +79,7 @@ function solve_BSE(Γ1::AbstractVertex4P{F, C, T}, Π, Γ0, basis_w) where {F, C
     bsemap = BSEMap(Γ1, Π, Γ_1st)
     @views for (iw, w) in enumerate(ws)
         set_bosonic_frequency(bsemap, w)
-        Γ_1st_w = vertex_to_matrix(Γ_1st, w)
+        Γ_1st_w = to_matrix(Γ_1st, w)
         Γ_mat[:, :, iw] .= Γ_1st_w
         IterativeSolvers.gmres!(vec(Γ_mat[:, :, iw]), bsemap, vec(Γ_1st_w));
     end

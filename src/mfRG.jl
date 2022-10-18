@@ -3,7 +3,7 @@ export ConstantBasis, LinearSplineAndTailBasis
 export get_fitting_points
 export basis_integral
 
-export Vertex4P, Bubble, vertex_to_matrix, bubble_to_matrix, vertex_keldyshview
+export Vertex4P, Bubble, to_matrix, bubble_to_matrix, vertex_keldyshview
 export fit_bosonic_basis_coeff!
 
 export solve_BSE

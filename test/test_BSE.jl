@@ -27,7 +27,7 @@ using mfRG
     overlap = basis_integral(basis1, basis1, basis2);
     Γ_direct = Vertex4P{:KF, :A}(basis1, basis1, basis_w)
     for (iw, w) in enumerate(basis_w.grid)
-        Γ0_mat = vertex_to_matrix(Γ0, w)
+        Γ0_mat = to_matrix(Γ0, w)
         Π_mat = bubble_to_matrix(Π, w, overlap)
 
         # Direct solution: Γ = inv(I - Γ0 * Π) * Γ0
@@ -39,7 +39,7 @@ using mfRG
     Γ_iter = solve_BSE(Γ0, Π, Γ0, basis_w)
 
     # Check that the iterative solution and the direct solution agree on the grid.
-    Γ_data_iter = vertex_to_matrix.(Ref(Γ_iter), basis_w.grid) .+ Ref(vertex_to_matrix(Γ0, 0.));
-    Γ_data_direct = vertex_to_matrix.(Ref(Γ_direct), basis_w.grid);
+    Γ_data_iter = to_matrix.(Ref(Γ_iter), basis_w.grid) .+ Ref(to_matrix(Γ0, 0.));
+    Γ_data_direct = to_matrix.(Ref(Γ_direct), basis_w.grid);
     @test norm(Γ_data_iter .- Γ_data_direct) < 1e-10
 end

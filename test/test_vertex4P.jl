@@ -17,12 +17,12 @@ using mfRG
     @test mfRG.nkeldysh(Γ) == 2
     @test size(Γ.data) == (n1 * 2^2, n1 * 2^2, n2)
     @test size(vertex_keldyshview(Γ)) == (n1, n1, 1, 1, 1, 1, 2, 2, 2, 2, n2)
-    @test size(vertex_to_matrix(Γ, 0.3)) == (n1 * 2^2, n1 * 2^2)
+    @test size(to_matrix(Γ, 0.3)) == (n1 * 2^2, n1 * 2^2)
 
     Γ = Vertex4P{:ZF, :A}(basis1, basis1, basis2, 3)
     @test mfRG.nkeldysh(Γ) == 1
     @test size(Γ.data) == (n1 * 3^2, n1 * 3^2, n2)
-    @test size(vertex_to_matrix(Γ, 0.3)) == (n1 * 3^2, n1 * 3^2)
+    @test size(to_matrix(Γ, 0.3)) == (n1 * 3^2, n1 * 3^2)
 
     Π = Bubble{:KF}(basis3, basis2, 3)
     overlap = basis_integral(basis1, basis1, basis3)

@@ -61,7 +61,7 @@ end
 nb_f1(Γ::Vertex4P) = size(Γ.basis_f1, 2)
 nb_f2(Γ::Vertex4P) = size(Γ.basis_f2, 2)
 nb_b(Γ::Vertex4P) = size(Γ.basis_b, 2)
-nind(Γ::Vertex4P) = nkeldysh(Γ) * Γ.norb
+get_nind(Γ::Vertex4P) = nkeldysh(Γ) * Γ.norb
 
 nb_f(Π::Bubble) = size(Π.basis_f, 2)
 nb_b(Π::Bubble) = size(Π.basis_b, 2)
@@ -110,7 +110,7 @@ function (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C
     v1234 = frequency_to_standard(Val(F), c_out, v1, v2, w)
     v1_Γ, v2_Γ, w_Γ = frequency_to_channel(Val(F), Val(C_Γ), v1234...)
 
-    nind = Γ.norb * nkeldysh(Γ)
+    nind = get_nind(Γ)
     Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, nb_b(Γ)), ())
     coeff_f1 = Γ.basis_f1[v1_Γ, :]
     coeff_f2 = Γ.basis_f2[v2_Γ, :]
@@ -122,19 +122,45 @@ function (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C
 end
 
 """
-    vertex_to_matrix(Γ::Vertex4P, w)
-Evaluate a 4-point vertex at given bosonic frequency `w` and return in the matrix form.
+    to_matrix(Γ::Vertex4P{F, C, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis_f2, c::Val=Val(C)) where {F, C, T}
+Evaluate a 4-point vertex at given bosonic frequency `w`, fermionic bases `basis1` and
+`basis2`, and channel `c`. Return the matrix form.
 - `a`: fermionic frequency basis index
 - `b`: frequency basis index
 - `i`, `j`: Orbital/Keldysh index
 - Input `Γ.data`: `(a, i, j), (a', i', j'), b`
 - Output: `(a, i, j), (a', i', j')`
 """
-function vertex_to_matrix(Γ::Vertex4P{F, C, T}, w) where {F, C, T}
-    @assert ndims(Γ.data) == 3
-    coeff_w = Γ.basis_b[w, :]  # Contract the bosonic frequency basis
-    @ein Γ_w[aij1, aij2] := Γ.data[aij1, aij2, b] * coeff_w[b]
-    Γ_w::Matrix{T}
+function to_matrix(Γ::Vertex4P{F, C, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis_f2, c::Val=Val(C)) where {F, C, T}
+    if c !== Val(C) && (ntails(basis1) > 0 || ntails(basis2) > 0)
+        # If we map to a different channel, the tails lead to problems so we disable it.
+        # There is a problem with the fitting process that it oversamples regions where
+        # v1-v2 or v1+v2 is small. Also, there is a problem for the tail-tail part. For
+        # example, the 1/(v1-v2) term cannot be written as a sum of 1/v1 and 1/v2 terms.
+        error("to_matrix to different channel with tails do not work.")
+    end
+
+    if c === Val(C) && basis1 === Γ.basis_f1 && basis2 === Γ.basis_f2
+        # Same channel, same basis. Just need to contract the bosonic frequency basis.
+        coeff_w = Γ.basis_b[w, :]
+        @ein Γ_w[aij1, aij2] := Γ.data[aij1, aij2, b] * coeff_w[b]
+        Γ_w = Γ_w::Matrix{T}
+        return Γ_w
+    else
+        nind = get_nind(Γ)
+        vs1 = get_fitting_points(basis1)
+        vs2 = get_fitting_points(basis2)
+        Γ_w_data = zeros(T, length(vs1), length(vs2), nind^2, nind^2)
+        for (i2, v2) in enumerate(vs2), (i1, v1) in enumerate(vs1)
+            Γ_w_data[i1, i2, :, :] .= Γ(v1, v2, w, c)
+        end
+
+        Γ_tmp1 = fit_basis_coeff(Γ_w_data, basis1, vs1, 1)
+        Γ_tmp2 = fit_basis_coeff(Γ_tmp1, basis2, vs2, 2)
+
+        Γ_w = reshape(permutedims(Γ_tmp2, (1, 3, 2, 4)), size(basis1, 2) * nind^2, size(basis2, 2) * nind^2)
+        return Γ_w
+    end
 end
 
 """
@@ -194,9 +220,31 @@ end
 Compute the basis coefficients using the data computed at a grid of bosonic frequencies ws.
 """
 function fit_bosonic_basis_coeff!(Γ, Γ_data, ws)
+    # FIXME: Merge with fit_basis_coeff?
     coeff_fit = Γ.basis_b[ws, :]
     for inds in Iterators.product(axes(Γ.data)[1:end-1]...)
         Γ.data[inds..., :] .= coeff_fit \ Γ_data[inds..., :]
     end
     Γ
+end
+
+"""
+    fit_basis_coeff(data, basis, grid, dim)
+Fit the coefficients of the basis to the data to make ``data ≈ basis_value * coeff`` hold.
+Use the `dim`-th index of `data` for fitting and leave other indices.
+"""
+function fit_basis_coeff(data, basis, grid, dim)
+    basis_value = basis[grid, :]
+    ngrid, ncoeff = size(basis_value)
+    @assert size(data, dim) == ngrid
+
+    size_coeff = Base.setindex(size(data), ncoeff, dim)
+    coeff = similar(data, size_coeff)
+    # FIXME: this part is type unstable. Can one fix it?
+    for i1 in Iterators.product(axes(data)[1:dim-1]...)
+        for i2 in Iterators.product(axes(data)[dim+1:end]...)
+            coeff[i1..., :, i2...] .= basis_value \ data[i1..., :, i2...]
+        end
+    end
+    coeff
 end
