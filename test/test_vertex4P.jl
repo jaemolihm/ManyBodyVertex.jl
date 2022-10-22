@@ -24,11 +24,6 @@ using mfRG
     @test size(Γ.data) == (n1 * 3^2, n1 * 3^2, n2)
     @test size(to_matrix(Γ, 0.3)) == (n1 * 3^2, n1 * 3^2)
 
-    Π = Bubble{:KF}(basis3, basis2, 3)
-    overlap = basis_integral(basis1, basis1, basis3)
-    @test size(Π.data) == (n3, 6^2, 6^2, n2)
-    @test size(bubble_to_matrix(Π, 0.3, overlap)) == (n1 * 6^2, n1 * 6^2)
-
     # Test fitting
     for basis2 in [LinearSplineAndTailBasis(0, -1, -3:0.5:1), LinearSplineAndTailBasis(2, 4, -2:0.5:2)]
         Γ = Vertex4P{:ZF, :A}(basis1, basis1, basis2)

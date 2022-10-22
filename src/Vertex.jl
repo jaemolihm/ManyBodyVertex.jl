@@ -44,33 +44,14 @@ struct Vertex4P{F, C, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex
     end
 end
 
-struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F, T}
-    # Basis for fermionic frequencies
-    basis_f::BF
-    # Basis for bosonic frequency
-    basis_b::BB
-    # Number of orbitals
-    norb::Int
-    # Data array
-    data::DT
-    function Bubble{F}(basis_f::BF, basis_b::BB, norb, data::DT) where {F, DT <: AbstractArray{T}, BF, BB} where {T}
-        new{F, T, BF, BB, DT}(basis_f, basis_b, norb, data)
-    end
-end
-
 nb_f1(Γ::Vertex4P) = size(Γ.basis_f1, 2)
 nb_f2(Γ::Vertex4P) = size(Γ.basis_f2, 2)
 nb_b(Γ::Vertex4P) = size(Γ.basis_b, 2)
-get_nind(Γ::Vertex4P) = nkeldysh(Γ) * Γ.norb
-
-nb_f(Π::Bubble) = size(Π.basis_f, 2)
-nb_b(Π::Bubble) = size(Π.basis_b, 2)
+get_nind(Γ::AbstractFrequencyVertex) = nkeldysh(Γ) * Γ.norb
 
 function Vertex4P{F, C}(basis_f1, basis_f2, basis_b, norb=1) where {F, C}
     Vertex4P{F, C}(ComplexF64, basis_f1, basis_f2, basis_b, norb)
 end
-
-Bubble{F}(basis_f, basis_b, norb=1) where {F} = Bubble{F}(ComplexF64, basis_f, basis_b, norb)
 
 function Vertex4P{F, C}(::Type{T}, basis_f1, basis_f2, basis_b, norb=1) where {F, C, T}
     nb_f1 = size(basis_f1, 2)
@@ -81,25 +62,11 @@ function Vertex4P{F, C}(::Type{T}, basis_f1, basis_f2, basis_b, norb=1) where {F
     Vertex4P{F, C}(basis_f1, basis_f2, basis_b, norb, data)
 end
 
-function Bubble{F}(::Type{T}, basis_f, basis_b, norb=1) where {F, T}
-    nb_f = size(basis_f, 2)
-    nb_b = size(basis_b, 2)
-    nk = nkeldysh(F)
-    data = zeros(T, nb_f, (norb * nk)^2, (norb * nk)^2, nb_b)
-    Bubble{F}(basis_f, basis_b, norb, data)
-end
-
 # Customize printing
 function Base.show(io::IO, Γ::Vertex4P{F, C}) where {F, C}
     print(io, Base.typename(typeof(Γ)).wrapper, "{:$F, :$C}")
     print(io, "(nbasis_f1=$(nb_f2(Γ)), nbasis_f2=$(nb_f2(Γ)), nbasis_b=$(nb_b(Γ)), ")
     print(io, "norb=$(Γ.norb), data=$(Base.summary(Γ.data)))")
-end
-
-function Base.show(io::IO, Π::Bubble)
-    print(io, Base.typename(typeof(Π)).wrapper)
-    print(io, "(nbasis_f=$(nb_f(Π)), nbasis_b=$(nb_b(Π)), ")
-    print(io, "norb=$(Π.norb), data=$(Base.summary(Π.data)))")
 end
 
 """
@@ -181,42 +148,6 @@ function apply_crossing(Γ::Vertex4P{F, C}) where {F, C}
     # Multiply -1 to data to account the fermionic parity.
     Vertex4P{F, C_out}(Γ.basis_f1, Γ.basis_f2, Γ.basis_b, Γ.norb, .-Γ.data)
 end
-
-
-"""
-    bubble_to_matrix(Π, w, overlap)
-Evaluate a 4-point bubble at given bosonic frequency `w` and return in the matrix form.
-- `a`: fermionic frequency basis index of bubble
-- `x`: fermionic frequency basis index of vertex
-- `b`: frequency basis index
-- `i`, `j`: Orbital/Keldysh index
-- Input `Π.data`: `a,  (i, j), (i', j'), b`
-- Input `overlap`: `x, x', a`
-- Output: `(x, i, j), (x', i', j')`
-"""
-function bubble_to_matrix(Π::Bubble{F, T}, w, overlap) where {F, T}
-    @assert ndims(Π.data) == 4
-    @assert size(overlap, 3) == nb_f(Π)
-    nv_Γ = size(overlap, 1)
-    norb2 = size(Π.data, 2)
-
-    # Contract the bosonic frequency basis
-    # Π_w: a, (i, j), (i', j')
-    coeff_w = Π.basis_b[w, :]
-    @ein Π_w[a, ij1, ij2] := Π.data[a, ij1, ij2, b] * coeff_w[b]
-    Π_w = Π_w::Array{T, 3}
-
-    # Contract with the overlap
-    @ein Π_vertex_tmp[x1, x2, ij1, ij2] := overlap[x1, x2, a] * Π_w[a, ij1, ij2]
-    Π_vertex_tmp = Π_vertex_tmp::Array{T, 4}
-    Π_vertex = reshape(PermutedDimsArray(Π_vertex_tmp, (1, 3, 2, 4)), nv_Γ * norb2, nv_Γ * norb2)
-    collect(Π_vertex) .* integral_coeff(Π)
-end
-
-integral_coeff(::Bubble{:KF, T}) where {T} = 1 / 2 / real(T)(π)
-integral_coeff(::Bubble{:MF}) = error("MF Not yet implemented")
-integral_coeff(::Bubble{:ZF}) = error("ZF Not yet implemented")
-
 
 """
     vertex_keldyshview(Γ::Vertex4P{:KF})
