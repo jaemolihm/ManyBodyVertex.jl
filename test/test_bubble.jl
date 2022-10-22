@@ -12,5 +12,5 @@ using mfRG
     Π = Bubble{:KF}(basis3, basis2, 3)
     overlap = basis_integral(basis1, basis1, basis3)
     @test size(Π.data) == (n3, 6^2, 6^2, n2)
-    @test size(bubble_to_matrix(Π, 0.3, overlap)) == (n1 * 6^2, n1 * 6^2)
+    @test size(to_matrix(Π, 0.3, overlap)) == (n1 * 6^2, n1 * 6^2)
 end

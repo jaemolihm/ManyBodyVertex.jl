@@ -15,5 +15,6 @@ include("basis_integral.jl")
 include("channel.jl")
 include("Vertex.jl")
 include("Bubble.jl")
+include("ScreenedBubble.jl")
 include("BSE.jl")
 end

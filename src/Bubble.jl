@@ -1,6 +1,6 @@
 abstract type AbstractBubble{F, T} <: AbstractFrequencyVertex{F, T} end
 
-struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, T}
+mutable struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, T}
     # Basis for fermionic frequencies
     basis_f::BF
     # Basis for bosonic frequency
@@ -9,8 +9,12 @@ struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, T}
     norb::Int
     # Data array
     data::DT
+    # Cached basis and overlap
+    cache_basis_L
+    cache_basis_R
+    cache_overlap_LR
     function Bubble{F}(basis_f::BF, basis_b::BB, norb, data::DT) where {F, DT <: AbstractArray{T}, BF, BB} where {T}
-        new{F, T, BF, BB, DT}(basis_f, basis_b, norb, data)
+        new{F, T, BF, BB, DT}(basis_f, basis_b, norb, data, nothing, nothing, nothing)
     end
 end
 
@@ -42,7 +46,24 @@ function (Π::AbstractBubble{F, T})(w) where {F, T}
 end
 
 """
-    bubble_to_matrix(Π, w, overlap)
+Load overlap from cache, recompute if basis has changed.
+"""
+function cache_and_load_overlaps(Π::Bubble, basis_L::Basis, basis_R::Basis)
+    if basis_L !== Π.cache_basis_L || basis_R !== Π.cache_basis_R
+        Π.cache_overlap_LR = basis_integral(basis_L, basis_R, Π.basis_f)
+        Π.cache_basis_L = basis_L
+        Π.cache_basis_R = basis_R
+    end
+    (Π.cache_overlap_LR,)
+end
+
+function to_matrix(Π::AbstractBubble, w, basis_L::Basis, basis_R::Basis)
+    # Function barrier
+    to_matrix(Π, w, cache_and_load_overlaps(Π, basis_L, basis_R)...)
+end
+
+"""
+    to_matrix(Π, w, overlap)
 Evaluate a 4-point bubble at given bosonic frequency `w` and return in the matrix form.
 - `a`: fermionic frequency basis index of bubble
 - `x`: fermionic frequency basis index of vertex
@@ -52,7 +73,7 @@ Evaluate a 4-point bubble at given bosonic frequency `w` and return in the matri
 - Input `overlap`: `x, x', a`
 - Output: `(x, i, j), (x', i', j')`
 """
-function bubble_to_matrix(Π::Bubble{F, T}, w, overlap) where {F, T}
+function to_matrix(Π::Bubble{F, T}, w, overlap) where {F, T}
     @assert ndims(Π.data) == 4
     @assert size(overlap, 3) == nb_f(Π)
     nv_Γ1, nv_Γ2 = size(overlap)[1:2]
@@ -64,7 +85,6 @@ function bubble_to_matrix(Π::Bubble{F, T}, w, overlap) where {F, T}
     Π_vertex = reshape(PermutedDimsArray(Π_vertex_tmp, (1, 3, 2, 4)), nv_Γ1 * nind2, nv_Γ2 * nind2)
     collect(Π_vertex) .* integral_coeff(Π)
 end
-
 
 integral_coeff(::AbstractBubble{:KF, T}) where {T} = 1 / 2 / real(T)(π)
 integral_coeff(::AbstractBubble{:MF}) = error("MF Not yet implemented")
