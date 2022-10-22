@@ -2,18 +2,11 @@
     ScreenedBubble(Π, K1)
 Bubble screened by a K1 vertex: ``Πscr = Π + Π * K1 * Π``.
 ### Diagram for `to_matrix(Π)`:
-               Π
-               |
-               bΠ
-               |
-    -- bL2 -- oLR -- bR1 --
-
-### Diagram for `ΓL * (Π K1 Π) * ΓR`:
-              Π -- K1 -- Π
-              |          |
-              bΠ         bΠ
-              |          |
-    -- bL2 -- oL         oR -- bR1 --
+                Π                             Π -- K1 -- Π
+                |                             |          |
+                bΠ             +              bΠ         bΠ
+                |                             |          |
+    -- bL2 -- ov_LR -- bR1 --     -- bL2 -- ov_L        ov_R -- bR1 --
 """
 mutable struct ScreenedBubble{F, T, BT <: AbstractBubble{F, T}, VT} <: AbstractBubble{F, T}
     # Basis for fermionic frequencies

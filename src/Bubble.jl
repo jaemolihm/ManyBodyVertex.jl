@@ -1,5 +1,14 @@
 abstract type AbstractBubble{F, T} <: AbstractFrequencyVertex{F, T} end
 
+"""
+    Bubble{F}(basis_f, basis_b, norb, data)
+### Diagram for `to_matrix(Π)`:
+                Π
+                |
+                bΠ
+                |
+    -- bL2 -- ov_LR -- bR1 --
+"""
 mutable struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, T}
     # Basis for fermionic frequencies
     basis_f::BF
