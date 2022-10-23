@@ -82,9 +82,14 @@ function (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C
     coeff_f1 = Γ.basis_f1[v1_Γ, :]
     coeff_f2 = Γ.basis_f2[v2_Γ, :]
     coeff_b = Γ.basis_b[w_Γ, :]
-    @ein Γ_vvw[i, j] := Γ_array[v1, i, v2, j, w] * coeff_f1[v1] * coeff_f2[v2] * coeff_b[w]
-    Γ_vvw = Γ_vvw::Matrix{T}
-
+    # Compute the following einsum operation with a manually optimized implementation.
+    # @ein Γ_vvw[i, j] := Γ_array[v1, i, v2, j, w] * coeff_f1[v1] * coeff_f2[v2] * coeff_b[w]
+    # Γ_vvw = Γ_vvw::Matrix{T}
+    Γ_vvw = zeros(eltype(Γ_array), size(Γ_array, 2), size(Γ_array, 4))
+    @inbounds for inds in CartesianIndices(Γ_array)
+        iv1, i, iv2, j, iw = inds.I
+        Γ_vvw[i, j] += Γ_array[inds] * coeff_f1[iv1] * coeff_f2[iv2] * coeff_b[iw]
+    end
     _permute_orbital_indices_matrix_4p(Val(C_Γ), c_out, Γ_vvw, nind)
 end
 
