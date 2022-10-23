@@ -28,7 +28,7 @@ using mfRG
     Γ_direct = Vertex4P{:KF, :A}(basis1, basis1, basis_w)
     for (iw, w) in enumerate(basis_w.grid)
         Γ0_mat = to_matrix(Γ0, w)
-        Π_mat = to_matrix(Π, w, overlap)
+        Π_mat = to_matrix(Π, w, basis1, basis1)
 
         # Direct solution: Γ = inv(I - Γ0 * Π) * Γ0
         Γ_mat = (I - Γ0_mat * Π_mat) \ Γ0_mat

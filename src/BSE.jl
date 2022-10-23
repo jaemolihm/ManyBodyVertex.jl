@@ -33,7 +33,7 @@ abstract type AbstractBSEMap{F, C, T} <: LinearMaps.LinearMap{T} end
     BSEMap(Γ, Π, Γ_in) <: AbstractBSEMap{F, T} <: LinearMaps.LinearMap{T}
 ``Γ_out = BSEMap(Γ, Π) * Γ_in = Γ_in - Γ * Π * Γ_in``.
 
-Before using a BSEMap, one should call `set_bosonic_frequency(bsemap, w)` with the bosonic
+Before using a BSEMap, one should call `set_bosonic_frequency!(bsemap, w)` with the bosonic
 frequency to use.
 """
 mutable struct BSEMap{F, C, T, FT, VT <: Vertex4P{F, C, T}, BT <: Bubble{F, T}} <: AbstractBSEMap{F, C, T}
@@ -52,14 +52,14 @@ mutable struct BSEMap{F, C, T, FT, VT <: Vertex4P{F, C, T}, BT <: Bubble{F, T}} 
 end
 Base.size(bsemap::BSEMap{F}) where {F} = (prod(bsemap.size_Γ_in), prod(bsemap.size_Γ_in))
 
-function set_bosonic_frequency(bsemap::BSEMap, w)
+function set_bosonic_frequency!(bsemap::BSEMap, w)
     Π_mat = to_matrix(bsemap.Π, w, bsemap.overlap)
     Γ_mat = to_matrix(bsemap.Γ, w)
     mul!(bsemap.ΓΠ_mat, Γ_mat, Π_mat)
 end
 
 function LinearAlgebra.mul!(Γ_out_vec::AbstractVecOrMat, bsemap::BSEMap, Γ_in_vec::AbstractVector)
-    # Calculate the Bubble integral. ΓΠ_mat is precomputed in set_bosonic_frequency.
+    # Calculate the Bubble integral. ΓΠ_mat is precomputed in set_bosonic_frequency!.
     # Inputs are vectors, reshape them into matrix form and them do matrix multiplication.
     Γ_in_mat = reshape(Γ_in_vec, bsemap.size_Γ_in)
     Γ_out_vec .= Γ_in_vec .- vec(bsemap.ΓΠ_mat * Γ_in_mat)
@@ -80,7 +80,7 @@ function solve_BSE(Γ1::AbstractVertex4P{F, C, T}, Π, Γ0, basis_w) where {F, C
     Γ_mat = zeros(T, size(Γ_1st.data)[1:2]..., length(ws))
     bsemap = BSEMap(Γ1, Π, Γ_1st)
     @views for (iw, w) in enumerate(ws)
-        set_bosonic_frequency(bsemap, w)
+        set_bosonic_frequency!(bsemap, w)
         Γ_1st_w = to_matrix(Γ_1st, w)
         Γ_mat[:, :, iw] .= Γ_1st_w
         IterativeSolvers.gmres!(vec(Γ_mat[:, :, iw]), bsemap, vec(Γ_1st_w));
