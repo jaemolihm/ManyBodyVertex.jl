@@ -22,7 +22,7 @@ function vertex_bubble_integral(ΓL::AbstractVertex4P{F, CL, T}, Π, ΓR::Abstra
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
-    Γ = Vertex4P{F, CR}(T, ΓL.basis_f1, ΓR.basis_f2, basis_w, ΓL.norb)
+    Γ = Vertex4P{F, CR}(T, basis_L1, ΓR.basis_f2, basis_w, ΓL.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
 end
