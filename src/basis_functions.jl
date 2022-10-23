@@ -13,6 +13,7 @@ ConstantBasis(::Type{T}=Float64) where {T} = ConstantBasis{T}()
 Base.axes(::ConstantBasis) = (Inclusion(-Inf..Inf), 1:1)
 Base.getindex(::ConstantBasis{T}, x::Number, n::Integer) where {T} = (n == 1 || throw(BoundsError()); one(T))
 support_domain(::ConstantBasis, n::Integer) = (n == 1 || throw(BoundsError()); -Inf..Inf)
+ntails(f::ConstantBasis) = 1
 
 
 struct LinearSplineAndTailBasis{T, FT} <: Basis{T}
