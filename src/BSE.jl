@@ -3,24 +3,26 @@ using LinearMaps
 using IterativeSolvers
 
 """
-    vertex_bubble_integral(Γ1, Π, Γ2, basis_w)
-Compute the bubble integral ``Γ = Γ1 * Π * Γ2`` on the bosonic basis basis_w.
+    vertex_bubble_integral(ΓL, Π, ΓR, basis_w)
+Compute the bubble integral ``Γ = ΓL * Π * ΓR`` on the bosonic basis basis_w.
+If `ΓL` and `ΓR` are in different channels, use the channel of `ΓR`.
 """
-function vertex_bubble_integral(Γ1::AbstractVertex4P{F, C, T}, Π, Γ2, basis_w) where {F, C, T}
+function vertex_bubble_integral(ΓL::AbstractVertex4P{F, CL, T}, Π, ΓR::AbstractVertex4P{F, CR, T},
+        basis_w, basis_L1=ΓL.basis_f1, basis_L2=ΓL.basis_f2) where {F, T, CL, CR}
     ws = get_fitting_points(basis_w)
-    Γ_mat = zeros(T, size(Γ1.data, 1), size(Γ2.data, 2), length(ws))
-    overlap = basis_integral(Γ1.basis_f2, Γ2.basis_f1, Π.basis_f)
+    nind2 = get_nind(ΓL)^2
+    Γ_mat = zeros(T, size(basis_L1, 2) * nind2, size(ΓR.data, 2), length(ws))
 
     # Compute the bubble integral on a grid of w (bosonic frequency)
     for (iw, w) in enumerate(ws)
-        Γ1_mat = to_matrix(Γ1, w)
-        Π_mat = to_matrix(Π, w, overlap)
-        Γ2_mat = to_matrix(Γ2, w)
-        Γ_mat[:, :, iw] .= Γ1_mat * Π_mat * Γ2_mat
+        ΓL_mat = to_matrix(ΓL, w, basis_L1, basis_L2, Val(CR))
+        Π_mat = to_matrix(Π, w, basis_L2, ΓR.basis_f1)
+        ΓR_mat = to_matrix(ΓR, w)
+        Γ_mat[:, :, iw] .= ΓL_mat * (Π_mat * ΓR_mat)
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
-    Γ = Vertex4P{F, C}(T, Γ1.basis_f1, Γ2.basis_f2, basis_w, Γ1.norb)
+    Γ = Vertex4P{F, CR}(T, ΓL.basis_f1, ΓR.basis_f2, basis_w, ΓL.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
 end
