@@ -69,7 +69,7 @@ function solve_BSE(Γ1, Π, Γ0::AbstractVertex4P{F, C, T}, basis_w, basis_bse=n
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
-    Γ = Vertex4P{F, C}(T, basis_Γ1_1, basis_Γ1_2, basis_w, Γ_1st.norb)
+    Γ = Vertex4P{F, C}(T, basis_Γ1_1, Γ0.basis_f2, basis_w, Γ_1st.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
 end
