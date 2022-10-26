@@ -60,7 +60,7 @@ function _permute_orbital_indices_matrix_4p(c_in, c_out, Γ_mat_in, nind)
     x1 = Base.ReshapedArray(Γ_mat_in, (nind, nind, nind, nind), ())
     # channel C -> standard -> channel c_out
     inds = indices_to_channel(c_out, indices_to_standard(c_in, (1, 2, 3, 4)))
-    x2 = PermutedDimsArray(x1, inds)
+    x2 = permutedims(x1, inds)
     x3 = Base.ReshapedArray(x2, (nind^2, nind^2), ())
     collect(x3)
 end

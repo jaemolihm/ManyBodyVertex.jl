@@ -78,17 +78,19 @@ function (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C
     v1_Γ, v2_Γ, w_Γ = frequency_to_channel(Val(F), Val(C_Γ), v1234...)
 
     nind = get_nind(Γ)
-    Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, nb_b(Γ)), ())
     coeff_f1 = Γ.basis_f1[v1_Γ, :]
     coeff_f2 = Γ.basis_f2[v2_Γ, :]
     coeff_b = Γ.basis_b[w_Γ, :]
     # Compute the following einsum operation with a manually optimized implementation.
     # @ein Γ_vvw[i, j] := Γ_array[v1, i, v2, j, w] * coeff_f1[v1] * coeff_f2[v2] * coeff_b[w]
-    # Γ_vvw = Γ_vvw::Matrix{T}
-    Γ_vvw = zeros(eltype(Γ_array), size(Γ_array, 2), size(Γ_array, 4))
+    Γ_array = zeros(T, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2))
+    Γ_array_reshape = Base.ReshapedArray(Γ_array, (length(Γ_array),), ())
+    Γ_data_reshape = Base.ReshapedArray(Γ.data, (prod(size(Γ.data)[1:2]), size(Γ.data, 3)), ())
+    mul!(Γ_array_reshape, Γ_data_reshape, coeff_b)
+    Γ_vvw = zeros(T, nind^2, nind^2)
     @inbounds for inds in CartesianIndices(Γ_array)
-        iv1, i, iv2, j, iw = inds.I
-        Γ_vvw[i, j] += Γ_array[inds] * coeff_f1[iv1] * coeff_f2[iv2] * coeff_b[iw]
+        iv1, i, iv2, j = inds.I
+        Γ_vvw[i, j] += Γ_array[inds] * coeff_f1[iv1] * coeff_f2[iv2]
     end
     _permute_orbital_indices_matrix_4p(Val(C_Γ), c_out, Γ_vvw, nind)
 end
