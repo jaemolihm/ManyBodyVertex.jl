@@ -61,7 +61,7 @@ function to_matrix(Π::ScreenedBubble{F, T}, w, ov_LR, ov_L, ov_R) where {F, T}
     Π_vertex_tmp2 = Π_vertex_tmp2::Array{T, 3}
     Π_vertex1 = reshape(Π_vertex_tmp1, nb_L * nind2, nind2)
     Π_vertex2 = reshape(Π_vertex_tmp2, nind2, nb_R * nind2)
-    Π_mat .+= (Π_vertex1 * K1_w * Π_vertex2) .* integral_coeff(Π)
+    Π_mat .+= (Π_vertex1 * K1_w * Π_vertex2) .* integral_coeff(Π)^2
 
     Π_mat
 end
