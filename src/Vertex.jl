@@ -176,11 +176,7 @@ end
 Compute the basis coefficients using the data computed at a grid of bosonic frequencies ws.
 """
 function fit_bosonic_basis_coeff!(Γ, Γ_data, ws)
-    # FIXME: Merge with fit_basis_coeff?
-    coeff_fit = Γ.basis_b[ws, :]
-    for inds in Iterators.product(axes(Γ.data)[1:end-1]...)
-        Γ.data[inds..., :] .= coeff_fit \ Γ_data[inds..., :]
-    end
+    Γ.data .= fit_basis_coeff(Γ_data, Γ.basis_b, ws, ndims(Γ.data))
     Γ
 end
 
@@ -188,19 +184,22 @@ end
     fit_basis_coeff(data, basis, grid, dim)
 Fit the coefficients of the basis to the data to make ``data ≈ basis_value * coeff`` hold.
 Use the `dim`-th index of `data` for fitting and leave other indices.
+`size(data, dim) == length(grid)` must hold.
 """
 function fit_basis_coeff(data, basis, grid, dim)
-    basis_value = basis[grid, :]
-    ngrid, ncoeff = size(basis_value)
-    @assert size(data, dim) == ngrid
-
-    size_coeff = Base.setindex(size(data), ncoeff, dim)
-    coeff = similar(data, size_coeff)
-    # FIXME: this part is type unstable. Can one fix it?
-    for i1 in Iterators.product(axes(data)[1:dim-1]...)
-        for i2 in Iterators.product(axes(data)[dim+1:end]...)
-            coeff[i1..., :, i2...] .= basis_value \ data[i1..., :, i2...]
-        end
+    if dim == 1
+        # Reshape data to a Matrix by merging indices 2 to end, and call left division.
+        basis_value = basis[grid, :]
+        ngrid, ncoeff = size(basis_value)
+        size_keep = size(data)[2:end]
+        reshape(basis_value \ reshape(data, ngrid, prod(size_keep)), ncoeff, size_keep...)
+    else
+        # Permute the dim-th index to the front and call the dim=1 case
+        perm = Vector(1:ndims(data))
+        perm[1], perm[dim] = dim, 1
+        # perm = pushfirst!(deleteat!(Vector(1:ndims(data)), dim), dim)
+        data_permuted = permutedims(data, perm)
+        coeff_permuted = fit_basis_coeff(data_permuted, basis, grid, 1)
+        permutedims(coeff_permuted, invperm(perm))
     end
-    coeff
 end
