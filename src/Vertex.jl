@@ -27,6 +27,7 @@ abstract type AbstractFrequencyVertex{F, T} end
 abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
+channel(::AbstractVertex4P{F, C}) where {F, C} = C
 
 struct Vertex4P{F, C, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{F, C, T}
     # Basis for fermionic frequencies
