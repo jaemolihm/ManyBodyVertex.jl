@@ -95,6 +95,6 @@ function to_matrix(Π::Bubble{F, T}, w, overlap) where {F, T}
     collect(Π_vertex) .* integral_coeff(Π)
 end
 
-integral_coeff(::AbstractBubble{:KF, T}) where {T} = 1 / 2 / real(T)(π)
+integral_coeff(::AbstractBubble{:KF, T}) where {T} = -im / 2 / real(T)(π)
 integral_coeff(::AbstractBubble{:MF}) = error("MF Not yet implemented")
 integral_coeff(::AbstractBubble{:ZF}) = error("ZF Not yet implemented")

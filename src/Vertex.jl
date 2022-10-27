@@ -159,7 +159,7 @@ end
 
 """
     vertex_keldyshview(Γ::Vertex4P{:KF})
-Return a the 4-point KF vertex as a 11-dimensional array.
+Return a the 4-point KF vertex as a 11-dimensional array in the standard index order.
 - `a`: fermionic frequency basis index
 - `b`: frequency basis index
 - `i`: Orbital index
@@ -168,10 +168,13 @@ Return a the 4-point KF vertex as a 11-dimensional array.
 - Output: `a, a', i1, i2, i3, i4, k1, k2, k3, k4, b`
 """
 function vertex_keldyshview(Γ::Vertex4P{:KF, C}) where {C}
-    C === :A || error("Channel $C not implemented")
     norb = Γ.norb
     data_size = (nb_f1(Γ), norb, 2, norb, 2, nb_f2(Γ), norb, 2, norb, 2, nb_b(Γ))
-    PermutedDimsArray(Base.ReshapedArray(Γ.data, data_size, ()), (1, 6, 2, 4, 7, 9, 3, 5, 8, 10, 11))
+    # ((v, ik1, ik2), (v', ik3, ik4), w) -> (v, v', i1, i2, i3, i4, k1, k2, k3, k4, w)
+    perm = [1, 6, 2, 4, 7, 9, 3, 5, 8, 10, 11]
+    # channel orbital/Keldysh order -> standard orbital/Keldysh order
+    permute!(perm, [1, 2, indices_to_standard(Val(C), 3:6)..., indices_to_standard(Val(C), 7:10)..., 11])
+    PermutedDimsArray(Base.ReshapedArray(Γ.data, data_size, ()), perm)
 end
 
 """
