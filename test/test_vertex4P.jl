@@ -24,6 +24,17 @@ using mfRG
     @test size(Γ.data) == (n1 * 3^2, n1 * 3^2, n2)
     @test size(to_matrix(Γ, 0.3)) == (n1 * 3^2, n1 * 3^2)
 
+    Γ2 = Γ + 2 * Γ + Γ * 3
+    @test Γ2.data ≈ Γ.data .* 6
+
+    Γ_sim = similar(Γ)
+    @test Γ_sim isa typeof(Γ)
+    @test Γ_sim.basis_f1 === Γ.basis_f1
+    @test Γ_sim.basis_f2 === Γ.basis_f2
+    @test Γ_sim.basis_b === Γ.basis_b
+    @test Γ_sim.norb === Γ.norb
+    @test size(Γ_sim.data) == size(Γ.data)
+
     # Test fitting
     for basis2 in [LinearSplineAndTailBasis(0, -1, -3:0.5:1), LinearSplineAndTailBasis(2, 4, -2:0.5:2)]
         Γ = Vertex4P{:ZF, :A}(basis1, basis1, basis2)

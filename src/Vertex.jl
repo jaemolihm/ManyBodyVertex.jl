@@ -63,6 +63,26 @@ function Vertex4P{F, C}(::Type{T}, basis_f1, basis_f2, basis_b, norb=1) where {F
     Vertex4P{F, C}(basis_f1, basis_f2, basis_b, norb, data)
 end
 
+function Base.similar(Γ::Vertex4P{F, C, T}, ::Type{ElType}=T) where {F, C, T, ElType}
+    Vertex4P{F, C}(Γ.basis_f1, Γ.basis_f2, Γ.basis_b, Γ.norb, similar(Γ.data, ElType))
+end
+
+function Base.:*(x::Number, A::Vertex4P)
+    B = similar(A)
+    B.data .= A.data .* x
+    B
+end
+Base.:*(A::Vertex4P, x::Number) = x * A
+
+function Base.:+(A::Vertex4P, B::Vertex4P)
+    A.basis_f1 === B.basis_f1 || error("basis must be identical")
+    A.basis_f2 === B.basis_f2 || error("basis must be identical")
+    A.basis_b === B.basis_b || error("basis must be identical")
+    C = similar(A)
+    C.data .= A.data .+ B.data
+    C
+end
+
 # Customize printing
 function Base.show(io::IO, Γ::Vertex4P{F, C}) where {F, C}
     print(io, Base.typename(typeof(Γ)).wrapper, "{:$F, :$C}")
@@ -140,7 +160,7 @@ end
 
 """
     apply_crossing(Γ::Vertex4P{F, C}) where {F, C}
-Apply the crossing operation: wwap indices 1 and 3. Works for channel A and T.
+Apply the crossing operation: swap indices 1 and 3. Works only for channel A and T.
 """
 function apply_crossing(Γ::Vertex4P{F, C}) where {F, C}
     if C === :A
