@@ -1,6 +1,6 @@
 module mfRG
 export ConstantBasis, LinearSplineAndTailBasis
-export ImagConstantBasis, ImagGridAndTailBasis
+export ImagConstantBasis, ImagGridAndTailBasis, frequency_index_bounds
 export get_fitting_points
 export basis_integral
 

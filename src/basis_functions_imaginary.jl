@@ -61,3 +61,26 @@ function Base.getindex(f::ImagGridAndTailBasis{T}, x::Integer, n::Integer) where
         x - f.xmin + 1 == n - ntails(f) ? one(T) : zero(T)
     end
 end
+
+# FIXME: Make this symmetric for both Fermionic and Bosonic bases.
+function get_fitting_points(basis::ImagGridAndTailBasis)
+    x_bound = max(-basis.xmin, basis.xmax)
+    vcat(-x_bound .* (ntails(basis)+1:-1:2), basis.xmin:basis.xmax, x_bound .* (2:ntails(basis)+1))
+end
+
+
+"""
+    frequency_index_bounds(nmax, particle_type)
+The bounds for the index (that should be passed as `xmin` and `xmax` to ImagGridAndTailBasis)
+so that frequency up to |v| <= nmax * 2π/β can be sampled for given `particle_type`
+(`:Fermion` or `:Boson`).
+"""
+function frequency_index_bounds(nmax, particle_type)
+    if particle_type === :Fermion
+        ceil(Int, -nmax - 1/2), floor(Int, nmax - 1/2)
+    elseif particle_type === :Boson
+        -nmax, nmax
+    else
+        error("Wrong particle_type $particle_type")
+    end
+end

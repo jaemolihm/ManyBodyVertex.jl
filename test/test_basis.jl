@@ -40,17 +40,21 @@ end
     @test (1:2) != InfRange()
     @test InfRange() == InfRange()
 
-    # Test ImagConstantBasisX1X
-    b = ImagConstantBasisX1X()
+    # Test ImagConstantBasis
+    b = ImagConstantBasis()
     @test axes(b) == (InfRange(), 1:1)
     @test size(b) == (length(InfRange()), 1)
     @test b[10, 1] == 1
 
-    # Test ImagGridAndTailBasisX1X
-    b = ImagGridAndTailBasisX1X(0, 1, -1, 1)
-    @test axes(b) == (InfRange(), 1:5)
-    @test size(b) == (length(InfRange()), 5)
-    @test b[0, :] ≈ [0, 0, 0, 1, 0]
-    @test b[2, :] ≈ [1, 1/2, 0, 0, 0]
-    @test b[-3, :] ≈ [1, -1/3, 0, 0, 0]
+    # Test ImagGridAndTailBasis
+    b = ImagGridAndTailBasis(0, 1, -2, 1)
+    @test axes(b) == (InfRange(), 1:6)
+    @test size(b) == (length(InfRange()), 6)
+    @test b[0, :] ≈ [0, 0, 0, 0, 1, 0]
+    @test b[2, :] ≈ [1, 1/2, 0, 0, 0, 0]
+    @test b[-3, :] ≈ [1, -1/3, 0, 0, 0, 0]
+    @test get_fitting_points(b) == [-6, -4, -2, -1, 0, 1, 4, 6]
+
+    @test frequency_index_bounds(3, :Boson) == (-3, 3)
+    @test frequency_index_bounds(3, :Fermion) == (-3, 2)
 end
