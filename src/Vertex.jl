@@ -72,14 +72,30 @@ function Base.:*(x::Number, A::Vertex4P)
     B.data .= A.data .* x
     B
 end
+function Base.:/(A::Vertex4P, x::Number)
+    B = similar(A)
+    B.data .= A.data ./ x
+    B
+end
 Base.:*(A::Vertex4P, x::Number) = x * A
 
-function Base.:+(A::Vertex4P, B::Vertex4P)
+function _check_basis_identity(A::Vertex4P, B::Vertex4P)
     A.basis_f1 === B.basis_f1 || error("basis must be identical")
     A.basis_f2 === B.basis_f2 || error("basis must be identical")
     A.basis_b === B.basis_b || error("basis must be identical")
+end
+
+function Base.:+(A::Vertex4P, B::Vertex4P)
+    _check_basis_identity(A, B)
     C = similar(A)
     C.data .= A.data .+ B.data
+    C
+end
+
+function Base.:-(A::Vertex4P, B::Vertex4P)
+    _check_basis_identity(A, B)
+    C = similar(A)
+    C.data .= A.data .- B.data
     C
 end
 

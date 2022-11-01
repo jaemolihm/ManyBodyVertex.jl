@@ -24,8 +24,8 @@ using mfRG
     @test size(Γ.data) == (n1 * 3^2, n1 * 3^2, n2)
     @test size(to_matrix(Γ, 0.3)) == (n1 * 3^2, n1 * 3^2)
 
-    Γ2 = Γ + 2 * Γ + Γ * 3
-    @test Γ2.data ≈ Γ.data .* 6
+    Γ2 = Γ + 2 * Γ + Γ * 3 + Γ / 2
+    @test Γ2.data ≈ Γ.data .* 6.5
 
     Γ_sim = similar(Γ)
     @test Γ_sim isa typeof(Γ)
