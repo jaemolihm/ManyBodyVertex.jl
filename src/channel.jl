@@ -26,7 +26,16 @@ The frequency parametrization reads
 (Frequency is positive for an outgoing leg.)
 Ref: Gievers et al, Eur. Phys. J. B 95, 108 (2022), Fig. 3
 
-To convert between the standard and channel orderings,u se the `frequency_to_standard` and
+# Matsubara frequencies at finite temperature are discrete. We index the frequencies as
+Bosonic   frequencies: w_n = 2π/β * n
+Fermionic frequencies: v_n = 2π/β * (n + 1/2)
+
+For Matsubara frequencies with odd bosonic frequency index, special care needs to be taken.
+To get the standard parametrization, we floor for the outgoing legs and ceil for the
+incoming legs, respectively. To get the channel parametrization, we ceil both frequencies
+so that `frequency_to_channel` becomes the inverse of `frequency_to_standard`.
+
+To convert between the standard and channel orderings, use the `frequency_to_standard` and
 `frequency_to_channel` functions.
 """
 
@@ -40,16 +49,36 @@ indices_to_channel(::Val{:P}, i) = (i[1], i[3], i[2], i[4])
 indices_to_channel(::Val{:T}, i) = (i[3], i[2], i[1], i[4])
 
 # Real frequencies
-frequency_to_standard(::Val, ::Val{:A}, v1, v2, w) = (v1-w/2, -v1-w/2,  v2+w/2, -v2+w/2)
-frequency_to_standard(::Val, ::Val{:P}, v1, v2, w) = (v1+w/2,  v2-w/2, -v1+w/2, -v2-w/2)
-frequency_to_standard(::Val, ::Val{:T}, v1, v2, w) = (v2+w/2, -v1-w/2,  v1-w/2, -v2+w/2)
+frequency_to_standard(::Union{Val{:KF},Val{:ZF}}, ::Val{:A}, v1, v2, w) = (v1-w/2, -v1-w/2,  v2+w/2, -v2+w/2)
+frequency_to_standard(::Union{Val{:KF},Val{:ZF}}, ::Val{:P}, v1, v2, w) = (v1+w/2,  v2-w/2, -v1+w/2, -v2-w/2)
+frequency_to_standard(::Union{Val{:KF},Val{:ZF}}, ::Val{:T}, v1, v2, w) = (v2+w/2, -v1-w/2,  v1-w/2, -v2+w/2)
 
 # v1 + v2 + v3 + v4 = 0 is assumed to hold.
-frequency_to_channel(::Val, ::Val{:A}, v1, v2, v3, v4) =((v1-v2)/2, (v3-v4)/2, v3+v4)
-frequency_to_channel(::Val, ::Val{:P}, v1, v2, v3, v4) =((v1-v3)/2, (v2-v4)/2, v1+v3)
-frequency_to_channel(::Val, ::Val{:T}, v1, v2, v3, v4) =((v3-v2)/2, (v1-v4)/2, v1+v4)
+frequency_to_channel(::Union{Val{:KF},Val{:ZF}}, ::Val{:A}, v1, v2, v3, v4) = ((v1-v2)/2, (v3-v4)/2, v3+v4)
+frequency_to_channel(::Union{Val{:KF},Val{:ZF}}, ::Val{:P}, v1, v2, v3, v4) = ((v1-v3)/2, (v2-v4)/2, v1+v3)
+frequency_to_channel(::Union{Val{:KF},Val{:ZF}}, ::Val{:T}, v1, v2, v3, v4) = ((v3-v2)/2, (v1-v4)/2, v1+v4)
 
-# TODO: Conversion for discrete imaginary frequencies.
+# Imaginary frequencies
+@inline function frequency_to_standard(::Val{:MF}, ::Val{:A}, v1, v2, w)
+    (floor(Int, v1-w/2), ceil(Int, -v1-1-w/2), floor(Int, v2+w/2), ceil(Int, -v2-1+w/2))
+end
+@inline function frequency_to_standard(::Val{:MF}, ::Val{:P}, v1, v2, w)
+    (floor(Int, v1+w/2), floor(Int, v2-w/2), ceil(Int, -v1-1+w/2), ceil(Int, -v2-1-w/2))
+end
+@inline function frequency_to_standard(::Val{:MF}, ::Val{:T}, v1, v2, w)
+    (floor(Int, v2+w/2), ceil(Int, -v1-1-w/2), floor(Int, v1-w/2), ceil(Int, -v2-1+w/2))
+end
+
+# v1 + v2 + v3 + v4 = -2 is assumed to hold.
+@inline function frequency_to_channel(::Val{:MF}, ::Val{:A}, v1, v2, v3, v4)
+    (ceil(Int, (v1-v2-1)/2), ceil(Int, (v3-v4-1)/2), v3+v4+1)
+end
+@inline function frequency_to_channel(::Val{:MF}, ::Val{:P}, v1, v2, v3, v4)
+    (ceil(Int, (v1-v3-1)/2), ceil(Int, (v2-v4-1)/2), v1+v3+1)
+end
+@inline function frequency_to_channel(::Val{:MF}, ::Val{:T}, v1, v2, v3, v4)
+    (ceil(Int, (v3-v2-1)/2), ceil(Int, (v1-v4-1)/2), v1+v4+1)
+end
 
 """
     _permute_orbital_indices_matrix_4p(c_in, c_out, Γ_mat_in, nind)

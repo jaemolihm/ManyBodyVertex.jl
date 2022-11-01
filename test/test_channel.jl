@@ -10,4 +10,15 @@ using mfRG
         v1234 = mfRG.frequency_to_standard(Val(:ZF), Val(c), vvw...)
         @test all(mfRG.frequency_to_channel(Val(:ZF), Val(c), v1234...) .≈ vvw)
     end
+
+    for f in (:MF, :ZF, :KF)
+        for c in (:A, :P, :T)
+            for v1 in -2:2, v2 in -2:2, w in -2:2
+                x = mfRG.frequency_to_standard(Val(f), Val(c), v1, v2, w)
+                y = mfRG.frequency_to_channel(Val(f), Val(c), x...)
+                @test sum(x) == (f === :MF ? -2 : 0)
+                @test y == (v1, v2, w)
+            end
+        end
+    end
 end
