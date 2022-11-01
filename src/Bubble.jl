@@ -43,6 +43,7 @@ function Base.show(io::IO, Π::AbstractBubble{F, C}) where {F, C}
     print(io, "norb=$(Π.norb), data=$(Base.summary(Π.data)))")
 end
 
+channel(::AbstractBubble{F, C}) where {F, C} = C
 nb_f(Π::AbstractBubble) = size(Π.basis_f, 2)
 nb_b(Π::AbstractBubble) = size(Π.basis_b, 2)
 
