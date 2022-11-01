@@ -40,6 +40,8 @@ To convert between the standard and channel orderings, use the `frequency_to_sta
 `frequency_to_channel` functions.
 """
 
+const _RealFreq = Union{Val{:KF}, Val{:ZF}}
+const _ImagFreq = Union{Val{:MF}}
 
 indices_to_standard(::Val{:A}, i) = (i[1], i[2], i[3], i[4])
 indices_to_standard(::Val{:P}, i) = (i[1], i[3], i[2], i[4])
@@ -50,34 +52,34 @@ indices_to_channel(::Val{:P}, i) = (i[1], i[3], i[2], i[4])
 indices_to_channel(::Val{:T}, i) = (i[3], i[2], i[1], i[4])
 
 # Real frequencies
-frequency_to_standard(::Union{Val{:KF},Val{:ZF}}, ::Val{:A}, v1, v2, w) = (v1-w/2, -v1-w/2,  v2+w/2, -v2+w/2)
-frequency_to_standard(::Union{Val{:KF},Val{:ZF}}, ::Val{:P}, v1, v2, w) = (v1+w/2,  v2-w/2, -v1+w/2, -v2-w/2)
-frequency_to_standard(::Union{Val{:KF},Val{:ZF}}, ::Val{:T}, v1, v2, w) = (v2+w/2, -v1-w/2,  v1-w/2, -v2+w/2)
+frequency_to_standard(::_RealFreq, ::Val{:A}, v1, v2, w) = (v1-w/2, -v1-w/2,  v2+w/2, -v2+w/2)
+frequency_to_standard(::_RealFreq, ::Val{:P}, v1, v2, w) = (v1+w/2,  v2-w/2, -v1+w/2, -v2-w/2)
+frequency_to_standard(::_RealFreq, ::Val{:T}, v1, v2, w) = (v2+w/2, -v1-w/2,  v1-w/2, -v2+w/2)
 
 # v1 + v2 + v3 + v4 = 0 is assumed to hold.
-frequency_to_channel(::Union{Val{:KF},Val{:ZF}}, ::Val{:A}, v1, v2, v3, v4) = ((v1-v2)/2, (v3-v4)/2, v3+v4)
-frequency_to_channel(::Union{Val{:KF},Val{:ZF}}, ::Val{:P}, v1, v2, v3, v4) = ((v1-v3)/2, (v2-v4)/2, v1+v3)
-frequency_to_channel(::Union{Val{:KF},Val{:ZF}}, ::Val{:T}, v1, v2, v3, v4) = ((v3-v2)/2, (v1-v4)/2, v1+v4)
+frequency_to_channel(::_RealFreq, ::Val{:A}, v1, v2, v3, v4) = ((v1-v2)/2, (v3-v4)/2, v3+v4)
+frequency_to_channel(::_RealFreq, ::Val{:P}, v1, v2, v3, v4) = ((v1-v3)/2, (v2-v4)/2, v1+v3)
+frequency_to_channel(::_RealFreq, ::Val{:T}, v1, v2, v3, v4) = ((v3-v2)/2, (v1-v4)/2, v1+v4)
 
 # Imaginary frequencies
-@inline function frequency_to_standard(::Val{:MF}, ::Val{:A}, v1, v2, w)
+@inline function frequency_to_standard(::_ImagFreq, ::Val{:A}, v1, v2, w)
     (floor(Int, v1-w/2), ceil(Int, -v1-1-w/2), floor(Int, v2+w/2), ceil(Int, -v2-1+w/2))
 end
-@inline function frequency_to_standard(::Val{:MF}, ::Val{:P}, v1, v2, w)
+@inline function frequency_to_standard(::_ImagFreq, ::Val{:P}, v1, v2, w)
     (floor(Int, v1+w/2), floor(Int, v2-w/2), ceil(Int, -v1-1+w/2), ceil(Int, -v2-1-w/2))
 end
-@inline function frequency_to_standard(::Val{:MF}, ::Val{:T}, v1, v2, w)
+@inline function frequency_to_standard(::_ImagFreq, ::Val{:T}, v1, v2, w)
     (floor(Int, v2+w/2), ceil(Int, -v1-1-w/2), floor(Int, v1-w/2), ceil(Int, -v2-1+w/2))
 end
 
 # v1 + v2 + v3 + v4 = -2 is assumed to hold.
-@inline function frequency_to_channel(::Val{:MF}, ::Val{:A}, v1, v2, v3, v4)
+@inline function frequency_to_channel(::_ImagFreq, ::Val{:A}, v1, v2, v3, v4)
     (ceil(Int, (v1-v2-1)/2), ceil(Int, (v3-v4-1)/2), v3+v4+1)
 end
-@inline function frequency_to_channel(::Val{:MF}, ::Val{:P}, v1, v2, v3, v4)
+@inline function frequency_to_channel(::_ImagFreq, ::Val{:P}, v1, v2, v3, v4)
     (ceil(Int, (v1-v3-1)/2), ceil(Int, (v2-v4-1)/2), v1+v3+1)
 end
-@inline function frequency_to_channel(::Val{:MF}, ::Val{:T}, v1, v2, v3, v4)
+@inline function frequency_to_channel(::_ImagFreq, ::Val{:T}, v1, v2, v3, v4)
     (ceil(Int, (v3-v2-1)/2), ceil(Int, (v1-v4-1)/2), v1+v4+1)
 end
 
@@ -94,3 +96,31 @@ function _permute_orbital_indices_matrix_4p(c_in, c_out, Γ_mat_in, nind)
     x3 = Base.ReshapedArray(x2, (nind^2, nind^2), ())
     collect(x3)
 end
+
+"""
+# Bubbles
+- ``Πᴬ_{12,34}(v; w) =       G_41( v + w/2) * G_23(v - w/2)``
+- ``Πᴾ_{12,34}(v; w) = 1/2 * G_14(-v + w/2) * G_23(v - w/2)``
+- ``Πᵀ_{12,34}(v; w) =  -1 * G_41( v + w/2) * G_23(v - w/2) = -Πᴬ_{12,34}(v; w)``
+
+These equations are implemented in `_bubble_prefactor`, `_bubble_frequencies`, and
+`_bubble_indices`. Use these functions when generating bubble objects.
+
+For imaginary frequencies, we floor (ceil) to get the integer index for fermionic frequencies
+if the sign for the fermionic frequency is positive (negative), as done in the vertex.
+"""
+
+_bubble_prefactor(::Val{:A}) = 1
+_bubble_prefactor(::Val{:P}) = 1/2
+_bubble_prefactor(::Val{:T}) = -1
+
+_bubble_frequencies(::_RealFreq, ::Val{:A}, v, w) = ( v+w/2, v-w/2)
+_bubble_frequencies(::_RealFreq, ::Val{:P}, v, w) = (-v+w/2, v+w/2)
+_bubble_frequencies(::_RealFreq, ::Val{:T}, v, w) = ( v+w/2, v-w/2)
+_bubble_frequencies(::_ImagFreq, ::Val{:A}, v, w) = (floor(Int,   v+w/2), floor(Int, v-w/2))
+_bubble_frequencies(::_ImagFreq, ::Val{:P}, v, w) = (ceil(Int, -v-1+w/2), floor(Int, v+w/2))
+_bubble_frequencies(::_ImagFreq, ::Val{:T}, v, w) = (floor(Int,   v+w/2), floor(Int, v-w/2))
+
+_bubble_indices(::Val{:A}, i) = (i[4], i[1], i[2], i[3])
+_bubble_indices(::Val{:P}, i) = (i[1], i[4], i[2], i[3])
+_bubble_indices(::Val{:T}, i) = (i[4], i[1], i[2], i[3])
