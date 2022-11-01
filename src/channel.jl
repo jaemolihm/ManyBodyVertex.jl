@@ -26,9 +26,10 @@ The frequency parametrization reads
 (Frequency is positive for an outgoing leg.)
 Ref: Gievers et al, Eur. Phys. J. B 95, 108 (2022), Fig. 3
 
-# Matsubara frequencies at finite temperature are discrete. We index the frequencies as
-Bosonic   frequencies: w_n = 2π/β * n
-Fermionic frequencies: v_n = 2π/β * (n + 1/2)
+# Matsubara frequencies
+Matsubara frequencies at finite temperature are discrete. We index the frequencies as
+- Bosonic   frequencies: w_n = 2π/β * n
+- Fermionic frequencies: v_n = 2π/β * (n + 1/2)
 
 For Matsubara frequencies with odd bosonic frequency index, special care needs to be taken.
 To get the standard parametrization, we floor for the outgoing legs and ceil for the
