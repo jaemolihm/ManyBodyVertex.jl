@@ -8,7 +8,7 @@ Bubble screened by a K1 vertex: ``Πscr = Π + Π * K1 * Π``.
                 |                             |          |
     -- bL2 -- ov_LR -- bR1 --     -- bL2 -- ov_L        ov_R -- bR1 --
 """
-mutable struct ScreenedBubble{F, T, BT <: AbstractBubble{F, T}, VT} <: AbstractBubble{F, T}
+mutable struct ScreenedBubble{F, C, T, BT <: AbstractBubble{F, C, T}, VT} <: AbstractBubble{F, C, T}
     # Basis for fermionic frequencies
     Π::BT
     # K1 vertex for screening
@@ -19,10 +19,10 @@ mutable struct ScreenedBubble{F, T, BT <: AbstractBubble{F, T}, VT} <: AbstractB
     cache_overlap_LR
     cache_overlap_L
     cache_overlap_R
-    function ScreenedBubble(Π::AbstractBubble{F, T}, K1::AbstractVertex4P{F, C, T}) where {F, C, T}
+    function ScreenedBubble(Π::AbstractBubble{F, C, T}, K1::AbstractVertex4P{F, C, T}) where {F, C, T}
         K1.basis_f1 isa ConstantBasis || error("K1.basis_f1 is not a ConstantBasis")
         K1.basis_f2 isa ConstantBasis || error("K1.basis_f2 is not a ConstantBasis")
-        new{F, T, typeof(Π), typeof(K1)}(Π, K1, nothing, nothing, nothing, nothing, nothing)
+        new{F, C, T, typeof(Π), typeof(K1)}(Π, K1, nothing, nothing, nothing, nothing, nothing)
     end
 end
 
@@ -45,7 +45,7 @@ function cache_and_load_overlaps(Π::ScreenedBubble, basis_L::Basis, basis_R::Ba
     Π.cache_overlap_LR, Π.cache_overlap_L, Π.cache_overlap_R
 end
 
-function to_matrix(Π::ScreenedBubble{F, T}, w, ov_LR, ov_L, ov_R) where {F, T}
+function to_matrix(Π::ScreenedBubble{F, C, T}, w, ov_LR, ov_L, ov_R) where {F, C, T}
     nb_L, nb_R = size(ov_LR)[1:2]
     nind2 = get_nind(Π)^2
 

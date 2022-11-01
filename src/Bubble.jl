@@ -1,4 +1,4 @@
-abstract type AbstractBubble{F, T} <: AbstractFrequencyVertex{F, T} end
+abstract type AbstractBubble{F, C, T} <: AbstractFrequencyVertex{F, T} end
 
 """
     Bubble{F}(basis_f, basis_b, norb, data)
@@ -9,7 +9,7 @@ abstract type AbstractBubble{F, T} <: AbstractFrequencyVertex{F, T} end
                 |
     -- bL2 -- ov_LR -- bR1 --
 """
-mutable struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, T}
+mutable struct Bubble{F, C, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, C, T}
     # Basis for fermionic frequencies
     basis_f::BF
     # Basis for bosonic frequency
@@ -22,23 +22,23 @@ mutable struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F,
     cache_basis_L
     cache_basis_R
     cache_overlap_LR
-    function Bubble{F}(basis_f::BF, basis_b::BB, norb, data::DT) where {F, DT <: AbstractArray{T}, BF, BB} where {T}
-        new{F, T, BF, BB, DT}(basis_f, basis_b, norb, data, nothing, nothing, nothing)
+    function Bubble{F, C}(basis_f::BF, basis_b::BB, norb, data::DT) where {F, C, DT <: AbstractArray{T}, BF, BB} where {T}
+        new{F, C, T, BF, BB, DT}(basis_f, basis_b, norb, data, nothing, nothing, nothing)
     end
 end
 
-Bubble{F}(basis_f, basis_b, norb=1) where {F} = Bubble{F}(ComplexF64, basis_f, basis_b, norb)
+Bubble{F, C}(basis_f, basis_b, norb=1) where {F, C} = Bubble{F, C}(ComplexF64, basis_f, basis_b, norb)
 
-function Bubble{F}(::Type{T}, basis_f, basis_b, norb=1) where {F, T}
+function Bubble{F, C}(::Type{T}, basis_f, basis_b, norb=1) where {F, C, T}
     nb_f = size(basis_f, 2)
     nb_b = size(basis_b, 2)
     nk = nkeldysh(F)
     data = zeros(T, nb_f, (norb * nk)^2, (norb * nk)^2, nb_b)
-    Bubble{F}(basis_f, basis_b, norb, data)
+    Bubble{F, C}(basis_f, basis_b, norb, data)
 end
 
-function Base.show(io::IO, Π::AbstractBubble)
-    print(io, Base.typename(typeof(Π)).wrapper)
+function Base.show(io::IO, Π::AbstractBubble{F, C}) where {F, C}
+    print(io, Base.typename(typeof(Π)).wrapper, "{:$F, :$C}")
     print(io, "(nbasis_f=$(nb_f(Π)), nbasis_b=$(nb_b(Π)), ")
     print(io, "norb=$(Π.norb), data=$(Base.summary(Π.data)))")
 end
@@ -46,7 +46,7 @@ end
 nb_f(Π::AbstractBubble) = size(Π.basis_f, 2)
 nb_b(Π::AbstractBubble) = size(Π.basis_b, 2)
 
-function (Π::AbstractBubble{F, T})(w) where {F, T}
+function (Π::AbstractBubble{F, C, T})(w) where {F, C, T}
     # Evaluate the bubble at given bosonic frequency w
     # Output: a, (i, j), (i', j')
     coeff_w = Π.basis_b[w, :]
@@ -82,7 +82,7 @@ Evaluate a 4-point bubble at given bosonic frequency `w` and return in the matri
 - Input `overlap`: `x, x', a`
 - Output: `(x, i, j), (x', i', j')`
 """
-function to_matrix(Π::Bubble{F, T}, w, overlap) where {F, T}
+function to_matrix(Π::Bubble{F, C, T}, w, overlap) where {F, C, T}
     @assert ndims(Π.data) == 4
     @assert size(overlap, 3) == nb_f(Π)
     nv_Γ1, nv_Γ2 = size(overlap)[1:2]
@@ -95,6 +95,6 @@ function to_matrix(Π::Bubble{F, T}, w, overlap) where {F, T}
     collect(Π_vertex) .* integral_coeff(Π)
 end
 
-integral_coeff(::AbstractBubble{:KF, T}) where {T} = -im / 2 / real(T)(π)
+integral_coeff(::AbstractBubble{:KF, C, T}) where {C, T} = -im / 2 / real(T)(π)
 integral_coeff(::AbstractBubble{:MF}) = error("MF Not yet implemented")
 integral_coeff(::AbstractBubble{:ZF}) = error("ZF Not yet implemented")

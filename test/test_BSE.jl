@@ -21,7 +21,7 @@ using mfRG
     end
 
     # Set bubble. Use random numbers for testing.
-    Π = Bubble{:KF}(basis2, basis_w)
+    Π = Bubble{:KF, :A}(basis2, basis_w)
     Π.data .= rand(eltype(Π.data), size(Π.data)...)
 
     # Solve BSE by direct inversion
