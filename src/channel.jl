@@ -60,6 +60,7 @@ frequency_to_standard(::_RealFreq, ::Val{:T}, v1, v2, w) = (v2+w/2, -v1-w/2,  v1
 frequency_to_channel(::_RealFreq, ::Val{:A}, v1, v2, v3, v4) = ((v1-v2)/2, (v3-v4)/2, v3+v4)
 frequency_to_channel(::_RealFreq, ::Val{:P}, v1, v2, v3, v4) = ((v1-v3)/2, (v2-v4)/2, v1+v3)
 frequency_to_channel(::_RealFreq, ::Val{:T}, v1, v2, v3, v4) = ((v3-v2)/2, (v1-v4)/2, v1+v4)
+frequency_to_channel(F, C, v1234::NTuple{4}) = frequency_to_channel(F, C, v1234...)
 
 # Imaginary frequencies
 @inline function frequency_to_standard(::_ImagFreq, ::Val{:A}, v1, v2, w)
@@ -94,6 +95,20 @@ function _permute_orbital_indices_matrix_4p(c_in, c_out, Γ_mat_in, nind)
     inds = indices_to_channel(c_out, indices_to_standard(c_in, (1, 2, 3, 4)))
     x2 = permutedims(x1, inds)
     x3 = Base.ReshapedArray(x2, (nind^2, nind^2), ())
+    collect(x3)
+end
+
+"""
+Same as `_permute_orbital_indices_matrix_4p`, but keep the 1st dimension.
+"""
+function _permute_orbital_indices_matrix_4p_keep_dim1(c_in, c_out, Γ_mat_in, nind)
+    c_in === c_out && return Γ_mat_in
+    nkeep = size(Γ_mat_in, 1)
+    x1 = Base.ReshapedArray(Γ_mat_in, (nkeep, nind, nind, nind, nind), ())
+    # channel C -> standard -> channel c_out
+    inds = indices_to_channel(c_out, indices_to_standard(c_in, (2, 3, 4, 5)))
+    x2 = permutedims(x1, (1, inds...))
+    x3 = Base.ReshapedArray(x2, (nkeep, nind^2, nind^2), ())
     collect(x3)
 end
 

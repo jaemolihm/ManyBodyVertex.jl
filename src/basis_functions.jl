@@ -45,13 +45,13 @@ Domain of nonzero value of the `n`-th basis function.
     end
 end
 
-function Base.getindex(f::LinearSplineAndTailBasis{T}, x::Number, n::Integer) where {T}
+@inline function Base.getindex(f::LinearSplineAndTailBasis{T}, x::Number, n::Integer) where {T}
     x ∈ axes(f, 1) || throw(BoundsError())
     n ∈ axes(f, 2) || throw(BoundsError())
     if n <= ntails(f)
         # Tail: polynomial of 1 / x
         if x ∈ support_domain(f, n)
-            return 1 / x^(n - 1 + f.nmin)
+            return T(1 / x^(n - 1 + f.nmin))
         else
             return zero(T)
         end
@@ -62,7 +62,7 @@ function Base.getindex(f::LinearSplineAndTailBasis{T}, x::Number, n::Integer) wh
             k = n - ntails(f)
             x == p[k] && return one(T)
             x < p[k] && return (x-p[k-1])/(p[k]-p[k-1])
-            return (x-p[k+1])/(p[k]-p[k+1]) # x ≥ p[k]
+            return T((x-p[k+1])/(p[k]-p[k+1])) # x > p[k]
         else
             return zero(T)
         end

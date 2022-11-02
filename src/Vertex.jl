@@ -113,13 +113,14 @@ Evaluate vertex at given frequencies in the channel parametrization.
 """
 function (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ, T}
     v1234 = frequency_to_standard(Val(F), c_out, v1, v2, w)
-    v1_Γ, v2_Γ, w_Γ = frequency_to_channel(Val(F), Val(C_Γ), v1234...)
+    v1_Γ, v2_Γ, w_Γ = frequency_to_channel(Val(F), Val(C_Γ), v1234)
 
     nind = get_nind(Γ)
     coeff_f1 = Γ.basis_f1[v1_Γ, :]
     coeff_f2 = Γ.basis_f2[v2_Γ, :]
     coeff_b = Γ.basis_b[w_Γ, :]
     # Compute the following einsum operation with a manually optimized implementation.
+    # Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2), ())
     # @ein Γ_vvw[i, j] := Γ_array[v1, i, v2, j, w] * coeff_f1[v1] * coeff_f2[v2] * coeff_b[w]
     Γ_array = zeros(T, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2))
     Γ_array_reshape = Base.ReshapedArray(Γ_array, (length(Γ_array),), ())
@@ -132,6 +133,35 @@ function (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C
     end
     _permute_orbital_indices_matrix_4p(Val(C_Γ), c_out, Γ_vvw, nind)
 end
+
+"""
+Batched version of Vertex evaluation
+"""
+function (Γ::Vertex4P{F, C_Γ, T})(v1::AbstractVector, v2::AbstractVector, w::AbstractVector,
+        c_out::Val=Val(C_Γ)) where {F, C_Γ, T}
+    v1234 = frequency_to_standard.(Val(F), c_out, v1, v2, w)
+    vvw_Γ = frequency_to_channel.(Val(F), Val(C_Γ), v1234)
+
+    nind = get_nind(Γ)
+    coeff_f1 = Γ.basis_f1[getindex.(vvw_Γ, 1), :]
+    coeff_f2 = Γ.basis_f2[getindex.(vvw_Γ, 2), :]
+    coeff_b = Γ.basis_b[getindex.(vvw_Γ, 3), :]
+    # Compute the following einsum operation with a manually optimized implementation.
+    # Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, nb_b(Γ)), ())
+    # @ein Γ_vvw[a, i, j] := Γ_array[v1, i, v2, j, w] * coeff_f1[a, v1] * coeff_f2[a, v2] * coeff_b[a, w]
+
+    Γ_array = zeros(T, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, length(v1)))
+    Γ_array_reshape = Base.ReshapedArray(Γ_array, (nb_f1(Γ) * nb_f2(Γ) * nind^4, length(v1)), ())
+    Γ_data_reshape = Base.ReshapedArray(Γ.data, (prod(size(Γ.data)[1:2]), size(Γ.data, 3)), ())
+    mul!(Γ_array_reshape, Γ_data_reshape, Transpose(coeff_b))
+    Γ_vvw = zeros(T, length(v1), nind^2, nind^2)
+    @views for inds in CartesianIndices(size(Γ_array)[1:4])
+        iv1, i, iv2, j = inds.I
+        @. Γ_vvw[:, i, j] += Γ_array[iv1, i, iv2, j, :] * coeff_f1[:, iv1] * coeff_f2[:, iv2]
+    end
+    _permute_orbital_indices_matrix_4p_keep_dim1(Val(C_Γ), c_out, Γ_vvw, nind)
+end
+
 
 """
     to_matrix(Γ::Vertex4P{F, C, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis_f2, c::Val=Val(C)) where {F, C, T}
@@ -162,10 +192,11 @@ function to_matrix(Γ::Vertex4P{F, C, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis
         nind = get_nind(Γ)
         vs1 = get_fitting_points(basis1)
         vs2 = get_fitting_points(basis2)
-        Γ_w_data = zeros(T, length(vs1), length(vs2), nind^2, nind^2)
-        for (i2, v2) in enumerate(vs2), (i1, v1) in enumerate(vs1)
-            Γ_w_data[i1, i2, :, :] .= Γ(v1, v2, w, c)
-        end
+
+        v1_ = vec(ones(length(vs2))' .* vs1)
+        v2_ = vec(vs2' .* ones(length(vs1)))
+        w_ = fill(w, length(v1_))
+        Γ_w_data = reshape(Γ(v1_, v2_, w_, c), (length(vs1), length(vs2), nind^2, nind^2))
 
         Γ_tmp1 = fit_basis_coeff(Γ_w_data, basis1, vs1, 1)
         Γ_tmp2 = fit_basis_coeff(Γ_tmp1, basis2, vs2, 2)
