@@ -19,4 +19,6 @@ include("Vertex.jl")
 include("Bubble.jl")
 include("ScreenedBubble.jl")
 include("BSE.jl")
+
+include("models.jl")
 end
