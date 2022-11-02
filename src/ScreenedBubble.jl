@@ -50,7 +50,7 @@ function to_matrix(Π::ScreenedBubble{F, C, T}, w, ov_LR, ov_L, ov_R) where {F, 
     nind2 = get_nind(Π)^2
 
     # Π part
-    Π_mat = mfRG.to_matrix(Π.Π, w, ov_LR)
+    Π_mat = to_matrix(Π.Π, w, ov_LR)
 
     # Π * K1 * Π part
     Π_w = Π(w)

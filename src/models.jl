@@ -60,12 +60,12 @@ function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t) where {
 
     for (iw, w) in enumerate(ws)
         for (iv, v) in enumerate(vs)
-            v1, v2 = mfRG._bubble_frequencies(Val(F), Val(C), v, w)
+            v1, v2 = _bubble_frequencies(Val(F), Val(C), v, w)
             G1 = siam_get_green_function(v1, e, Δ, t, Val(F))
             G2 = siam_get_green_function(v2, e, Δ, t, Val(F))
             if F === :KF
                 for (i, ks) in enumerate(CartesianIndices((2, 2, 2, 2)))
-                    k11, k12, k21, k22 = mfRG._bubble_indices(Val(C), ks)
+                    k11, k12, k21, k22 = _bubble_indices(Val(C), ks)
                     Π_data[iv, i, iw] = G1[k11, k12] * G2[k21, k22]
                 end
             else
@@ -73,9 +73,9 @@ function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t) where {
             end
         end
     end
-    Π_data .*= mfRG._bubble_prefactor(Val(C))
-    Π_data_tmp1 = mfRG.fit_basis_coeff(Π_data, basis_f, vs, 1)
-    Π_data_tmp2 = mfRG.fit_basis_coeff(Π_data_tmp1, basis_b, ws, 3)
+    Π_data .*= _bubble_prefactor(Val(C))
+    Π_data_tmp1 = fit_basis_coeff(Π_data, basis_f, vs, 1)
+    Π_data_tmp2 = fit_basis_coeff(Π_data_tmp1, basis_b, ws, 3)
     Π.data .= reshape(Π_data_tmp2, size(Π.data))
     Π
 end
