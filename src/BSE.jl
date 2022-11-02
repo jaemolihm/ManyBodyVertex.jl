@@ -87,6 +87,52 @@ function solve_BSE(Γ1, Π::AbstractBubble{F, C, T}, Γ0, basis_w; basis_aux=not
     Γ
 end
 
+
+"""
+        compute_bse_matrix_left(Γ, Π, w, basis_L2, basis_R1, basis_R2)
+Return the matrix represetntation of ``I - Π * Γ``
+"""
+function compute_bse_matrix_left(Γ, Π, w, basis_L2, basis_R1, basis_R2)
+    basis_L2 === basis_R2 || error("basis_L2 and basis_R2 must be identical")
+    Γ_mat = mfRG.to_matrix(Γ, w, basis_R1, basis_R2, Val(mfRG.channel(Π)))
+    Π_mat = mfRG.to_matrix(Π, w, basis_L2, basis_R1)
+    I - (Π_mat * Γ_mat)
+end
+
+"""
+    solve_BSE_left(Γ1, Π, Γ0, basis_w, basis_aux=nothing)
+Solve the BSE ``Γ = Γ0 * (I - Π * Γ1)⁻¹ - Γ0``.
+
+If the channel of `Γ1` is different from that of `Π`, use `basis_aux` as the basis for `Γ1`.
+"""
+function solve_BSE_left(Γ1, Π::AbstractBubble{F, C, T}, Γ0, basis_w; basis_aux=nothing) where {F, C, T}
+    if channel(Γ1) != C
+        basis_aux === nothing && error("Vertex and bubble have different channels. basis_aux must be set.")
+        basis_Γ1_1 = basis_aux
+        basis_Γ1_2 = basis_aux
+    else
+        basis_Γ1_1 = Γ1.basis_f1
+        basis_Γ1_2 = Γ1.basis_f2
+    end
+    # 1st-order solution: Γ_1st = Γ0 * Π * Γ1
+    Γ_1st = vertex_bubble_integral(Γ0, Π, Γ1, basis_w; basis_aux)
+
+    # Solve the BSE on a grid of w (bosonic frequency)
+    # BSE: Γ = Γ_1st * (I - Π * Γ1)⁻¹
+    ws = get_fitting_points(basis_w)
+    Γ_mat = zeros(T, size(Γ_1st.data)[1:2]..., length(ws))
+    @views for (iw, w) in enumerate(ws)
+        Γ_1st_w = to_matrix(Γ_1st, w)
+        bse_mat = compute_bse_matrix_left(Γ1, Π, w, basis_Γ1_2, basis_Γ1_1, basis_Γ1_2)
+        Γ_mat[:, :, iw] .= (bse_mat' \ Γ_1st_w')'
+    end
+
+    # Fit the data on the w grid to the basis and store in Vertex4P object
+    Γ = Vertex4P{F, C}(T, Γ_1st.basis_f1, basis_Γ1_2, basis_w, Γ_1st.norb)
+    fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
+    Γ
+end
+
 # abstract type AbstractBSEMap{F, C, T} <: LinearMaps.LinearMap{T} end
 
 # """

@@ -64,6 +64,10 @@ using mfRG
     Γ_test3 = vertex_bubble_integral(Γ0, Πscr, Γ0, basis_w)
     Γ_test3.data .+= vertex_bubble_integral(Γ0, Π, Γ0_Π_Γ0, basis_w).data
     @test norm((Γ_test3.data .- Γ.data)[:, :, inds_interp]) < 1e-10
+
+    # Test left BSE
+    Γ_left = solve_BSE_left(Γ0, Π, Γ0, basis_w)
+    @test Γ_left.data ≈ Γ.data
 end
 
 

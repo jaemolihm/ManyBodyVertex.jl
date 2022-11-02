@@ -8,7 +8,7 @@ export Vertex4P, Bubble, to_matrix, vertex_keldyshview, apply_crossing
 export fit_bosonic_basis_coeff!
 
 export vertex_bubble_integral
-export solve_BSE
+export solve_BSE, solve_BSE_left
 
 include("interval_iterable.jl")
 include("basis_functions.jl")
