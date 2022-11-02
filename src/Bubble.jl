@@ -37,6 +37,17 @@ function Bubble{F, C}(::Type{T}, basis_f, basis_b, norb=1) where {F, C, T}
     Bubble{F, C}(basis_f, basis_b, norb, data)
 end
 
+function Base.similar(Π::Bubble{F, C, T}, ::Type{ElType}=T) where {F, C, T, ElType}
+    Bubble{F, C}(Π.basis_f, Π.basis_b, Π.norb, similar(Π.data, ElType))
+end
+
+function Base.:*(x::Number, A::Bubble)
+    B = similar(A)
+    B.data .= A.data .* x
+    B
+end
+Base.:*(A::Bubble, x::Number) = x * A
+
 function Base.show(io::IO, Π::AbstractBubble{F, C}) where {F, C}
     print(io, Base.typename(typeof(Π)).wrapper, "{:$F, :$C}")
     print(io, "(nbasis_f=$(nb_f(Π)), nbasis_b=$(nb_b(Π)), ")
@@ -67,9 +78,9 @@ function cache_and_load_overlaps(Π::Bubble, basis_L::Basis, basis_R::Basis)
     (Π.cache_overlap_LR,)
 end
 
-function to_matrix(Π::AbstractBubble, w, basis_L::Basis, basis_R::Basis)
+function to_matrix(Π::AbstractBubble{F, C, T}, w, basis_L::Basis, basis_R::Basis) where {F, C, T}
     # Function barrier
-    to_matrix(Π, w, cache_and_load_overlaps(Π, basis_L, basis_R)...)
+    to_matrix(Π, w, cache_and_load_overlaps(Π, basis_L, basis_R)...)::Array{T, 2}
 end
 
 """

@@ -27,6 +27,7 @@ abstract type AbstractFrequencyVertex{F, T} end
 abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
+get_formalism(::AbstractVertex4P{F}) where {F} = F
 channel(::AbstractVertex4P{F, C}) where {F, C} = C
 
 struct Vertex4P{F, C, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{F, C, T}
@@ -102,7 +103,7 @@ end
 # Customize printing
 function Base.show(io::IO, Γ::Vertex4P{F, C}) where {F, C}
     print(io, Base.typename(typeof(Γ)).wrapper, "{:$F, :$C}")
-    print(io, "(nbasis_f1=$(nb_f2(Γ)), nbasis_f2=$(nb_f2(Γ)), nbasis_b=$(nb_b(Γ)), ")
+    print(io, "(nbasis_f1=$(nb_f1(Γ)), nbasis_f2=$(nb_f2(Γ)), nbasis_b=$(nb_b(Γ)), ")
     print(io, "norb=$(Γ.norb), data=$(Base.summary(Γ.data)))")
 end
 

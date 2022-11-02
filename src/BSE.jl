@@ -63,7 +63,7 @@ function solve_BSE(Γ1, Π::AbstractBubble{F, C, T}, Γ0, basis_w; basis_aux=not
         basis_Γ1_2 = basis_aux
     else
         basis_Γ1_1 = Γ1.basis_f1
-        basis_Γ1_2 = Γ1.basis_f1
+        basis_Γ1_2 = Γ1.basis_f2
     end
     # 1st-order solution: Γ_1st = Γ1 * Π * Γ0
     Γ_1st = vertex_bubble_integral(Γ1, Π, Γ0, basis_w; basis_aux)
