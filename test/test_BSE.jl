@@ -3,7 +3,6 @@ using mfRG
 
 @testset "BSE static" begin
     using LinearAlgebra
-    using mfRG: vertex_bubble_integral
 
     U = 4.0
     basis1 = ConstantBasis()
@@ -77,27 +76,27 @@ end
         # with Π. So, test caching only in such a case.
         ws = get_fitting_points(basis_w)
         x_ref = vertex_bubble_integral(ΓL, Π, ΓR, basis_w; basis_aux)
-        if channel(ΓL) !== channel(Π)
-            ΓL_cache = cache_vertex_matrix(ΓL, channel(Π), ws, basis_aux);
-            x = vertex_bubble_integral(ΓL_cache, Π, ΓR, basis_w; basis_aux);
-            @test x.data ≈ x_ref.data
-        end
-        if channel(ΓR) !== channel(Π)
-            ΓR_cache = cache_vertex_matrix(ΓR, channel(Π), ws, basis_aux);
-            x = vertex_bubble_integral(ΓL, Π, ΓR_cache, basis_w; basis_aux);
-            @test x.data ≈ x_ref.data
-        end
-        if channel(ΓL) !== channel(Π) && channel(ΓR) !== channel(Π)
-            x = vertex_bubble_integral(ΓL_cache, Π, ΓR_cache, basis_w; basis_aux);
-            @test x.data ≈ x_ref.data
-        end
+
+        # Cache ΓL
+        ΓL_cache = cache_vertex_matrix(ΓL, channel(Π), ws, basis_aux);
+        x = vertex_bubble_integral(ΓL_cache, Π, ΓR, basis_w; basis_aux);
+        @test x.data ≈ x_ref.data
+
+        # Cache ΓR
+        ΓR_cache = cache_vertex_matrix(ΓR, channel(Π), ws, basis_aux);
+        x = vertex_bubble_integral(ΓL, Π, ΓR_cache, basis_w; basis_aux);
+        @test x.data ≈ x_ref.data
+
+        # Cache ΓL and ΓR
+        x = vertex_bubble_integral(ΓL_cache, Π, ΓR_cache, basis_w; basis_aux);
+        @test x.data ≈ x_ref.data
     end
 
     U = 1.0
     e = 0.5
     Δ = 0.8
     t = 0.1
-    basis_f = LinearSplineAndTailBasis(2, 4, -2:0.4:2)
+    basis_f = LinearSplineAndTailBasis(2, 4, -2:0.8:2)
     basis_b = LinearSplineAndTailBasis(1, 0, -3:1.5:3)
     basis_aux = LinearSplineAndTailBasis(1, 0, -4:1.0:4)
 

@@ -7,6 +7,7 @@ export basis_integral
 export Vertex4P, Bubble, to_matrix, vertex_keldyshview, apply_crossing
 export fit_bosonic_basis_coeff!
 
+export vertex_bubble_integral
 export solve_BSE
 
 include("interval_iterable.jl")
@@ -16,6 +17,7 @@ include("basis_integral.jl")
 
 include("channel.jl")
 include("Vertex.jl")
+include("CachedVertex.jl")
 include("Bubble.jl")
 include("ScreenedBubble.jl")
 include("BSE.jl")
