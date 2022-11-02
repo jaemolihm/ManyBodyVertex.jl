@@ -10,7 +10,6 @@ export fit_bosonic_basis_coeff!
 export vertex_bubble_integral
 export solve_BSE, solve_BSE_left
 
-include("interval_iterable.jl")
 include("basis_functions.jl")
 include("basis_functions_imaginary.jl")
 include("basis_integral.jl")
