@@ -66,3 +66,63 @@ using mfRG
     Γ_test3.data .+= vertex_bubble_integral(Γ0, Π, Γ0_Π_Γ0, basis_w).data
     @test norm((Γ_test3.data .- Γ.data)[:, :, inds_interp]) < 1e-10
 end
+
+
+@testset "vertex caching" begin
+    using mfRG: channel, get_bare_vertex, siam_get_bubble, ScreenedBubble, cache_vertex_matrix
+
+    function test_cached(ΓL, Π, ΓR, basis_w, basis_aux)
+        # Test vertex_bubble_integral with cached vertex matrix.
+        # Currently, caching works only if the vertex to be cached is in a different channel
+        # with Π. So, test caching only in such a case.
+        ws = get_fitting_points(basis_w)
+        x_ref = vertex_bubble_integral(ΓL, Π, ΓR, basis_w; basis_aux)
+        if channel(ΓL) !== channel(Π)
+            ΓL_cache = cache_vertex_matrix(ΓL, channel(Π), ws, basis_aux);
+            x = vertex_bubble_integral(ΓL_cache, Π, ΓR, basis_w; basis_aux);
+            @test x.data ≈ x_ref.data
+        end
+        if channel(ΓR) !== channel(Π)
+            ΓR_cache = cache_vertex_matrix(ΓR, channel(Π), ws, basis_aux);
+            x = vertex_bubble_integral(ΓL, Π, ΓR_cache, basis_w; basis_aux);
+            @test x.data ≈ x_ref.data
+        end
+        if channel(ΓL) !== channel(Π) && channel(ΓR) !== channel(Π)
+            x = vertex_bubble_integral(ΓL_cache, Π, ΓR_cache, basis_w; basis_aux);
+            @test x.data ≈ x_ref.data
+        end
+    end
+
+    U = 1.0
+    e = 0.5
+    Δ = 0.8
+    t = 0.1
+    basis_f = LinearSplineAndTailBasis(2, 4, -2:0.4:2)
+    basis_b = LinearSplineAndTailBasis(1, 0, -3:1.5:3)
+    basis_aux = LinearSplineAndTailBasis(1, 0, -4:1.0:4)
+
+    ΠA = siam_get_bubble(basis_f, basis_b, Val(:KF), Val(:A); e, Δ, t)
+    ΠP = siam_get_bubble(basis_f, basis_b, Val(:KF), Val(:P); e, Δ, t)
+    Γ0_A = get_bare_vertex(U, Val(:KF), Val(:A))
+    Γ0_P = get_bare_vertex(U, Val(:KF), Val(:P))
+    Γ1_A = solve_BSE(Γ0_A, ΠA, Γ0_A, basis_b)
+    Γ1_P = solve_BSE(Γ0_P, ΠP, Γ0_P, basis_b)
+    Γ1_T = apply_crossing(Γ1_A)
+    ΠAscr = ScreenedBubble(ΠA, Γ1_A)
+    ΠPscr = ScreenedBubble(ΠP, Γ1_P)
+
+    test_cached(Γ1_A, ΠA, Γ0_A, basis_b, basis_aux)
+    test_cached(Γ1_P, ΠAscr, Γ0_A, basis_b, basis_aux)
+    test_cached(Γ1_P, ΠPscr, Γ0_A, basis_b, basis_aux)
+    test_cached(Γ1_A, ΠP, Γ0_A, basis_b, basis_aux)
+    test_cached(Γ1_A, ΠPscr, Γ1_T, basis_b, basis_aux)
+
+    # Test caching of multiple vertices
+    x_ref = (vertex_bubble_integral(Γ1_P, ΠA, Γ1_P, basis_b; basis_aux)
+           + vertex_bubble_integral(Γ1_T, ΠA, Γ1_P, basis_b; basis_aux))
+
+    ws = get_fitting_points(basis_b)
+    ΓL_cache = cache_vertex_matrix([Γ1_P, Γ1_T], channel(ΠA), ws, basis_aux);
+    x = vertex_bubble_integral(ΓL_cache, ΠA, Γ1_P, basis_b; basis_aux)
+    @test x.data ≈ x_ref.data
+end

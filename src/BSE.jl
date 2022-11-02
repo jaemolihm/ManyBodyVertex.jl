@@ -3,38 +3,78 @@ using LinearAlgebra
 # using IterativeSolvers
 
 """
+    cache_vertex_matrix(Γ, C, ws, basis_aux)
+Compute the matrix representation of `Γ` in channel `C` for bosonic frequencies `ws`. If `Γ`
+is in a different channel than `C`, use `basis_aux`, use bases of `Γ` otherwise.
+
+If input `Γ` is a list of vertices, add up all the matrices.
+"""
+cache_vertex_matrix(Γ::AbstractVertex4P, C, ws, basis_aux) = cache_vertex_matrix([Γ], C, ws, basis_aux)
+
+function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux)
+    Γ = first(Γs)
+    basis_1, basis_2 = mfRG.channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux, basis_aux)
+    map(ws) do w
+        mapreduce(Γ -> mfRG.to_matrix(Γ, w, basis_1, basis_2, Val(C)), .+, Γs)
+    end
+end
+
+"""
     vertex_bubble_integral(ΓL, Π, ΓR, basis_w; basis_aux)
 Compute the bubble integral ``Γ = ΓL * Π * ΓR`` on the bosonic basis basis_w in the channel
 of `Π`. If `ΓL` or `ΓR` are in a different channel, `basis_aux` must be provided.
+
+- FIXME: Currently caching assumes basis_aux is used. Possible fix is to create a
+`CachedVertex` type that contains basis information.
 """
 function vertex_bubble_integral(
-        ΓL::AbstractVertex4P{F, CL, T},
+        ΓL::Union{AbstractVertex4P, AbstractVector{<:AbstractMatrix}},
         Π::AbstractBubble{F, CB, T},
-        ΓR::AbstractVertex4P{F, CR, T},
+        ΓR::Union{AbstractVertex4P, AbstractVector{<:AbstractMatrix}},
         basis_w;
         basis_aux=nothing
-    ) where {F, T, CL, CB, CR}
+    ) where {F, T, CB}
 
+    cached_L = !(ΓL isa AbstractVertex4P)
+    cached_R = !(ΓR isa AbstractVertex4P)
+
+    (!cached_L) && mfRG.get_formalism(ΓL) !== F && error("Wrong formalism for ΓL")
+    (!cached_R) && mfRG.get_formalism(ΓR) !== F && error("Wrong formalism for ΓR")
+
+    CL = cached_L ? nothing : channel(ΓL)
+    CR = cached_R ? nothing : channel(ΓR)
     if (CL != CB || CR != CB) && basis_aux === nothing
         error("For vertex and bubble in different channels, basis_aux must be set.")
     end
 
     ws = get_fitting_points(basis_w)
-    nind2 = get_nind(ΓL)^2
+    nind2 = get_nind(Π)^2
     basis_L1, basis_L2 = (CL == CB) ? (ΓL.basis_f1, ΓL.basis_f2) : (basis_aux, basis_aux)
     basis_R1, basis_R2 = (CR == CB) ? (ΓR.basis_f1, ΓR.basis_f2) : (basis_aux, basis_aux)
-    Γ_mat = zeros(T, size(basis_L1, 2) * nind2, size(basis_R2, 2) * nind2, length(ws))
+
+    # Check length and size of cached matrices
+    if cached_L
+        length(ΓL) == length(ws) || error("ΓL cached matrix has wrong length")
+        size(first(ΓL)) == nind2 .* (size(basis_L1, 2), size(basis_L2, 2)) || error("ΓL \
+            cached matrix has wrong element size")
+    end
+    if cached_R
+        length(ΓR) == length(ws) || error("ΓR cached matrix has wrong length")
+        size(first(ΓR)) == nind2 .* (size(basis_R1, 2), size(basis_R2, 2)) || error("ΓR \
+            cached matrix has wrong element size")
+   end
 
     # Compute the bubble integral on a grid of w (bosonic frequency)
+    Γ_mat = zeros(T, size(basis_L1, 2) * nind2, size(basis_R2, 2) * nind2, length(ws))
     for (iw, w) in enumerate(ws)
-        ΓL_mat = to_matrix(ΓL, w, basis_L1, basis_L2, Val(CB))
+        ΓL_mat = cached_L ? ΓL[iw] : to_matrix(ΓL, w, basis_L1, basis_L2, Val(CB))
         Π_mat = to_matrix(Π, w, basis_L2, basis_R1)
-        ΓR_mat = to_matrix(ΓR, w, basis_R1, basis_R2, Val(CB))
+        ΓR_mat = cached_R ? ΓR[iw] : to_matrix(ΓR, w, basis_R1, basis_R2, Val(CB))
         Γ_mat[:, :, iw] .= ΓL_mat * (Π_mat * ΓR_mat)
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
-    Γ = Vertex4P{F, CB}(T, basis_L1, basis_R2, basis_w, ΓL.norb)
+    Γ = Vertex4P{F, CB}(T, basis_L1, basis_R2, basis_w, Π.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
 end
