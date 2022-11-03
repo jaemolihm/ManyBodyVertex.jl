@@ -25,6 +25,7 @@ LinearMaps = "3"
 OMEinsum = "0.7"
 QuadGK = "2"
 QuasiArrays = "0.9"
+StaticArrays = "1"
 julia = "1.7"
 
 [extras]
