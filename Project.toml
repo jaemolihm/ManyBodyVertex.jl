@@ -14,6 +14,7 @@ LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
 OMEinsum = "ebe7aa44-baf0-506c-a96f-8464559b3922"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 QuasiArrays = "c4ea9172-b204-11e9-377d-29865faadc5c"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]

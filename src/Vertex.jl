@@ -24,6 +24,8 @@ channel).
 """
 
 abstract type AbstractFrequencyVertex{F, T} end
+eltype(::AbstractFrequencyVertex{F, T}) where {F, T} = T
+
 abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
@@ -137,27 +139,52 @@ end
 """
 Batched version of Vertex evaluation
 """
-function (Γ::Vertex4P{F, C_Γ, T})(v1::AbstractVector, v2::AbstractVector, w::AbstractVector,
-        c_out::Val=Val(C_Γ)) where {F, C_Γ, T}
+function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::AbstractVector,
+        c_out::Val=Val(C_Γ)) where {F, C_Γ}
     v1234 = frequency_to_standard.(Val(F), c_out, v1, v2, w)
     vvw_Γ = frequency_to_channel.(Val(F), Val(C_Γ), v1234)
-
-    nind = get_nind(Γ)
-    coeff_f1 = Γ.basis_f1[getindex.(vvw_Γ, 1), :]
-    coeff_f2 = Γ.basis_f2[getindex.(vvw_Γ, 2), :]
-    coeff_b = Γ.basis_b[getindex.(vvw_Γ, 3), :]
+    nfreq = length(vvw_Γ)
     # Compute the following einsum operation with a manually optimized implementation.
     # Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, nb_b(Γ)), ())
-    # @ein Γ_vvw[a, i, j] := Γ_array[v1, i, v2, j, w] * coeff_f1[a, v1] * coeff_f2[a, v2] * coeff_b[a, w]
+    # @ein Γ_vvw[ifreq, i, j] := Γ_array[v1, i, v2, j, w]
+    #                       * Γ.basis_f1[vvw_Γ[ifreq][1], v1]
+    #                       * Γ.basis_f2[vvw_Γ[ifreq][2], v2]
+    #                       * Γ.basis_b[vvw_Γ[ifreq][3], w]
 
-    Γ_array = zeros(T, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, length(v1)))
-    Γ_array_reshape = Base.ReshapedArray(Γ_array, (nb_f1(Γ) * nb_f2(Γ) * nind^4, length(v1)), ())
+    # # Version 1: 1.1 times faster but allocates ~50 times more.
+    # nind = get_nind(Γ)
+    # coeff_f1 = Γ.basis_f1[getindex.(vvw_Γ, 1), :]
+    # coeff_f2 = Γ.basis_f2[getindex.(vvw_Γ, 2), :]
+    # coeff_b = Γ.basis_b[getindex.(vvw_Γ, 3), :]
+
+    # Γ_array = zeros(eltype(Γ), (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, length(v1)))
+    # Γ_array_reshape = Base.ReshapedArray(Γ_array, (nb_f1(Γ) * nb_f2(Γ) * nind^4, length(v1)), ())
+    # Γ_data_reshape = Base.ReshapedArray(Γ.data, (prod(size(Γ.data)[1:2]), size(Γ.data, 3)), ())
+    # mul!(Γ_array_reshape, Γ_data_reshape, Transpose(coeff_b))
+    # Γ_vvw = zeros(eltype(Γ), length(v1), nind^2, nind^2)
+    # @views for inds in CartesianIndices(size(Γ_array)[1:4])
+    #     iv1, i, iv2, j = inds.I
+    #     @. Γ_vvw[:, i, j] += Γ_array[iv1, i, iv2, j, :] * coeff_f1[:, iv1] * coeff_f2[:, iv2]
+    # end
+
+    # Version 2: 1.1 times slower but allocates little.
+    nind = get_nind(Γ)
+    coeff_f1 = zeros(eltype(Γ.basis_f1), size(Γ.basis_f1, 2))
+    coeff_f2 = zeros(eltype(Γ.basis_f2), size(Γ.basis_f2, 2))
+    coeff_b = zeros(eltype(Γ.basis_b), size(Γ.basis_b, 2))
+
+    Γ_array = zeros(eltype(Γ), (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2))
+    Γ_array_reshape = Base.ReshapedArray(Γ_array, (length(Γ_array),), ())
     Γ_data_reshape = Base.ReshapedArray(Γ.data, (prod(size(Γ.data)[1:2]), size(Γ.data, 3)), ())
-    mul!(Γ_array_reshape, Γ_data_reshape, Transpose(coeff_b))
-    Γ_vvw = zeros(T, length(v1), nind^2, nind^2)
-    @views for inds in CartesianIndices(size(Γ_array)[1:4])
-        iv1, i, iv2, j = inds.I
-        @. Γ_vvw[:, i, j] += Γ_array[iv1, i, iv2, j, :] * coeff_f1[:, iv1] * coeff_f2[:, iv2]
+    Γ_vvw = zeros(eltype(Γ), nfreq, nind^2, nind^2)
+    @views for ifreq in 1:nfreq
+        coeff_f1 .= Γ.basis_f1[vvw_Γ[ifreq][1], :]
+        coeff_f2 .= Γ.basis_f2[vvw_Γ[ifreq][2], :]
+        coeff_b .= Γ.basis_b[vvw_Γ[ifreq][3], :]
+        mul!(Γ_array_reshape, Γ_data_reshape, coeff_b)
+        for iv2 in 1:nb_f2(Γ), iv1 in 1:nb_f1(Γ)
+            @. Γ_vvw[ifreq, :, :] += Γ_array[iv1, :, iv2, :] * coeff_f1[iv1] * coeff_f2[iv2]
+        end
     end
     _permute_orbital_indices_matrix_4p_keep_dim1(Val(C_Γ), c_out, Γ_vvw, nind)
 end
@@ -254,6 +281,8 @@ function fit_bosonic_basis_coeff!(Γ, Γ_data, ws)
     Γ
 end
 
+using SparseArrays
+
 """
     fit_basis_coeff(data, basis, grid, dim)
 Fit the coefficients of the basis to the data to make ``data ≈ basis_value * coeff`` hold.
@@ -263,7 +292,7 @@ Use the `dim`-th index of `data` for fitting and leave other indices.
 function fit_basis_coeff(data, basis, grid, dim)
     if dim == 1
         # Reshape data to a Matrix by merging indices 2 to end, and call left division.
-        basis_value = basis[grid, :]
+        basis_value = sparse(basis[grid, :])
         ngrid, ncoeff = size(basis_value)
         size_keep = size(data)[2:end]
         reshape(basis_value \ reshape(data, ngrid, prod(size_keep)), ncoeff, size_keep...)
