@@ -7,6 +7,8 @@ using QuadGK
 # `Base.getindex(f, x, n)`: value of the `n`-th basis function at `x`
 # `support_domain(f, n)`: support of the `n`-th basis function
 
+# FIXME: multiply some constant tail to make its norm not so small.
+
 struct ConstantBasis{T} <: Basis{T}
 end
 ConstantBasis(::Type{T}=Float64) where {T} = ConstantBasis{T}()
@@ -26,9 +28,9 @@ function LinearSplineAndTailBasis(::Type{T}, nmin, nmax, grid) where {T}
 end
 LinearSplineAndTailBasis(nmin, nmax, grid) = LinearSplineAndTailBasis(Float64, nmin, nmax, grid)
 
-ntails(f::LinearSplineAndTailBasis) = f.nmax - f.nmin + 1
+ntails(f::LinearSplineAndTailBasis) = 2 * (f.nmax - f.nmin + 1)
 
-Base.axes(w::LinearSplineAndTailBasis) = (Inclusion(-Inf..Inf), 1:(w.nmax - w.nmin + 1 + length(w.grid)))
+Base.axes(f::LinearSplineAndTailBasis) = (Inclusion(-Inf..Inf), 1:(ntails(f) + length(f.grid)))
 
 """
     support_domain(f::LinearSplineAndTailBasis, n::Integer)
@@ -48,24 +50,24 @@ end
 @inline function Base.getindex(f::LinearSplineAndTailBasis{T}, x::Number, n::Integer) where {T}
     x ∈ axes(f, 1) || throw(BoundsError())
     n ∈ axes(f, 2) || throw(BoundsError())
-    if n <= ntails(f)
-        # Tail: polynomial of 1 / x
-        if x ∈ support_domain(f, n)
+    if x ∈ support_domain(f, n)
+        if n <= div(ntails(f), 2)
+            # Tail 1: polynomial of 1 / x
             return T(1 / x^(n - 1 + f.nmin))
+        elseif n <= ntails(f)
+            # Tail 2: polynomial of 1 / x times sign(x)
+            n_ = n - div(ntails(f), 2)
+            return T(sign(x) / x^(n_ - 1 + f.nmin))
         else
-            return zero(T)
-        end
-    else
-        # Spline interpolation
-        if x ∈ support_domain(f, n)
+            # Spline interpolation
             p = f.grid
             k = n - ntails(f)
             x == p[k] && return one(T)
             x < p[k] && return (x-p[k-1])/(p[k]-p[k-1])
             return T((x-p[k+1])/(p[k]-p[k+1])) # x > p[k]
-        else
-            return zero(T)
         end
+    else
+        return zero(T)
     end
 end
 
@@ -85,7 +87,8 @@ end
 Points to be used for fitting the basis coefficients
 """
 function get_fitting_points(basis::LinearSplineAndTailBasis)
+    coeffs_extrap = ntails(basis) > 0 ? (1:(div(ntails(basis), 2)+1)) : (1:0)
     left = prevfloat(basis.grid[1])
     right = nextfloat(basis.grid[end])
-    vcat(left .* (ntails(basis):-1:1), basis.grid, right .* (1:ntails(basis)))
+    vcat(left .* reverse(coeffs_extrap), basis.grid, right .* coeffs_extrap)
 end

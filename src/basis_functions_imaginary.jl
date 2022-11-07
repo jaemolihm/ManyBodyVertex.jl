@@ -1,3 +1,4 @@
+# FIXME: Allow odd tails
 using Infinities: InfiniteCardinal
 using ContinuumArrays
 
