@@ -84,11 +84,13 @@ end
 
 """
     get_fitting_points(basis::LinearSplineAndTailBasis)
-Points to be used for fitting the basis coefficients
+Points to be used for fitting the basis coefficients.
 """
 function get_fitting_points(basis::LinearSplineAndTailBasis)
     coeffs_extrap = ntails(basis) > 0 ? (1:(div(ntails(basis), 2)+1)) : (1:0)
-    left = prevfloat(basis.grid[1])
-    right = nextfloat(basis.grid[end])
+    # If the extrapolation grid points are too close to the interpolation grid points,
+    # numerical instability can occur. So we multiply by 1 + sqrt(eps).
+    left = prevfloat(basis.grid[1]) * (1 + sqrt(eps(eltype(basis))))
+    right = nextfloat(basis.grid[end]) * (1 + sqrt(eps(eltype(basis))))
     vcat(left .* reverse(coeffs_extrap), basis.grid, right .* coeffs_extrap)
 end
