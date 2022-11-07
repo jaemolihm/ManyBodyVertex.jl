@@ -58,12 +58,12 @@ channel(::AbstractBubble{F, C}) where {F, C} = C
 nb_f(Π::AbstractBubble) = size(Π.basis_f, 2)
 nb_b(Π::AbstractBubble) = size(Π.basis_b, 2)
 
-function (Π::AbstractBubble{F, C, T})(w) where {F, C, T}
+function (Π::AbstractBubble)(w)
     # Evaluate the bubble at given bosonic frequency w
     # Output: a, (i, j), (i', j')
     coeff_w = Π.basis_b[w, :]
     @ein Π_w[a, ij1, ij2] := Π.data[a, ij1, ij2, b] * coeff_w[b]
-    Π_w::Array{T, 3}
+    Π_w::Array{eltype(Π), 3}
 end
 
 """
@@ -78,9 +78,9 @@ function cache_and_load_overlaps(Π::Bubble, basis_L::Basis, basis_R::Basis)
     (Π.cache_overlap_LR,)
 end
 
-function to_matrix(Π::AbstractBubble{F, C, T}, w, basis_L::Basis, basis_R::Basis) where {F, C, T}
+function to_matrix(Π::AbstractBubble, w, basis_L::Basis, basis_R::Basis)
     # Function barrier
-    to_matrix(Π, w, cache_and_load_overlaps(Π, basis_L, basis_R)...)::Array{T, 2}
+    to_matrix(Π, w, cache_and_load_overlaps(Π, basis_L, basis_R)...)::Array{eltype(Π), 2}
 end
 
 """
@@ -107,6 +107,6 @@ function to_matrix(Π::Bubble{F, C, T}, w, overlap) where {F, C, T}
     collect(Π_vertex) .* integral_coeff(Π)
 end
 
-integral_coeff(::AbstractBubble{:KF, C, T}) where {C, T} = -im / 2 / real(T)(π)
-integral_coeff(::AbstractBubble{:MF}) = error("MF Not yet implemented")
-integral_coeff(::AbstractBubble{:ZF}) = error("ZF Not yet implemented")
+integral_coeff(Π::AbstractBubble{:KF}) = -im / 2 / real(eltype(Π))(π)
+integral_coeff(Π::AbstractBubble{:MF}) = error("MF Not yet implemented")
+integral_coeff(Π::AbstractBubble{:ZF}) = -im / 2 / real(eltype(Π))(π)

@@ -45,7 +45,7 @@ function cache_and_load_overlaps(Π::ScreenedBubble, basis_L::Basis, basis_R::Ba
     Π.cache_overlap_LR, Π.cache_overlap_L, Π.cache_overlap_R
 end
 
-function to_matrix(Π::ScreenedBubble{F, C, T}, w, ov_LR, ov_L, ov_R) where {F, C, T}
+function to_matrix(Π::ScreenedBubble, w, ov_LR, ov_L, ov_R)
     nb_L, nb_R = size(ov_LR)[1:2]
     nind2 = get_nind(Π)^2
 
@@ -57,8 +57,8 @@ function to_matrix(Π::ScreenedBubble{F, C, T}, w, ov_LR, ov_L, ov_R) where {F, 
     K1_w = Π.K1(0, 0, w)
     @ein Π_vertex_tmp1[xL, ij1, ij2] := ov_L[xL, a] * Π_w[a, ij1, ij2]
     @ein Π_vertex_tmp2[ij1, xR, ij2] := ov_R[xR, a] * Π_w[a, ij1, ij2]
-    Π_vertex_tmp1 = Π_vertex_tmp1::Array{T, 3}
-    Π_vertex_tmp2 = Π_vertex_tmp2::Array{T, 3}
+    Π_vertex_tmp1 = Π_vertex_tmp1::Array{eltype(Π), 3}
+    Π_vertex_tmp2 = Π_vertex_tmp2::Array{eltype(Π), 3}
     Π_vertex1 = reshape(Π_vertex_tmp1, nb_L * nind2, nind2)
     Π_vertex2 = reshape(Π_vertex_tmp2, nind2, nb_R * nind2)
     Π_mat .+= (Π_vertex1 * K1_w * Π_vertex2) .* integral_coeff(Π)^2
