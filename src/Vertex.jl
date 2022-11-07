@@ -24,7 +24,7 @@ channel).
 """
 
 abstract type AbstractFrequencyVertex{F, T} end
-eltype(::AbstractFrequencyVertex{F, T}) where {F, T} = T
+Base.eltype(::AbstractFrequencyVertex{F, T}) where {F, T} = T
 
 abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
