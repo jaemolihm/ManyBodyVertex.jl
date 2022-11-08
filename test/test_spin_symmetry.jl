@@ -2,6 +2,7 @@ using mfRG
 using Test
 
 @testset "Vertex SU2" begin
+    using mfRG: su2_convert_spin_channel
     # A and T channel uses (d, m) parametrization, P channel uses (p, m) parametrization
     basis1 = LinearSplineAndTailBasis(0, 2, [-1., 1.])
     basis2 = LinearSplineAndTailBasis(0, 1, [-2., 2.])

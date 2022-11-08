@@ -10,6 +10,7 @@ using Test
     U = 0.5 * Δ
 
     # Very coarse parameters for debugging
+    vgrid_1p = get_nonequidistant_grid(10, 31) .* Δ;
     vgrid_k1 = get_nonequidistant_grid(10, 5) .* Δ;
     wgrid_k1 = get_nonequidistant_grid(10, 5) .* Δ;
     vgrid_k3 = get_nonequidistant_grid(10, 5) .* Δ;
