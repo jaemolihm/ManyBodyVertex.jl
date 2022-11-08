@@ -112,7 +112,7 @@ function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val, C::Val; e,
     vs = get_fitting_points(basis_1p)
     green_ = siam_get_green_function.(vs, e, Δ, t, F)
     green = reshape(reduce(hcat, green_), 2, 2, :)
-    green_coeff = mfRG.fit_basis_coeff(green, basis_1p, vs, 3)
+    green_coeff = fit_basis_coeff(green, basis_1p, vs, 3)
 
     overlap_f = basis_integral(basis_f, basis_f)
 
@@ -125,7 +125,7 @@ function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val, C::Val; e,
         coeff_g2 = zeros(eltype(basis_1p), size(basis_1p, 2))
         bubble_value_integral = zeros(ComplexF64, size(basis_f, 2), 16)
         for i_f in axes(basis_f, 2)
-            intervals_v = mfRG.integration_intervals((basis_f,), (i_f,))
+            intervals_v = integration_intervals((basis_f,), (i_f,))
             for (l_v, r_v) in intervals_v
                 l_v >= r_v && continue
                 function f(v)
@@ -154,8 +154,8 @@ function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val, C::Val; e,
     end
 
     Π = Bubble{_val_to_value(F), _val_to_value(C)}(basis_f, basis_b)
-    Π.data .= mfRG.fit_basis_coeff(reshape(Π_data, :, 4, 4, length(ws)), basis_b, ws, 4)
-    Π.data .*= mfRG._bubble_prefactor(C)
+    Π.data .= fit_basis_coeff(reshape(Π_data, :, 4, 4, length(ws)), basis_b, ws, 4)
+    Π.data .*= _bubble_prefactor(C)
 
     Π
 end

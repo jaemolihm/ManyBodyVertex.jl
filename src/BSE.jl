@@ -94,8 +94,8 @@ Return the matrix represetntation of ``I - Π * Γ``
 """
 function compute_bse_matrix_left(Γ, Π, w, basis_L2, basis_R1, basis_R2)
     basis_L2 === basis_R2 || error("basis_L2 and basis_R2 must be identical")
-    Γ_mat = mfRG.to_matrix(Γ, w, basis_R1, basis_R2, Val(mfRG.channel(Π)))
-    Π_mat = mfRG.to_matrix(Π, w, basis_L2, basis_R1)
+    Γ_mat = to_matrix(Γ, w, basis_R1, basis_R2, Val(channel(Π)))
+    Π_mat = to_matrix(Π, w, basis_L2, basis_R1)
     I - (Π_mat * Γ_mat)
 end
 

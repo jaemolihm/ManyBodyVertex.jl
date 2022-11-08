@@ -6,7 +6,7 @@
 - `max_class`: maximum asymptotic class (1 or 2 or 3)
 """
 Base.@kwdef struct AsymptoticVertex{F, T} <: AbstractFrequencyVertex{F, T}
-    max_class
+    max_class::Int
     Γ0_A
     Γ0_P
     K1_A
