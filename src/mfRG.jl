@@ -1,4 +1,6 @@
 module mfRG
+export get_nonequidistant_grid
+
 export ConstantBasis, LinearSplineAndTailBasis
 export ImagConstantBasis, ImagGridAndTailBasis, frequency_index_bounds
 export get_fitting_points
@@ -11,6 +13,8 @@ export fit_bosonic_basis_coeff!
 export vertex_bubble_integral
 export solve_BSE, solve_BSE_left
 export run_parquet
+
+include("utility.jl")
 
 include("basis_functions.jl")
 include("basis_functions_imaginary.jl")
