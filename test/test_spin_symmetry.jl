@@ -27,6 +27,7 @@ using Test
     @test su2_convert_spin_channel(:P, Γ_P)[2].data ≈ Γ_P[2].data
 
     # Test su2_bare_vertex
+    U = 5.0
     for F in (:KF, :MF)
         Γ0_A = su2_bare_vertex(U, Val(F), Val(:A))
         Γ0_P = su2_bare_vertex(U, Val(F), Val(:P))
