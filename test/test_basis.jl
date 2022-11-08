@@ -63,3 +63,18 @@ end
     @test frequency_index_bounds(3, :Boson) == (-3, 3)
     @test frequency_index_bounds(3, :Fermion) == (-3, 2)
 end
+
+@testset "basis_for_bubble" begin
+    using mfRG: ntails
+    basis_v = LinearSplineAndTailBasis(2, 3, -4.:1:4.)
+    basis_w = LinearSplineAndTailBasis(1, 3, [-3., 3.])
+    basis_v_bubble, basis_w_bubble = basis_for_bubble(basis_v, basis_w)
+    @test ntails(basis_v_bubble) == ntails(basis_v)
+    @test basis_v_bubble.grid[end] > maximum(get_fitting_points(basis_w)) * 0.5
+    @test basis_v_bubble.grid[1] < minimum(get_fitting_points(basis_w)) * 0.5
+    @test ntails(basis_w_bubble) == 0
+    @test basis_w_bubble.grid[end] >= maximum(get_fitting_points(basis_w))
+    @test basis_w_bubble.grid[1] <= minimum(get_fitting_points(basis_w))
+
+    # TODO: Imaginary basis
+end

@@ -94,3 +94,50 @@ function get_fitting_points(basis::LinearSplineAndTailBasis)
     right = nextfloat(basis.grid[end]) * (1 + sqrt(eps(eltype(basis))))
     vcat(left .* reverse(coeffs_extrap), basis.grid, right .* coeffs_extrap)
 end
+
+
+"""
+    basis_for_bubble(basis_v::LinearSplineAndTailBasis, basis_w::LinearSplineAndTailBasis)
+For the bosonic frequency of the bubble, only interpolation can be done. So, the tail part
+is added as additional coarse interpolation grids that spans up to `± w_ex_max`.
+
+For the fermionic frequency, one uses (i) dense interpolation for the grids of `basis_v`,
+(ii) coarse interpolation up to `± w_ex_max / 2 (+ buffer)`, and (iii) tails.
+
+# Inputs
+- `basis_v`: Fermionic frequency containing the interpolation grid and tail specificiation
+for the bubble. Not the basis of the bubble - some coarse interpolation points may be added.
+- `basis_w`: Bosonic frequency basis with which the bubble will be used. Not the basis of
+the bubble - tails will be converted to coarse interpolation points.
+"""
+function basis_for_bubble(basis_v::LinearSplineAndTailBasis, basis_w::LinearSplineAndTailBasis)
+    w_coarse_max = maximum(get_fitting_points(basis_w))
+    w_coarse_num = ntails(basis_w)
+    basis_for_bubble(basis_v, basis_w.grid, w_coarse_max, w_coarse_num)
+end
+
+"""
+# Inputs
+- `w_grid`: Grid to use for dense interpolation of `w`.
+- `w_coarse_max`: Maximum `w` for coarse interpolation (that is used instead of tails).
+- `w_coarse_num`: Number of points (for each side of the real axis) for coarse interpolation.
+"""
+function basis_for_bubble(basis_v::LinearSplineAndTailBasis, w_grid, w_coarse_max, w_coarse_num)
+    v_coarse_max = w_coarse_max * 3 / 4  # 1/2 + buffer of 1/4
+    v_coarse_step = maximum(diff(basis_v.grid)) * 2
+    vs_bubble = vcat(
+        range(basis_v.grid[1], -v_coarse_max, step=-v_coarse_step)[end:-1:2],
+        basis_v.grid,
+        range(basis_v.grid[end], v_coarse_max, step=v_coarse_step)[2:end],
+    )
+    basis_v_bubble = LinearSplineAndTailBasis(basis_v.nmin, basis_v.nmax, vs_bubble)
+
+    ws_bubble = vcat(
+        range(-w_coarse_max, minimum(w_grid), length=w_coarse_num+1)[1:end-1],
+        sort(w_grid),
+        range(maximum(w_grid), w_coarse_max, length=w_coarse_num+1)[2:end],
+    )
+    basis_w_bubble = LinearSplineAndTailBasis(1, 0, ws_bubble)
+
+    basis_v_bubble, basis_w_bubble
+end

@@ -3,6 +3,7 @@ export ConstantBasis, LinearSplineAndTailBasis
 export ImagConstantBasis, ImagGridAndTailBasis, frequency_index_bounds
 export get_fitting_points
 export basis_integral
+export basis_for_bubble
 
 export Vertex4P, Bubble, to_matrix, vertex_keldyshview, apply_crossing
 export fit_bosonic_basis_coeff!
