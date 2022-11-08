@@ -40,3 +40,13 @@ function su2_apply_crossing(Γ)
     Γt_d, Γt_m
 end
 
+function su2_bare_vertex(U::Number, F::Val, C::Val)
+    # SU2 symmetric bare vertex: +1, -1, 0 for spin channels d, m, p.
+    if C === Val(:A) || C === Val(:T)  # (d, m)
+        (get_bare_vertex(U, F, C), -1 * get_bare_vertex(U, F, C))
+    elseif C === Val(:P)  # (p, m)
+        (0 * get_bare_vertex(U, F, C), -1 * get_bare_vertex(U, F, C))
+    else
+        error("Wrong channel $C")
+    end
+end

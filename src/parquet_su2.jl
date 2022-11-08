@@ -1,3 +1,5 @@
+# FIXME: non-SU2
+
 function iterate_parquet(Γ::AsymptoticVertex, ΠAscr, ΠPscr, basis_aux)
     basis_w = Γ.basis_k1_b
     ws = get_fitting_points(basis_w)
@@ -55,9 +57,9 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠAscr, ΠPscr, basis_aux)
 end
 
 function run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class, max_iter=5)
-    # FIXME: Better treatment of Γ0_A and Γ0_P
-    Γ0_A = (get_bare_vertex(U, Val(:KF), Val(:A)), -1 * get_bare_vertex(U, Val(:KF), Val(:A)))
-    Γ0_P = (0 * get_bare_vertex(U, Val(:KF), Val(:P)), -1 * get_bare_vertex(U, Val(:KF), Val(:P)))
+    Γ0_A = su2_bare_vertex(U, Val(:KF), Val(:A))
+    Γ0_P = su2_bare_vertex(U, Val(:KF), Val(:P))
+
     K1_A = solve_BSE.(Γ0_A, ΠA, Γ0_A, Ref(basis_w))
     K1_P = solve_BSE.(Γ0_P, ΠP, Γ0_P, Ref(basis_w))
     K1_T = su2_apply_crossing(K1_A)

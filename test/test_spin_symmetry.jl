@@ -25,4 +25,17 @@ using Test
     @test su2_convert_spin_channel(:T, Γ_P)[2].data ≈ Γ_P[2].data
     @test su2_convert_spin_channel(:P, Γ_P)[1].data ≈ Γ_P[1].data
     @test su2_convert_spin_channel(:P, Γ_P)[2].data ≈ Γ_P[2].data
+
+    # Test su2_bare_vertex
+    for F in (:KF, :MF)
+        Γ0_A = mfRG.su2_bare_vertex(U, Val(F), Val(:A))
+        Γ0_P = mfRG.su2_bare_vertex(U, Val(F), Val(:P))
+        Γ0_T = mfRG.su2_bare_vertex(U, Val(F), Val(:T))
+        @test Γ0_A[1].data ≈ Γ0_A[1].data .* +1
+        @test Γ0_A[2].data ≈ Γ0_A[1].data .* -1
+        @test Γ0_P[1].data ≈ Γ0_A[1].data .* 0
+        @test Γ0_P[2].data ≈ Γ0_A[1].data .* -1
+        @test Γ0_T[1].data ≈ Γ0_A[1].data .* +1
+        @test Γ0_T[2].data ≈ Γ0_A[1].data .* -1
+    end
 end
