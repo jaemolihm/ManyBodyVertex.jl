@@ -1,0 +1,27 @@
+using mfRG
+using Test
+
+@testset "Vertex SU2" begin
+    # A and T channel uses (d, m) parametrization, P channel uses (p, m) parametrization
+    basis1 = LinearSplineAndTailBasis(0, 2, [-1., 1.])
+    basis2 = LinearSplineAndTailBasis(0, 1, [-2., 2.])
+    Γ_A = [Vertex4P{:KF, :A}(Float64, basis1, basis2, basis2), Vertex4P{:KF, :A}(Float64, basis1, basis2, basis2)]
+    Γ_A[1].data .= rand(size(Γ_A[1].data)...)
+    Γ_A[2].data .= rand(size(Γ_A[2].data)...)
+    @test su2_convert_spin_channel(:A, Γ_A)[1].data ≈ Γ_A[1].data
+    @test su2_convert_spin_channel(:A, Γ_A)[2].data ≈ Γ_A[2].data
+    @test su2_convert_spin_channel(:T, Γ_A)[1].data ≈ Γ_A[1].data
+    @test su2_convert_spin_channel(:T, Γ_A)[2].data ≈ Γ_A[2].data
+    @test su2_convert_spin_channel(:P, Γ_A)[1].data ≈ (Γ_A[1].data .- Γ_A[2].data) ./ 2
+    @test su2_convert_spin_channel(:P, Γ_A)[2].data ≈ Γ_A[2].data
+
+    Γ_P = [Vertex4P{:KF, :P}(Float64, basis1, basis2, basis2), Vertex4P{:KF, :P}(Float64, basis1, basis2, basis2)]
+    Γ_P[1].data .= rand(size(Γ_P[1].data)...)
+    Γ_P[2].data .= rand(size(Γ_P[2].data)...)
+    @test su2_convert_spin_channel(:A, Γ_P)[1].data ≈ 2 .* Γ_P[1].data .- Γ_P[2].data
+    @test su2_convert_spin_channel(:A, Γ_P)[2].data ≈ Γ_P[2].data
+    @test su2_convert_spin_channel(:T, Γ_P)[1].data ≈ 2 .* Γ_P[1].data .- Γ_P[2].data
+    @test su2_convert_spin_channel(:T, Γ_P)[2].data ≈ Γ_P[2].data
+    @test su2_convert_spin_channel(:P, Γ_P)[1].data ≈ Γ_P[1].data
+    @test su2_convert_spin_channel(:P, Γ_P)[2].data ≈ Γ_P[2].data
+end

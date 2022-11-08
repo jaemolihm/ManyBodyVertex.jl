@@ -15,6 +15,8 @@ include("basis_functions_imaginary.jl")
 include("basis_integral.jl")
 
 include("channel.jl")
+include("spin_symmetry_su2.jl")
+
 include("Vertex.jl")
 include("CachedVertex.jl")
 include("Bubble.jl")
