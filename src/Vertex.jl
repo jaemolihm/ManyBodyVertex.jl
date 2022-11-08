@@ -151,7 +151,7 @@ function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::Abst
     #                       * Γ.basis_f2[vvw_Γ[ifreq][2], v2]
     #                       * Γ.basis_b[vvw_Γ[ifreq][3], w]
 
-    # # Version 1: 1.1 times faster but allocates ~50 times more.
+    # # Version 1: ~1.5 times faster but allocates ~50 times more.
     # nind = get_nind(Γ)
     # coeff_f1 = Γ.basis_f1[getindex.(vvw_Γ, 1), :]
     # coeff_f2 = Γ.basis_f2[getindex.(vvw_Γ, 2), :]
@@ -167,7 +167,7 @@ function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::Abst
     #     @. Γ_vvw[:, i, j] += Γ_array[iv1, i, iv2, j, :] * coeff_f1[:, iv1] * coeff_f2[:, iv2]
     # end
 
-    # Version 2: 1.1 times slower but allocates little.
+    # Version 2: ~1.5 times slower but allocates little.
     nind = get_nind(Γ)
     coeff_f1 = zeros(eltype(Γ.basis_f1), size(Γ.basis_f1, 2))
     coeff_f2 = zeros(eltype(Γ.basis_f2), size(Γ.basis_f2, 2))
@@ -182,8 +182,9 @@ function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::Abst
         coeff_f2 .= Γ.basis_f2[vvw_Γ[ifreq][2], :]
         coeff_b .= Γ.basis_b[vvw_Γ[ifreq][3], :]
         mul!(Γ_array_reshape, Γ_data_reshape, coeff_b)
-        for iv2 in 1:nb_f2(Γ), iv1 in 1:nb_f1(Γ)
-            @. Γ_vvw[ifreq, :, :] += Γ_array[iv1, :, iv2, :] * coeff_f1[iv1] * coeff_f2[iv2]
+        for inds in CartesianIndices(size(Γ_array)[1:4])
+            iv1, i, iv2, j = inds.I
+            Γ_vvw[ifreq, i, j] += Γ_array[inds] * coeff_f1[iv1] * coeff_f2[iv2]
         end
     end
     _permute_orbital_indices_matrix_4p_keep_dim1(Val(C_Γ), c_out, Γ_vvw, nind)

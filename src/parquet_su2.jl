@@ -1,11 +1,11 @@
 function iterate_parquet(Γ::AsymptoticVertex, ΠAscr, ΠPscr, basis_aux)
     basis_w = Γ.basis_k1_b
+    ws = get_fitting_points(basis_w)
     (; Γ0_A, Γ0_P) = Γ
 
     # BSE for channel A
     @info "Solving BSE for channel A"
     Γ_A_irr = get_irreducible_vertices(:A, Γ)
-    ws = get_fitting_points(basis_w)
     @time Γ_A_irr_mat = Tuple(cache_vertex_matrix(getindex.(Γ_A_irr, i), :A, ws, basis_aux) for i in 1:2);
 
     @time K2_A = solve_BSE.(Γ_A_irr_mat, ΠAscr, Γ.Γ0_A, Ref(basis_w); basis_aux)
