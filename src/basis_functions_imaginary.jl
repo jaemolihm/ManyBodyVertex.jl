@@ -29,61 +29,90 @@ ntails(::ImagConstantBasis) = 1
 
 
 """
-    ImagGridAndTailBasis(::Type{T}=Float64, nmin, nmax, xmin, xmax)
-Polynomial tails of order `nmin` to `nmax` outside `[xmin, xmax]`, discrete basis inside.
+    ImagGridAndTailBasis(::Type{T}=Float64, nmin, nmax, wmax)
+Polynomial tails of order `nmin` to `nmax` outside `[xmin, wmax]`, discrete basis inside.
+- `n = 1 ~ ntail`: polynomial of 1/x ``(x0 / x)^{nmin + n - 1}`` where ``x0 = maximum(abs(grid))``
+- `n = ntail+1 ~ 2*ntail`: polynomial of 1/x multiplied by sign ``sign(x) * (x0 / x)^{nmin + n - 1}``
+- `n = 2*ntail+1 ~ end`: linear spline on `grid`
+
+### particle_type == :Boson
+- `w = 2π/β * m`
+- Tails for `|m| >= wmax+1`, order-n tail is `((wmax + 1) / m)^n`
+- explicit grid for `-wmax:wmax`, which corresponds to `w = 2π/β * (-wmax : wmax)`.
+
+### particle_type == :Fermion
+- `w = 2π/β * (m + 1/2)`
+- Tails for `m >= wmax` or `m <= -wmax-1`, order-n tail is `((wmax + 1/2) / (m + 1/2))^n`
+- explicit grid for `-wmax:wmax-1`, which corresponds to `v = 2π/β * (-wmax+1/2 : wmax-1/2)`.
+
 """
 struct ImagGridAndTailBasis{T} <: Basis{T}
+    particle_type::Symbol
     nmin::Int
     nmax::Int
-    xmin::Int
-    xmax::Int
-    function ImagGridAndTailBasis(::Type{T}, nmin, nmax, xmin, xmax) where {T}
-        new{T}(nmin, nmax, xmin, xmax)
+    wmax::Int
+    function ImagGridAndTailBasis(::Type{T}, particle_type, nmin, nmax, wmax) where {T}
+        if particle_type !== :Boson && particle_type !== :Fermion
+            error("Invalid particle type $particle_type. Must be :Boson or :Fermion.")
+        end
+        new{T}(particle_type, nmin, nmax, wmax)
     end
 end
-ImagGridAndTailBasis(nmin, nmax, xmin, xmax) = ImagGridAndTailBasis(Float64, nmin, nmax, xmin, xmax)
+ImagGridAndTailBasis(particle_type, nmin, nmax, wmax) = ImagGridAndTailBasis(Float64, particle_type, nmin, nmax, wmax)
 
-ntails(f::ImagGridAndTailBasis) = f.nmax - f.nmin + 1
+@inline ntails(f::ImagGridAndTailBasis) = (f.nmax - f.nmin + 1) * 2
 
-Base.axes(w::ImagGridAndTailBasis) = (InfRange(), 1:(w.nmax - w.nmin + 1 + w.xmax - w.xmin + 1))
+function Base.getproperty(f::ImagGridAndTailBasis, s::Symbol)
+    if s === :grid
+        wmax = getfield(f, :wmax)
+        getfield(f, :particle_type) === :Boson ? (-wmax:wmax) : (-wmax:(wmax-1))
+    else
+        getfield(f, s)
+    end
+end
 
-# FIXME: tail multiplied by sign
-# FIXME: normalize tail by x0
-function Base.getindex(f::ImagGridAndTailBasis{T}, x::Integer, n::Integer) where {T}
+@inline Base.axes(f::ImagGridAndTailBasis) = (InfRange(), 1:(ntails(f) + length(f.grid)))
+
+# Customize printing
+function Base.summary(io::IO, f::ImagGridAndTailBasis)
+    print(io, typeof(f))
+    print(io, "(particle_type=$(f.particle_type), nmin=$(f.nmin), nmax=$(f.nmax), ")
+    print(io, "grid=$(f.grid), $(length(f.grid)) points)")
+end
+
+@inline function Base.getindex(f::ImagGridAndTailBasis{T}, x::Integer, n::Integer) where {T}
     x ∈ axes(f, 1) || throw(BoundsError())
     n ∈ axes(f, 2) || throw(BoundsError())
-    if n <= ntails(f)
-        # Tail: polynomial of 1 / x
-        if x < f.xmin || x > f.xmax
-            T(1 / x^(n - 1 + f.nmin))
-        else
-            zero(T)
+    if n <= ntails(f)  # Tail: polynomial of 1 / x
+        if n <= div(ntails(f), 2)
+            s = 1
+            pow = n - 1 + f.nmin
+        else  # For the latter half, multiply by sign(x)
+            s = sign(x)
+            pow = n - div(ntails(f), 2) - 1 + f.nmin
         end
-    else
-        # f(x, n) = δ(x - xmin + 1, n - ntails)
-        x - f.xmin + 1 == n - ntails(f) ? one(T) : zero(T)
+        if f.particle_type === :Boson
+            x ∈ f.grid ? zero(T) : T(((f.wmax + 1) / x)^pow) * s
+        else
+            x ∈ f.grid ? zero(T) : T(((f.wmax + 1/2) / (x + 1/2))^pow) * s
+        end
+    else  # Grid: f(x, n) = δ(x - first(f.grid), n - ntails - 1)
+        x - first(f.grid) == n - ntails(f) - 1 ? one(T) : zero(T)
     end
 end
 
 # FIXME: Make this symmetric for both Fermionic and Bosonic bases.
-function get_fitting_points(basis::ImagGridAndTailBasis)
-    x_bound = max(-basis.xmin, basis.xmax)
-    vcat(-x_bound .* (ntails(basis)+1:-1:2), basis.xmin:basis.xmax, x_bound .* (2:ntails(basis)+1))
-end
-
-
-"""
-    frequency_index_bounds(nmax, particle_type)
-The bounds for the index (that should be passed as `xmin` and `xmax` to ImagGridAndTailBasis)
-so that frequency up to |v| <= nmax * 2π/β can be sampled for given `particle_type`
-(`:Fermion` or `:Boson`).
-"""
-function frequency_index_bounds(nmax, particle_type)
-    if particle_type === :Fermion
-        ceil(Int, -nmax - 1/2), floor(Int, nmax - 1/2)
-    elseif particle_type === :Boson
-        -nmax, nmax
+function get_fitting_points(f::ImagGridAndTailBasis)
+    coeffs_extrap = ntails(f) > 0 ? (1:(div(ntails(f), 2)+1)) : (1:0)
+    if f.particle_type === :Fermion && f.wmax == 0  # Special case: only tails
+        return vcat(.-reverse(coeffs_extrap), coeffs_extrap .- 1)
+    end
+    if f.particle_type === :Boson
+        extrap_points = (f.wmax + 1) .* coeffs_extrap
+        vcat(.-reverse(extrap_points), f.grid, extrap_points)
     else
-        error("Wrong particle_type $particle_type")
+        extrap_points = floor.(Int, (f.wmax + 1/2) .* coeffs_extrap .- 1/2)
+        # v' = (n' + 1/2) = -v = -(n + 1/2) => n' = -n - 1
+        vcat(.-reverse(extrap_points) .- 1, f.grid, extrap_points)
     end
 end

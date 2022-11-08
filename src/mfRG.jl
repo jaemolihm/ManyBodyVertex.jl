@@ -2,7 +2,7 @@ module mfRG
 export get_nonequidistant_grid
 
 export ConstantBasis, LinearSplineAndTailBasis
-export ImagConstantBasis, ImagGridAndTailBasis, frequency_index_bounds
+export ImagConstantBasis, ImagGridAndTailBasis
 export get_fitting_points
 export basis_integral
 export basis_for_bubble

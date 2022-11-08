@@ -52,17 +52,36 @@ end
     @test size(b) == (length(InfRange()), 1)
     @test b[10, 1] == 1
 
-    # Test ImagGridAndTailBasis
-    b = ImagGridAndTailBasis(0, 1, -2, 1)
-    @test axes(b) == (InfRange(), 1:6)
-    @test size(b) == (length(InfRange()), 6)
-    @test b[0, :] ≈ [0, 0, 0, 0, 1, 0]
-    @test b[2, :] ≈ [1, 1/2, 0, 0, 0, 0]
-    @test b[-3, :] ≈ [1, -1/3, 0, 0, 0, 0]
-    @test get_fitting_points(b) == [-6, -4, -2, -1, 0, 1, 4, 6]
+    # Test ImagGridAndTailBasis for bosons
+    b_boson = ImagGridAndTailBasis(:Boson, 0, 1, 2)  # grid for -2:2
+    @test axes(b_boson) == (InfRange(), 1:9)
+    @test b_boson[-2, :] ≈ [0, 0, 0, 0, 1, 0, 0, 0, 0]
+    @test b_boson[ 1, :] ≈ [0, 0, 0, 0, 0, 0, 0, 1, 0]
+    for m in [-11, -5, 3, 10]
+        x = (2 + 1) / m
+        @test b_boson[m, :] ≈ [1, x, sign(m) * 1, sign(m) * x, 0, 0, 0, 0, 0]
+    end
+    @test all(maximum(b_boson[-5:5, :], dims=1) .≈ 1)
+    ws = get_fitting_points(b_boson)
+    @test ws == vcat(-9, -6, -3, -2:2, 3, 6, 9)
+    @test ws == .-reverse(ws)  # Test symmetry of fitting points
 
-    @test frequency_index_bounds(3, :Boson) == (-3, 3)
-    @test frequency_index_bounds(3, :Fermion) == (-3, 2)
+    # Test ImagGridAndTailBasis for Fermions
+    b_fermion = ImagGridAndTailBasis(:Fermion, 0, 1, 2)  # grid for -2:1
+    @test axes(b_fermion) == (InfRange(), 1:8)
+    @test b_fermion[-2, :] ≈ [0, 0, 0, 0, 1, 0, 0, 0]
+    @test b_fermion[ 1, :] ≈ [0, 0, 0, 0, 0, 0, 0, 1]
+    for m in [-11, -5, 3, 10]
+        x = (2 + 1/2) / (m + 1/2)
+        @test b_fermion[m, :] ≈ [1, x, sign(m) * 1, sign(m) * x, 0, 0, 0, 0]
+    end
+    @test all(maximum(b_fermion[-5:5, :], dims=1) .≈ 1)
+    vs = get_fitting_points(b_fermion)
+    @test vs == vcat(-8, -5, -3, -2:1, 2, 4, 7)
+    @test vs .+ 1/2 == .-reverse(vs .+ 1/2)  # Test symmetry of fitting points
+
+    # Special case: Fermions with only tails
+    @test get_fitting_points(ImagGridAndTailBasis(:Fermion, 0, 1, 0)) == -3:2
 end
 
 @testset "basis_for_bubble" begin
