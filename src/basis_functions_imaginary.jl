@@ -47,6 +47,8 @@ ntails(f::ImagGridAndTailBasis) = f.nmax - f.nmin + 1
 
 Base.axes(w::ImagGridAndTailBasis) = (InfRange(), 1:(w.nmax - w.nmin + 1 + w.xmax - w.xmin + 1))
 
+# FIXME: tail multiplied by sign
+# FIXME: normalize tail by x0
 function Base.getindex(f::ImagGridAndTailBasis{T}, x::Integer, n::Integer) where {T}
     x ∈ axes(f, 1) || throw(BoundsError())
     n ∈ axes(f, 2) || throw(BoundsError())

@@ -17,7 +17,11 @@ Base.getindex(::ConstantBasis{T}, x::Number, n::Integer) where {T} = (n == 1 || 
 support_domain(::ConstantBasis, n::Integer) = (n == 1 || throw(BoundsError()); -Inf..Inf)
 ntails(f::ConstantBasis) = 1
 
-
+"""
+- `n = 1 ~ ntail`: polynomial of 1/x ``(x0 / x)^{nmin + n - 1}`` where ``x0 = maximum(abs(grid))``
+- `n = ntail+1 ~ 2*ntail`: polynomial of 1/x multiplied by sign ``sign(x) * (x0 / x)^{nmin + n - 1}``
+- `n = 2*ntail+1 ~ end`: linear spline on `grid`
+"""
 struct LinearSplineAndTailBasis{T, FT} <: Basis{T}
     nmin::Int
     nmax::Int
@@ -53,11 +57,13 @@ end
     if x ∈ support_domain(f, n)
         if n <= div(ntails(f), 2)
             # Tail 1: polynomial of 1 / x
-            return T(1 / x^(n - 1 + f.nmin))
+            x0 = max(abs(f.grid[1]), abs(f.grid[end]))
+            return T((x0 / x)^(n - 1 + f.nmin))
         elseif n <= ntails(f)
             # Tail 2: polynomial of 1 / x times sign(x)
             n_ = n - div(ntails(f), 2)
-            return T(sign(x) / x^(n_ - 1 + f.nmin))
+            x0 = max(abs(f.grid[1]), abs(f.grid[end]))
+            return T(sign(x) * (x0 / x)^(n_ - 1 + f.nmin))
         else
             # Spline interpolation
             p = f.grid
