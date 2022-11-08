@@ -56,7 +56,7 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠAscr, ΠPscr, basis_aux)
     typeof(Γ)(; Γ.max_class, Γs...)
 end
 
-function run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class, max_iter=5)
+function run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class, max_iter=5, reltol=1e-2)
     Γ0_A = su2_bare_vertex(U, Val(:KF), Val(:A))
     Γ0_P = su2_bare_vertex(U, Val(:KF), Val(:P))
     Γ0_T = su2_apply_crossing(Γ0_A)
@@ -67,18 +67,19 @@ function run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class, max_iter=5)
     ΠAscr = ScreenedBubble.(ΠA, K1_A)
     ΠPscr = ScreenedBubble.(ΠP, K1_P)
 
-    vertex = AsymptoticVertex{:KF, eltype(K1_A)}(; max_class, Γ0_A, Γ0_P, Γ0_T, K1_A, K1_P, K1_T)
+    T = eltype(K1_A[1])
+    vertex = AsymptoticVertex{:KF, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, K1_A, K1_P, K1_T)
 
     for i in 2:max_iter
         @info "Iteration $i"
         @time vertex_new = iterate_parquet(vertex, ΠAscr, ΠPscr, basis_aux)
 
-        Γ_diff_norm = get_difference_norm(vertex_new, vertex)
+        Γ_diff = get_difference_norm(vertex_new, vertex)
 
         vertex = vertex_new
 
-        @info Γ_diff_norm
-        if maximum(Γ_diff_norm) < U * 1e-2
+        @info Γ_diff
+        if Γ_diff.relerr < reltol
             @info "Convergence reached"
             break
         end

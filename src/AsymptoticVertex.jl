@@ -31,10 +31,10 @@ Base.@kwdef struct AsymptoticVertex{F, T} <: AbstractFrequencyVertex{F, T}
     basis_k3_b = K3_A === nothing ? nothing : K3_A[1].basis_b
 end
 
-get_vertices(Γ::AsymptoticVertex) = filter!(!isnothing, [
-    Γ.K1_A, Γ.K1_P, Γ.K1_T, Γ.K2_A, Γ.K2_P, Γ.K2_T, Γ.K2p_A, Γ.K2p_P, Γ.K2p_T,
-    Γ.K3_A, Γ.K3_P, Γ.K3_T
-])
+_vertex_names(::AsymptoticVertex) = (:K1_A, :K1_P, :K1_T, :K2_A, :K2_P, :K2_T, :K2p_A,
+    :K2p_P, :K2p_T, :K3_A, :K3_P, :K3_T)
+
+get_vertices(Γ::AsymptoticVertex) = filter!(!isnothing, [getproperty(Γ, n) for n in _vertex_names(Γ)])
 
 """
     get_irreducible_vertices(C, Γ::AsymptoticVertex)
@@ -48,10 +48,34 @@ function get_irreducible_vertices(C, Γ::AsymptoticVertex)
 end
 
 """
-    get_difference_norm(Γ1::AsymptoticVertex, Γ2::AsymptoticVertex)
+    get_difference_norm(Γ1::AsymptoticVertex, Γ2::AsymptoticVertex) => (; abserr, relerr)
+Absolute and relative difference between `Γ1` and `Γ2`.
 """
 function get_difference_norm(Γ1::AsymptoticVertex, Γ2::AsymptoticVertex)
-    # FIXME: better norm
-    (norm(norm.(getproperty.(Γ1.K1_A .- Γ2.K1_A, :data))),
-    norm(norm.(getproperty.(Γ1.K1_P .- Γ2.K1_P, :data))))
+    abserr = zero(real(eltype(Γ1)))
+    relerr = zero(real(eltype(Γ1)))
+    for n in mfRG._vertex_names(Γ1)
+        x1 = getproperty(Γ1, n)
+        x2 = getproperty(Γ2, n)
+        for i in 1:2
+            if x1 !== nothing && x2 !== nothing
+                err = norm(x1[i].data .- x2[i].data)
+                val = (norm(x1[i].data) + norm(x2[i].data)) / 2
+            elseif x1 === nothing && x2 !== nothing
+                err = norm(x2[i].data)
+                val = norm(x2[i].data)
+            elseif x1 !== nothing && x2 === nothing
+                err = norm(x1[i].data)
+                val = norm(x1[i].data)
+            elseif x1 === nothing && x2 === nothing
+                continue
+            end
+            abserr += err
+            if val > 1e-10
+                # skip relative error if value is too small
+                relerr = max(relerr, err / val)
+            end
+        end
+    end
+    (; abserr, relerr)
 end

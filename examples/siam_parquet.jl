@@ -40,7 +40,7 @@ begin
     ΠP = (ΠP_, ΠP_ * 2)
 
     # Run parquet calculation
-    @time vertex = run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class=3, max_iter=5)
+    @time vertex = run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class=3, max_iter=10, reltol=1e-2)
 end;
 
 begin

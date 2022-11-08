@@ -28,5 +28,5 @@ using Test
 
     # Run parquet calculation
     vertex = run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class=3, max_iter=3)
-    @test vertex isa mfRG.AsymptoticVertex
+    @test vertex isa mfRG.AsymptoticVertex{:KF, ComplexF64}
 end;
