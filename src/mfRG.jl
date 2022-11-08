@@ -10,6 +10,7 @@ export fit_bosonic_basis_coeff!
 
 export vertex_bubble_integral
 export solve_BSE, solve_BSE_left
+export run_parquet
 
 include("basis_functions.jl")
 include("basis_functions_imaginary.jl")
@@ -20,9 +21,12 @@ include("spin_symmetry_su2.jl")
 
 include("Vertex.jl")
 include("CachedVertex.jl")
+include("AsymptoticVertex.jl")
 include("Bubble.jl")
 include("ScreenedBubble.jl")
+
 include("BSE.jl")
+include("parquet_su2.jl")
 
 include("models.jl")
 end
