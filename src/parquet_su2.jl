@@ -3,7 +3,7 @@
 function iterate_parquet(Γ::AsymptoticVertex, ΠAscr, ΠPscr, basis_aux)
     basis_w = Γ.basis_k1_b
     ws = get_fitting_points(basis_w)
-    (; Γ0_A, Γ0_P) = Γ
+    (; Γ0_A, Γ0_P, Γ0_T) = Γ
 
     # BSE for channel A
     @info "Solving BSE for channel A"
@@ -46,7 +46,7 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠAscr, ΠPscr, basis_aux)
         K3_T = su2_apply_crossing(K3_A)
     end
 
-    Γs = (; Γ0_A, Γ0_P, K1_A, K1_P, K1_T)
+    Γs = (; Γ0_A, Γ0_P, Γ0_T, K1_A, K1_P, K1_T)
     if Γ.max_class >= 2
         Γs = (; Γs..., K2_A, K2_P, K2_T, K2p_A, K2p_P, K2p_T)
     end
@@ -59,6 +59,7 @@ end
 function run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class, max_iter=5)
     Γ0_A = su2_bare_vertex(U, Val(:KF), Val(:A))
     Γ0_P = su2_bare_vertex(U, Val(:KF), Val(:P))
+    Γ0_T = su2_apply_crossing(Γ0_A)
 
     K1_A = solve_BSE.(Γ0_A, ΠA, Γ0_A, Ref(basis_w))
     K1_P = solve_BSE.(Γ0_P, ΠP, Γ0_P, Ref(basis_w))
@@ -66,9 +67,9 @@ function run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class, max_iter=5)
     ΠAscr = ScreenedBubble.(ΠA, K1_A)
     ΠPscr = ScreenedBubble.(ΠP, K1_P)
 
-    vertex = AsymptoticVertex{:KF, eltype(K1_A)}(; max_class, Γ0_A, Γ0_P, K1_A, K1_P, K1_T)
+    vertex = AsymptoticVertex{:KF, eltype(K1_A)}(; max_class, Γ0_A, Γ0_P, Γ0_T, K1_A, K1_P, K1_T)
 
-    @time for i in 2:max_iter
+    for i in 2:max_iter
         @info "Iteration $i"
         @time vertex_new = iterate_parquet(vertex, ΠAscr, ΠPscr, basis_aux)
 

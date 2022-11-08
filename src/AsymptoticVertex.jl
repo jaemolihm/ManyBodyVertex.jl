@@ -7,8 +7,11 @@
 """
 Base.@kwdef struct AsymptoticVertex{F, T} <: AbstractFrequencyVertex{F, T}
     max_class::Int
+    # Γ0_A, Γ0_P, Γ0_T are the same bare vertex, just represented in different channels.
+    # Only one of them should be counted when computing the total vertex.
     Γ0_A
     Γ0_P
+    Γ0_T
     K1_A
     K1_P
     K1_T
