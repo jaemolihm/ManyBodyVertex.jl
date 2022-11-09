@@ -101,21 +101,23 @@ end
 @testset "integrate imag" begin
     using mfRG: integrate_imag
     # zeta(n) = 1/1^n + 1/2^n + 1/3^n + ...
+    # Test calculation of zeta(n) has absolute error less than 2e-14
     zeta = [0, π^2/6, 1.202056903159594285, π^4/90, 1.036927755143369926, π^6/945]
+    atol = 2e-14
     for n in 2:5
         f(x) = (1/x)^n
         y = zeta[n]
-        @test integrate_imag(f, 1, typemax(Int))[1] ≈ y atol=2e-14
-        @test mfRG.integrate_imag(f, typemin(Int), -1)[1] ≈ (-1)^n * y atol=2e-14
+        @test mfRG.integrate_imag(f, 1, typemax(Int))[1] ≈ y atol=atol
+        @test mfRG.integrate_imag(f, typemin(Int), -1)[1] ≈ (-1)^n * y atol=atol
 
         n0 = 30
         y = zeta[n] - sum(f, 1:n0-1)
-        @test integrate_imag(f, n0, typemax(Int))[1] ≈ y atol=2e-14
-        @test integrate_imag(f, typemin(Int), -n0)[1] ≈ (-1)^n * y atol=2e-14
+        @test mfRG.integrate_imag(f, n0, typemax(Int))[1] ≈ y atol=atol
+        @test mfRG.integrate_imag(f, typemin(Int), -n0)[1] ≈ (-1)^n * y atol=atol
 
         y = sum(f, 1:n0)
-        @test integrate_imag(f, 1, n0)[1] ≈ y atol=2e-14
-        @test integrate_imag(f, -n0, -1)[1] ≈ (-1)^n * y atol=2e-14
+        @test mfRG.integrate_imag(f, 1, n0)[1] ≈ y atol=atol
+        @test mfRG.integrate_imag(f, -n0, -1)[1] ≈ (-1)^n * y atol=atol
     end
 end
 

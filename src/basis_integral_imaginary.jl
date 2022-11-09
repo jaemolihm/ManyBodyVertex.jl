@@ -8,19 +8,18 @@ function basis_integral_imag(bases::Tuple)
         intervals = integration_intervals(bases, inds.I)
 
         f(x) = prod(getindex.(bases, x, inds.I))
-        for interval in intervals
-            l, r = interval
-            l > r && continue
-            res, err = integrate_imag(f, l, r)
-            overlap[inds] += res
+        for (l, r) in intervals
+            res = integrate_imag(f, l, r)
+            res !== nothing && (overlap[inds] += res.val)
         end
     end
     overlap
 end
 
 function integrate_imag(f::Function, l::Integer, r::Integer)
+    l > r && return nothing
     # Constant chosen to get absolute error below 2E-14 for f(x) = 1/x^n (n >= 2).
-    N = 1000
+    N = 1200
     if l == typemin(l) || r == typemax(r)
         # Cubic extrapolation of summation for x = 1/N to 1/4N and evaluate at x=0.
         l == typemin(l) && r < -N && error("extrapolation for r below -N not implemented, r=$r")
@@ -40,7 +39,7 @@ function integrate_imag(f::Function, l::Integer, r::Integer)
             y3 = y2 + sum(f, (2N+1):3N)
             y4 = y3 + sum(f, (3N+1):4N)
         end
-        res = if abs(y4 - y3) < eps(real(y4))
+        val = if abs(y4 - y3) < eps(real(y4))
             y4
         else
             ( - y1 * x2 * x3 * x4 / (x1 - x2) / (x1 - x3) / (x1 - x4)
@@ -54,10 +53,10 @@ function integrate_imag(f::Function, l::Integer, r::Integer)
         #         + y3 * (x-x4) * (x-x1) * (x-x2) / (x3 - x4) / (x3 - x1) / (x3 - x2)
         #         + y4 * (x-x1) * (x-x2) * (x-x3) / (x4 - x1) / (x4 - x2) / (x4 - x3) )
     else
-        res = sum(x -> f(x), l:r)
+        val = sum(x -> f(x), l:r)
     end
-    err = zero(res)  # Dummy value to match the return type of integrate_real
-    res, err
+    err = zero(val)  # Dummy value to match the return type of integrate_real
+    (; val, err)
 end
 
 @inline function support_bounds(f::ImagGridAndTailBasis, n::Integer)
