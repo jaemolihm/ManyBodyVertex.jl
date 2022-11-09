@@ -20,14 +20,14 @@ mutable struct ScreenedBubble{F, C, T, BT <: AbstractBubble{F, C, T}, VT} <: Abs
     cache_overlap_L
     cache_overlap_R
     function ScreenedBubble(Π::AbstractBubble{F, C, T}, K1::AbstractVertex4P{F, C, T}) where {F, C, T}
-        K1.basis_f1 isa ConstantBasis || error("K1.basis_f1 is not a ConstantBasis")
-        K1.basis_f2 isa ConstantBasis || error("K1.basis_f2 is not a ConstantBasis")
+        K1.basis_f1 isa Union{ConstantBasis, ImagConstantBasis} || error("K1.basis_f1 is not a ConstantBasis")
+        K1.basis_f2 isa Union{ConstantBasis, ImagConstantBasis} || error("K1.basis_f2 is not a ConstantBasis")
         new{F, C, T, typeof(Π), typeof(K1)}(Π, K1, nothing, nothing, nothing, nothing, nothing)
     end
 end
 
 function Base.getproperty(a::ScreenedBubble, s::Symbol)
-    if s === :basis_f || s === :basis_b || s === :norb || s === :data
+    if s === :basis_f || s === :basis_b || s === :norb || s === :data || s === :temperature
         getfield(getfield(a, :Π), s)
     else
         getfield(a, s)

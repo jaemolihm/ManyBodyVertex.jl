@@ -18,27 +18,30 @@ mutable struct Bubble{F, C, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble
     norb::Int
     # Data array
     data::DT
+    # Temperature (needed for integral_coeff in MF)
+    temperature
     # Cached basis and overlap
     cache_basis_L
     cache_basis_R
     cache_overlap_LR
-    function Bubble{F, C}(basis_f::BF, basis_b::BB, norb, data::DT) where {F, C, DT <: AbstractArray{T}, BF, BB} where {T}
-        new{F, C, T, BF, BB, DT}(basis_f, basis_b, norb, data, nothing, nothing, nothing)
+    function Bubble{F, C}(basis_f::BF, basis_b::BB, norb, data::DT; temperature=nothing) where {F, C, DT <: AbstractArray{T}, BF, BB} where {T}
+        F === :MF && temperature === nothing && error("For MF, temperature must be set")
+        new{F, C, T, BF, BB, DT}(basis_f, basis_b, norb, data, temperature, nothing, nothing, nothing)
     end
 end
 
-Bubble{F, C}(basis_f, basis_b, norb=1) where {F, C} = Bubble{F, C}(ComplexF64, basis_f, basis_b, norb)
+Bubble{F, C}(basis_f, basis_b, norb=1; temperature=nothing) where {F, C} = Bubble{F, C}(ComplexF64, basis_f, basis_b, norb; temperature)
 
-function Bubble{F, C}(::Type{T}, basis_f, basis_b, norb=1) where {F, C, T}
+function Bubble{F, C}(::Type{T}, basis_f, basis_b, norb=1; temperature=nothing) where {F, C, T}
     nb_f = size(basis_f, 2)
     nb_b = size(basis_b, 2)
     nk = nkeldysh(F)
     data = zeros(T, nb_f, (norb * nk)^2, (norb * nk)^2, nb_b)
-    Bubble{F, C}(basis_f, basis_b, norb, data)
+    Bubble{F, C}(basis_f, basis_b, norb, data; temperature)
 end
 
 function Base.similar(Π::Bubble{F, C, T}, ::Type{ElType}=T) where {F, C, T, ElType}
-    Bubble{F, C}(Π.basis_f, Π.basis_b, Π.norb, similar(Π.data, ElType))
+    Bubble{F, C}(Π.basis_f, Π.basis_b, Π.norb, similar(Π.data, ElType); Π.temperature)
 end
 
 function Base.:*(x::Number, A::Bubble)
@@ -107,6 +110,6 @@ function to_matrix(Π::Bubble{F, C, T}, w, overlap) where {F, C, T}
     collect(Π_vertex) .* integral_coeff(Π)
 end
 
-integral_coeff(Π::AbstractBubble{:KF}) = -im / 2 / real(eltype(Π))(π)
-integral_coeff(Π::AbstractBubble{:MF}) = error("MF Not yet implemented")
-integral_coeff(Π::AbstractBubble{:ZF}) = -im / 2 / real(eltype(Π))(π)
+integral_coeff(Π::AbstractBubble{:KF}) = -im / 2 / eltype(Π)(π)
+integral_coeff(Π::AbstractBubble{:MF}) = eltype(Π)(Π.temperature)::eltype(Π)
+integral_coeff(Π::AbstractBubble{:ZF}) = -im / 2 / eltype(Π)(π)

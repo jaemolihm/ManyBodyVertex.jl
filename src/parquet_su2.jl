@@ -57,8 +57,10 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠAscr, ΠPscr, basis_aux)
 end
 
 function run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class, max_iter=5, reltol=1e-2)
-    Γ0_A = su2_bare_vertex(U, Val(:KF), Val(:A))
-    Γ0_P = su2_bare_vertex(U, Val(:KF), Val(:P))
+    F = mfRG.get_formalism(ΠA[1])
+
+    Γ0_A = su2_bare_vertex(U, Val(F), Val(:A))
+    Γ0_P = su2_bare_vertex(U, Val(F), Val(:P))
     Γ0_T = su2_apply_crossing(Γ0_A)
 
     K1_A = solve_BSE.(Γ0_A, ΠA, Γ0_A, Ref(basis_w))
@@ -68,7 +70,7 @@ function run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class, max_iter=5, rel
     ΠPscr = ScreenedBubble.(ΠP, K1_P)
 
     T = eltype(K1_A[1])
-    vertex = AsymptoticVertex{:KF, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, K1_A, K1_P, K1_T)
+    vertex = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, K1_A, K1_P, K1_T)
 
     for i in 2:max_iter
         @info "Iteration $i"
