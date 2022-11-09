@@ -19,8 +19,8 @@ function basis_integral_imag(bases::Tuple)
 end
 
 function integrate_imag(f::Function, l::Integer, r::Integer)
-    # Constant chosen to get absolute error below 1E-14 for f(x) = 1/x^n (n >= 2).
-    N = 2000
+    # Constant chosen to get absolute error below 2E-14 for f(x) = 1/x^n (n >= 2).
+    N = 1000
     if l == typemin(l) || r == typemax(r)
         # Cubic extrapolation of summation for x = 1/N to 1/4N and evaluate at x=0.
         l == typemin(l) && r < -N && error("extrapolation for r below -N not implemented, r=$r")
@@ -40,7 +40,7 @@ function integrate_imag(f::Function, l::Integer, r::Integer)
             y3 = y2 + sum(f, (2N+1):3N)
             y4 = y3 + sum(f, (3N+1):4N)
         end
-        res = if abs(y4 - y3) < eps(y4)
+        res = if abs(y4 - y3) < eps(real(y4))
             y4
         else
             ( - y1 * x2 * x3 * x4 / (x1 - x2) / (x1 - x3) / (x1 - x4)

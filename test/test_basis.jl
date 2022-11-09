@@ -105,17 +105,17 @@ end
     for n in 2:5
         f(x) = (1/x)^n
         y = zeta[n]
-        @test integrate_imag(f, 1, typemax(Int))[1] ≈ y atol=1e-14
-        @test mfRG.integrate_imag(f, typemin(Int), -1)[1] ≈ (-1)^n * y atol=1e-14
+        @test integrate_imag(f, 1, typemax(Int))[1] ≈ y atol=2e-14
+        @test mfRG.integrate_imag(f, typemin(Int), -1)[1] ≈ (-1)^n * y atol=2e-14
 
         n0 = 30
         y = zeta[n] - sum(f, 1:n0-1)
-        @test integrate_imag(f, n0, typemax(Int))[1] ≈ y atol=1e-14
-        @test integrate_imag(f, typemin(Int), -n0)[1] ≈ (-1)^n * y atol=1e-14
+        @test integrate_imag(f, n0, typemax(Int))[1] ≈ y atol=2e-14
+        @test integrate_imag(f, typemin(Int), -n0)[1] ≈ (-1)^n * y atol=2e-14
 
         y = sum(f, 1:n0)
-        @test integrate_imag(f, 1, n0)[1] ≈ y atol=1e-14
-        @test integrate_imag(f, -n0, -1)[1] ≈ (-1)^n * y atol=1e-14
+        @test integrate_imag(f, 1, n0)[1] ≈ y atol=2e-14
+        @test integrate_imag(f, -n0, -1)[1] ≈ (-1)^n * y atol=2e-14
     end
 end
 
