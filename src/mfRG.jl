@@ -19,6 +19,7 @@ include("utility.jl")
 include("basis_functions.jl")
 include("basis_functions_imaginary.jl")
 include("basis_integral.jl")
+include("basis_integral_imaginary.jl")
 
 include("channel.jl")
 include("spin_symmetry_su2.jl")

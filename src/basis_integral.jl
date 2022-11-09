@@ -5,7 +5,10 @@ Compute overlap between basis functions.
 """
 basis_integral(bases...) = basis_integral(bases)
 
-function basis_integral(bases::Tuple)
+basis_integral(bases::Tuple) = (bases[1] isa AbstractImagBasis ? basis_integral_imag(bases)
+                                                               : basis_integral_real(bases))
+
+function basis_integral_real(bases::Tuple)
     sizes = size.(bases, 2)
     overlap = zeros(eltype(bases[1]), sizes)
     for inds in CartesianIndices(sizes)
@@ -37,6 +40,14 @@ end
 @inline istail(f::LinearSplineAndTailBasis, n::Integer) = n <= ntails(f)
 
 @inline function integration_intervals(bases, inds)
+    if bases[1] isa AbstractImagBasis
+        integration_intervals_imag(bases, inds)
+    else
+        integration_intervals_real(bases, inds)
+    end
+end
+
+@inline function integration_intervals_real(bases, inds)
     T = eltype(first(bases))
     lb_tail = T(Inf)
     rb_tail = T(-Inf)

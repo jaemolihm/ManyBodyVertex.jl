@@ -82,6 +82,41 @@ end
 
     # Special case: Fermions with only tails
     @test get_fitting_points(ImagGridAndTailBasis(:Fermion, 0, 1, 0)) == -3:2
+
+    # Test basis_integral
+    basis = ImagGridAndTailBasis(:Fermion, 2, 3, 2)
+    basis2 = ImagGridAndTailBasis(:Fermion, 0, 0, 1)
+    @test basis_integral(basis) ≈ [6.129471951252935, 0, 0, 3.690688306902043, 1, 1, 1, 1]
+    @test basis_integral(basis, basis2) ≈ [6.129471951252935 0 0 0;
+                                            0 3.690688306902043 0 0;
+                                            0 6.129471951252935 0 0;
+                                            3.690688306902043 0 0 0;
+                                            1 -1 0 0;
+                                            0 0 1 0;
+                                            0 0 0 1;
+                                            1 1 0 0]
+    @test basis_integral(basis, ImagConstantBasis()) ≈ basis_integral(basis)
+end
+
+@testset "integrate imag" begin
+    using mfRG: integrate_imag
+    # zeta(n) = 1/1^n + 1/2^n + 1/3^n + ...
+    zeta = [0, π^2/6, 1.202056903159594285, π^4/90, 1.036927755143369926, π^6/945]
+    for n in 2:5
+        f(x) = (1/x)^n
+        y = zeta[n]
+        @test integrate_imag(f, 1, typemax(Int))[1] ≈ y atol=1e-14
+        @test mfRG.integrate_imag(f, typemin(Int), -1)[1] ≈ (-1)^n * y atol=1e-14
+
+        n0 = 30
+        y = zeta[n] - sum(f, 1:n0-1)
+        @test integrate_imag(f, n0, typemax(Int))[1] ≈ y atol=1e-14
+        @test integrate_imag(f, typemin(Int), -n0)[1] ≈ (-1)^n * y atol=1e-14
+
+        y = sum(f, 1:n0)
+        @test integrate_imag(f, 1, n0)[1] ≈ y atol=1e-14
+        @test integrate_imag(f, -n0, -1)[1] ≈ (-1)^n * y atol=1e-14
+    end
 end
 
 @testset "basis_for_bubble" begin

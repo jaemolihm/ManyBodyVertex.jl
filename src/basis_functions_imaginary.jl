@@ -16,11 +16,13 @@ Base.:(==)(x::InfRange, y) = false
 Base.:(==)(x, y::InfRange) = false
 
 
+abstract type AbstractImagBasis{T} <: Basis{T} end
+
 """
     ImagConstantBasis(::Type{T}=Float64)
 Constant imaginary-freqency basis.
 """
-struct ImagConstantBasis{T} <: Basis{T} end
+struct ImagConstantBasis{T} <: AbstractImagBasis{T} end
 ImagConstantBasis(::Type{T}=Float64) where {T} = ImagConstantBasis{T}()
 
 Base.axes(::ImagConstantBasis) = (InfRange(), 1:1)
@@ -46,7 +48,7 @@ Polynomial tails of order `nmin` to `nmax` outside `[xmin, wmax]`, discrete basi
 - explicit grid for `-wmax:wmax-1`, which corresponds to `v = 2π/β * (-wmax+1/2 : wmax-1/2)`.
 
 """
-struct ImagGridAndTailBasis{T} <: Basis{T}
+struct ImagGridAndTailBasis{T} <: AbstractImagBasis{T}
     particle_type::Symbol
     nmin::Int
     nmax::Int
@@ -96,8 +98,8 @@ end
         else
             x ∈ f.grid ? zero(T) : T(((f.wmax + 1/2) / (x + 1/2))^pow) * s
         end
-    else  # Grid: f(x, n) = δ(x - first(f.grid), n - ntails - 1)
-        x - first(f.grid) == n - ntails(f) - 1 ? one(T) : zero(T)
+    else  # Grid: 1 if x == f.grid[n - ntails]
+        x == f.grid[n - ntails(f)] ? one(T) : zero(T)
     end
 end
 
