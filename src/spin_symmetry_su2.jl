@@ -24,7 +24,7 @@ Convert between the "dm" (for channel A and T) and "pm" (for channel P) spin rep
 function su2_convert_spin_channel(C_out, Γ)
     C_in = channel(Γ[1])
     if C_in ∈ (:A, :T) && C_out == :P  # dm -> pm
-        ((Γ[1] - Γ[2]) / 2, Γ[2])
+        ((Γ[1] + Γ[2]) / 2, Γ[2])
     elseif C_in == :P && C_out ∈ (:A, :T)  # pm -> dm
         (2 * Γ[1] - Γ[2], Γ[2])
     else

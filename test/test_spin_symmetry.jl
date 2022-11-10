@@ -13,7 +13,7 @@ using Test
     @test su2_convert_spin_channel(:A, Γ_A)[2].data ≈ Γ_A[2].data
     @test su2_convert_spin_channel(:T, Γ_A)[1].data ≈ Γ_A[1].data
     @test su2_convert_spin_channel(:T, Γ_A)[2].data ≈ Γ_A[2].data
-    @test su2_convert_spin_channel(:P, Γ_A)[1].data ≈ (Γ_A[1].data .- Γ_A[2].data) ./ 2
+    @test su2_convert_spin_channel(:P, Γ_A)[1].data ≈ (Γ_A[1].data .+ Γ_A[2].data) ./ 2
     @test su2_convert_spin_channel(:P, Γ_A)[2].data ≈ Γ_A[2].data
 
     Γ_P = [Vertex4P{:KF, :P}(Float64, basis1, basis2, basis2), Vertex4P{:KF, :P}(Float64, basis1, basis2, basis2)]
@@ -25,6 +25,12 @@ using Test
     @test su2_convert_spin_channel(:T, Γ_P)[2].data ≈ Γ_P[2].data
     @test su2_convert_spin_channel(:P, Γ_P)[1].data ≈ Γ_P[1].data
     @test su2_convert_spin_channel(:P, Γ_P)[2].data ≈ Γ_P[2].data
+
+    # P -> A -> P
+    Γ_P_in_A = [Vertex4P{:KF, :A}(basis1, basis2, basis2, 1, x.data) for x in su2_convert_spin_channel(:A, Γ_P)]
+    Γ_P_2 = su2_convert_spin_channel(:P, Γ_P_in_A)
+    @test Γ_P_2[1].data ≈ Γ_P[1].data
+    @test Γ_P_2[2].data ≈ Γ_P[2].data
 
     # Test su2_bare_vertex
     U = 5.0
@@ -40,5 +46,9 @@ using Test
         @test Γ0_T[2].data ≈ Γ0_A[1].data .* -1
         @test Γ0_T[1].data ≈ su2_apply_crossing(Γ0_A)[1].data
         @test Γ0_T[2].data ≈ su2_apply_crossing(Γ0_A)[2].data
+        @test Γ0_A[1].data ≈ su2_convert_spin_channel(:A, Γ0_P)[1].data
+        @test Γ0_A[2].data ≈ su2_convert_spin_channel(:A, Γ0_P)[2].data
+        @test Γ0_P[1].data ≈ su2_convert_spin_channel(:P, Γ0_A)[1].data
+        @test Γ0_P[2].data ≈ su2_convert_spin_channel(:P, Γ0_A)[2].data
     end
 end
