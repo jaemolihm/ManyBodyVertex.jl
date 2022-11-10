@@ -1,6 +1,9 @@
 using Test
 using mfRG
 
+# TODO: Add test with finite D
+# TODO: In siam_get_green_function, change e, Δ, t to kwarg
+
 @testset "model SIAM" begin
     using StaticArrays
     using mfRG: siam_get_green_function, siam_get_bubble

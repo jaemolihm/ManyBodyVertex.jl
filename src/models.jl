@@ -30,15 +30,20 @@ end
     siam_get_green_function(v, e, Δ, t, ::Val{F}) where {F}
 Green function of the single-impurity anderson model in the wide-band limit.
 """
-function siam_get_green_function(v, e, Δ, t, ::Val{F}) where {F}
+function siam_get_green_function(v, e, Δ, t, ::Val{F}; D=Inf) where {F}
     if F === :KF
+        isinf(D) || error("SIAM with finite bandwith not implemented for KF")
         GR = 1 / (v - e + im * Δ)
         GA = 1 / (v - e - im * Δ)
         GK = -2im * Δ * tanh(v / t / 2) / ((v - e)^2 + Δ^2)
         SMatrix{2, 2}(0, GR, GA, GK)
     elseif F === :MF
         vv = 2π * t * (v + 1/2)
-        1 / (im * vv - e + im * sign(vv) * Δ)
+        if isinf(D)
+            1 / (im * vv - e + im * sign(vv) * Δ)
+        else
+            1 / (im * vv - e + im * 2 * Δ / π * atan(D / vv))
+        end
     elseif F === :ZF
         error("SIAM with ZF not implemented")
     else
@@ -50,7 +55,7 @@ end
     siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t)
 # Bubble for the SIAM in the wide-band limit in formalism `F` and channel `C`.
 """
-function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t) where {F, C}
+function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t, D=Inf) where {F, C}
     Π = Bubble{F, C}(basis_f, basis_b; temperature=t)
     vs = get_fitting_points(basis_f)
     ws = get_fitting_points(basis_b)
@@ -63,8 +68,8 @@ function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t) where {
     for (iw, w) in enumerate(ws)
         for (iv, v) in enumerate(vs)
             v1, v2 = _bubble_frequencies(Val(F), Val(C), v, w)
-            G1 = siam_get_green_function(v1, e, Δ, t, Val(F))
-            G2 = siam_get_green_function(v2, e, Δ, t, Val(F))
+            G1 = siam_get_green_function(v1, e, Δ, t, Val(F); D)
+            G2 = siam_get_green_function(v2, e, Δ, t, Val(F); D)
             if F === :KF
                 for (i, ks) in enumerate(CartesianIndices((2, 2, 2, 2)))
                     k11, k12, k21, k22 = _bubble_indices(Val(C), ks)
@@ -84,7 +89,7 @@ end
 
 
 """
-    siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val, C::Val; e, Δ, t)
+    siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val, C::Val; e, Δ, t, D=Inf)
 Improved version of `siam_get_bubble`.
 
 The information Π should store: data on v1 & v2 grid. (for simple case: separable as G1 and
@@ -105,12 +110,12 @@ The basis for `w` of `Π` should be chosen such that it is as dense as the `v`-g
 `|w| < 2 * max(v)`, and coarse but spanning up to largest bosonic frequency of interest
 (e.g. largest fitting grid point for `w` used in BSE) for larger `|w|`.
 """
-function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val{:KF}, C::Val; e, Δ, t)
+function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val{:KF}, C::Val; e, Δ, t, D=Inf)
     ntails(basis_b) > 0 && error("tails cannot be used for bosonic frequencies of a bubble")
 
     # Compute the SIAM 1-particle green function with basis_1p
     vs = get_fitting_points(basis_1p)
-    green_ = siam_get_green_function.(vs, e, Δ, t, F)
+    green_ = siam_get_green_function.(vs, e, Δ, t, F; D)
     green = reshape(reduce(hcat, green_), 2, 2, :)
     green_coeff = fit_basis_coeff(green, basis_1p, vs, 3)
 
@@ -161,12 +166,12 @@ function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val{:KF}, C::Va
 end
 
 
-function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val{:MF}, C::Val; e, Δ, t)
+function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val{:MF}, C::Val; e, Δ, t, D=Inf)
     ntails(basis_b) > 0 && error("tails cannot be used for bosonic frequencies of a bubble")
 
     # Compute the SIAM 1-particle green function with basis_1p
     vs = get_fitting_points(basis_1p)
-    green_ = siam_get_green_function.(vs, e, Δ, t, F)
+    green_ = siam_get_green_function.(vs, e, Δ, t, F; D)
     green = reshape(reduce(hcat, green_), 1, 1, :)
     green_coeff = fit_basis_coeff(green, basis_1p, vs, 3)
 

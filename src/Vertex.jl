@@ -26,10 +26,10 @@ channel).
 abstract type AbstractFrequencyVertex{F, T} end
 Base.eltype(::AbstractFrequencyVertex{F, T}) where {F, T} = T
 get_formalism(::AbstractFrequencyVertex{F}) where {F} = F
-
-abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
+
+abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
 channel(::AbstractVertex4P{F, C}) where {F, C} = C
 
 struct Vertex4P{F, C, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{F, C, T}
