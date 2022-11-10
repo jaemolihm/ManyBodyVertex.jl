@@ -9,6 +9,7 @@ export basis_for_bubble
 
 export Vertex4P, Bubble, to_matrix, vertex_keldyshview, apply_crossing
 export fit_bosonic_basis_coeff!
+export get_bare_vertex
 
 export vertex_bubble_integral
 export solve_BSE, solve_BSE_left
