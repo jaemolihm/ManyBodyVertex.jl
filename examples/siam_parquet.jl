@@ -14,8 +14,8 @@ begin
 
     e = 0
     Δ = 10.0
-    t = 0.1
     U = 0.5 * Δ
+    t = 0.005 * Δ
 
     # Parameters to ensure ~5% error
     vgrid_1p = get_nonequidistant_grid(10, 101) .* Δ;
@@ -110,7 +110,7 @@ begin
         ax.set_yticks([-5, 0, 5])
         ax.set_yticklabels([-5, 0, 5]; fontsize)
     end
-    suptitle("Γ_↑↓↓↑ / U, t channel, ω=$w, U/Δ=$(U/Δ), t/Δ=$(t/Δ)\n(Analogous to Fig. 9.1 (upper panel) of E. Walter thesis)"; y=0.98, fontsize)
-    # savefig("siam_parquet_vertex_U_$(U/Δ).png")
+    suptitle("Γ_↑↓↓↑ / U, t channel, ω=$w, U/Δ=$(U/Δ), t/U=$(t/U)\n(Analogous to Fig. 9.1 (upper panel) of E. Walter thesis)"; y=0.98, fontsize)
+    savefig("siam_parquet_vertex_U_$(U/Δ).png")
     display(fig); close(fig)
 end
