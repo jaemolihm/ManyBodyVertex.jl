@@ -27,7 +27,7 @@ end
 # SIAM: single-impurity Anderson model
 
 """
-    siam_get_green_function(v, e, Δ, t, ::Val{F}) where {F}
+    siam_get_green_function(v, e, Δ, t, ::Val{F}; D=Inf) where {F}
 Green function of the single-impurity anderson model in the wide-band limit.
 """
 function siam_get_green_function(v, e, Δ, t, ::Val{F}; D=Inf) where {F}
