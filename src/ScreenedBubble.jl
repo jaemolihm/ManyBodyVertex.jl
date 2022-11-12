@@ -1,28 +1,32 @@
 """
     ScreenedBubble(Π, K1)
-Bubble screened by a K1 vertex: ``Πscr = Π + Π * K1 * Π``.
+Bubble screened by a K1 vertex: ``Πscr = Π + Π * (Γ0 + K1) * Π``.
 ### Diagram for `to_matrix(Π)`:
-                Π                             Π -- K1 -- Π
-                |                             |          |
-                bΠ             +              bΠ         bΠ
-                |                             |          |
-    -- bL2 -- ov_LR -- bR1 --     -- bL2 -- ov_L        ov_R -- bR1 --
+                Π                             Π -- (Γ0 + K1) -- Π
+                |                             |                 |
+                bΠ             +              bΠ                bΠ
+                |                             |                 |
+    -- bL2 -- ov_LR -- bR1 --     -- bL2 -- ov_L               ov_R -- bR1 --
 """
-mutable struct ScreenedBubble{F, C, T, BT <: AbstractBubble{F, C, T}, VT} <: AbstractBubble{F, C, T}
+mutable struct ScreenedBubble{F, C, T, BT <: AbstractBubble{F, C, T}, VT0, VT1} <: AbstractBubble{F, C, T}
     # Basis for fermionic frequencies
     Π::BT
+    # Γ0 vertex for screening
+    Γ0::VT0
     # K1 vertex for screening
-    K1::VT
+    K1::VT1
     # Cached basis and overlap
     cache_basis_L
     cache_basis_R
     cache_overlap_LR
     cache_overlap_L
     cache_overlap_R
-    function ScreenedBubble(Π::AbstractBubble{F, C, T}, K1::AbstractVertex4P{F, C, T}) where {F, C, T}
+    function ScreenedBubble(Π::AbstractBubble{F, C, T}, Γ0::AbstractVertex4P{F}, K1::AbstractVertex4P{F, C, T}) where {F, C, T}
+        Γ0.basis_f1 isa Union{ConstantBasis, ImagConstantBasis} || error("Γ0.basis_f1 is not a ConstantBasis")
+        Γ0.basis_f2 isa Union{ConstantBasis, ImagConstantBasis} || error("Γ0.basis_f2 is not a ConstantBasis")
         K1.basis_f1 isa Union{ConstantBasis, ImagConstantBasis} || error("K1.basis_f1 is not a ConstantBasis")
         K1.basis_f2 isa Union{ConstantBasis, ImagConstantBasis} || error("K1.basis_f2 is not a ConstantBasis")
-        new{F, C, T, typeof(Π), typeof(K1)}(Π, K1, nothing, nothing, nothing, nothing, nothing)
+        new{F, C, T, typeof(Π), typeof(Γ0), typeof(K1)}(Π, Γ0, K1, nothing, nothing, nothing, nothing, nothing)
     end
 end
 
@@ -52,9 +56,9 @@ function to_matrix(Π::ScreenedBubble, w, ov_LR, ov_L, ov_R)
     # Π part
     Π_mat = to_matrix(Π.Π, w, ov_LR)
 
-    # Π * K1 * Π part
+    # Π * (Γ0 + K1) * Π part
     Π_w = Π(w)
-    K1_w = Π.K1(0, 0, w)
+    K1_w = Π.Γ0(0, 0, w) + Π.K1(0, 0, w)
     @ein Π_vertex_tmp1[xL, ij1, ij2] := ov_L[xL, a] * Π_w[a, ij1, ij2]
     @ein Π_vertex_tmp2[ij1, xR, ij2] := ov_R[xR, a] * Π_w[a, ij1, ij2]
     Π_vertex_tmp1 = Π_vertex_tmp1::Array{eltype(Π), 3}

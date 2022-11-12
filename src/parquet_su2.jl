@@ -66,8 +66,8 @@ function run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class, max_iter=5, rel
     K1_A = solve_BSE.(Γ0_A, ΠA, Γ0_A, Ref(basis_w))
     K1_P = solve_BSE.(Γ0_P, ΠP, Γ0_P, Ref(basis_w))
     K1_T = su2_apply_crossing(K1_A)
-    ΠAscr = ScreenedBubble.(ΠA, K1_A)
-    ΠPscr = ScreenedBubble.(ΠP, K1_P)
+    ΠAscr = ScreenedBubble.(ΠA, Γ0_A, K1_A)
+    ΠPscr = ScreenedBubble.(ΠP, Γ0_P, K1_P)
 
     T = eltype(K1_A[1])
     vertex = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, K1_A, K1_P, K1_T)

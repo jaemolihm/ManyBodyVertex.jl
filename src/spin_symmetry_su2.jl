@@ -21,7 +21,7 @@ Conversion between the two spin parametrizations are done using the
     su2_convert_spin_channel(C_out, Γ)
 Convert between the "dm" (for channel A and T) and "pm" (for channel P) spin representations.
 """
-function su2_convert_spin_channel(C_out, Γ)
+function su2_convert_spin_channel(C_out::Symbol, Γ)
     C_in = channel(Γ[1])
     if C_in ∈ (:A, :T) && C_out == :P  # dm -> pm
         ((Γ[1] + Γ[2]) / 2, Γ[2])

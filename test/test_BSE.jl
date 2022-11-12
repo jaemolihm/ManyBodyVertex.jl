@@ -61,10 +61,9 @@ using mfRG
         Γ_test2.data .+= Γ0_Π_Γ0.data
         @test norm((Γ_test2.data .- Γ.data)[:, :, inds_interp]) < 1e-10
 
-        # Test Γ = Γ0 Πscr Γ0 + Γ0 Π Γ0 Π Γ0
-        Πscr = mfRG.ScreenedBubble(Π, Γ)
+        # Test Γ = Γ0 Πscr Γ0
+        Πscr = mfRG.ScreenedBubble(Π, Γ0, Γ)
         Γ_test3 = vertex_bubble_integral(Γ0, Πscr, Γ0, basis_w)
-        Γ_test3.data .+= vertex_bubble_integral(Γ0, Π, Γ0_Π_Γ0, basis_w).data
         @test norm((Γ_test3.data .- Γ.data)[:, :, inds_interp]) < 1e-10
 
         # Test left BSE
@@ -114,8 +113,8 @@ end
     Γ1_A = solve_BSE(Γ0_A, ΠA, Γ0_A, basis_b)
     Γ1_P = solve_BSE(Γ0_P, ΠP, Γ0_P, basis_b)
     Γ1_T = apply_crossing(Γ1_A)
-    ΠAscr = ScreenedBubble(ΠA, Γ1_A)
-    ΠPscr = ScreenedBubble(ΠP, Γ1_P)
+    ΠAscr = ScreenedBubble(ΠA, Γ0_A, Γ1_A)
+    ΠPscr = ScreenedBubble(ΠP, Γ0_P, Γ1_P)
 
     test_cached(Γ1_A, ΠA, Γ0_A, basis_b, basis_aux)
     test_cached(Γ1_P, ΠAscr, Γ0_A, basis_b, basis_aux)
