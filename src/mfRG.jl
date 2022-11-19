@@ -2,7 +2,7 @@ module mfRG
 export get_nonequidistant_grid
 
 export nbasis
-export ConstantBasis, LinearSplineAndTailBasis
+export ConstantBasis, LinearSplineAndTailBasis, ShiftedSplineBasis
 export ImagConstantBasis, ImagGridAndTailBasis
 export get_fitting_points
 export basis_integral
@@ -22,6 +22,7 @@ include("basis/basis_functions.jl")
 include("basis/basis_functions_imaginary.jl")
 include("basis/basis_integral.jl")
 include("basis/basis_integral_imaginary.jl")
+include("basis/ShiftedSplineBasis.jl")
 
 include("channel.jl")
 include("spin_symmetry_su2.jl")
