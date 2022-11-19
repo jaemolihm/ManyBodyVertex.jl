@@ -1,4 +1,4 @@
-# FIXME: Allow odd tails
+# FIXME: Switch to right and left tails
 using Infinities: InfiniteCardinal
 using ContinuumArrays
 

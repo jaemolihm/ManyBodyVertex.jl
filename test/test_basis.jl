@@ -2,37 +2,43 @@ using Test
 using mfRG
 
 @testset "basis functions" begin
-    basis = LinearSplineAndTailBasis(2, 3, -4.:4.0:4.)
+    basis = LinearSplineAndTailBasis(2, 3, [-4., 0., 5.])
     @test size(basis, 2) == 7
+    @test nbasis(basis) == 7
     @test basis[-4.0, :] ≈ [0, 0, 0, 0, 1, 0, 0]
     @test basis[-2.0, :] ≈ [0, 0, 0, 0, 0.5, 0.5, 0]
     @test basis[ 0.0, :] ≈ [0, 0, 0, 0, 0, 1, 0]
-    @test basis[ 2.0, :] ≈ [0, 0, 0, 0, 0, 0.5, 0.5]
-    @test basis[ 4.0, :] ≈ [0, 0, 0, 0, 0, 0, 1]
-    for x in (nextfloat(4.), prevfloat(-4.), 10., -10.)
-        @test basis[x, :] ≈ [(4/x)^2, (4/x)^3, sign(x) * (4/x)^2, sign(x) * (4/x)^3, 0, 0, 0]
+    @test basis[ 2.5, :] ≈ [0, 0, 0, 0, 0, 0.5, 0.5]
+    @test basis[ 5.0, :] ≈ [0, 0, 0, 0, 0, 0, 1]
+    for x in (nextfloat(5.), prevfloat(-4.), 10., -10.)
+        if x > 0
+            @test basis[x, :] ≈ [(5/x)^2, (5/x)^3, 0, 0, 0, 0, 0]
+        else
+            @test basis[x, :] ≈ [0, 0, (-4/x)^2, (-4/x)^3, 0, 0, 0]
+        end
     end
-    @test all(maximum(basis[vcat(basis.grid, prevfloat(-4.), nextfloat(4.)), :], dims=1) .≈ 1)
+    @test all(maximum(basis[vcat(basis.grid, prevfloat(-4.), nextfloat(5.)), :], dims=1) .≈ 1)
 
     points = get_fitting_points(basis)
-    @test points ≈ [-12, -8, -4, -4, 0, 4, 4, 8, 12]
+    @test points ≈ [-12, -8, -4, -4, 0, 5, 5, 10, 15]
     @test allunique(points)
 
     basis = ConstantBasis()
+    @test nbasis(basis) == 1
     @test all(basis[-1:1, 1] .≈ 1)
     @test_throws BoundsError basis[1, 2]
 
     # Test basis_integral
     basis = LinearSplineAndTailBasis(2, 3, -4.:4.0:4.)
     basis2 = LinearSplineAndTailBasis(0, 0, [-1., 1.])
-    @test basis_integral(basis) ≈ [8, 0, 0, 4, 2, 4, 2]
-    @test basis_integral(basis, basis2) ≈ [8 0 0 0;
+    @test basis_integral(basis) ≈ [4, 2, 4, 2, 2, 4, 2]
+    @test basis_integral(basis, basis2) ≈ [4 0 0 0;
+                                           2 0 0 0;
                                            0 4 0 0;
-                                           0 8 0 0;
-                                           4 0 0 0;
-                                           15/8 -15/8 5/48 1/48;
-                                           9/4 0 7/8 7/8;
-                                           15/8 15/8 1/48 5/48]
+                                           0 2 0 0;
+                                           0 15/8 5/48 1/48;
+                                           9/8 9/8 7/8 7/8;
+                                           15/8 0 1/48 5/48]
     @test basis_integral(basis, ConstantBasis()) ≈ basis_integral(basis)
 end
 

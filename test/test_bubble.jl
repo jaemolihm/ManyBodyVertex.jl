@@ -5,9 +5,9 @@ using mfRG
     basis1 = ConstantBasis()
     basis2 = LinearSplineAndTailBasis(2, 4, -2:0.5:2)
     basis3 = LinearSplineAndTailBasis(2, 4, [-1., 1.])
-    n1 = size(basis1, 2)
-    n2 = size(basis2, 2)
-    n3 = size(basis3, 2)
+    n1 = nbasis(basis1)
+    n2 = nbasis(basis2)
+    n3 = nbasis(basis3)
 
     Π = Bubble{:KF, :A}(basis3, basis2, 3)
     overlap = basis_integral(basis1, basis2, basis3)

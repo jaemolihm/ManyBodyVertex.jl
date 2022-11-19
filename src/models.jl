@@ -131,28 +131,27 @@ function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val{:KF}, C::Va
         bubble_value_integral = zeros(ComplexF64, size(basis_f, 2), 16)
         for i_f in axes(basis_f, 2)
             intervals_v = integration_intervals((basis_f,), (i_f,))
-            for (l_v, r_v) in intervals_v
-                l_v >= r_v && continue
-                function f(v)
-                    v1, v2 = _bubble_frequencies(F, C, v, w)
-                    coeff_f = basis_f[v, i_f]
-                    @views coeff_g1 .= basis_1p[v1, :]
-                    @views coeff_g2 .= basis_1p[v2, :]
-                    g1 = SVector(zero(ComplexF64),
-                          coeff_g1' * view(green_coeff, 2, 1, :),
-                          coeff_g1' * view(green_coeff, 1, 2, :),
-                          coeff_g1' * view(green_coeff, 2, 2, :))
-                    g2 = SVector(zero(ComplexF64),
-                          coeff_g2' * view(green_coeff, 2, 1, :),
-                          coeff_g2' * view(green_coeff, 1, 2, :),
-                          coeff_g2' * view(green_coeff, 2, 2, :))
-                    SArray{Tuple{2,2,2,2}}(g1 * transpose(g2)) * coeff_f
-                end
-                res, err = quadgk(f, l_v, r_v)
-                for (ik, ks) in enumerate(Iterators.product(1:2, 1:2, 1:2, 1:2))
-                    k11, k12, k21, k22 = _bubble_indices(C, ks)
-                    bubble_value_integral[i_f, ik] += res[k11, k12, k21, k22]
-                end
+            l_v, r_v = endpoints(intervals_v)
+            l_v >= r_v && continue
+            function f(v)
+                v1, v2 = _bubble_frequencies(F, C, v, w)
+                coeff_f = basis_f[v, i_f]
+                @views coeff_g1 .= basis_1p[v1, :]
+                @views coeff_g2 .= basis_1p[v2, :]
+                g1 = SVector(zero(ComplexF64),
+                        coeff_g1' * view(green_coeff, 2, 1, :),
+                        coeff_g1' * view(green_coeff, 1, 2, :),
+                        coeff_g1' * view(green_coeff, 2, 2, :))
+                g2 = SVector(zero(ComplexF64),
+                        coeff_g2' * view(green_coeff, 2, 1, :),
+                        coeff_g2' * view(green_coeff, 1, 2, :),
+                        coeff_g2' * view(green_coeff, 2, 2, :))
+                SArray{Tuple{2,2,2,2}}(g1 * transpose(g2)) * coeff_f
+            end
+            res, err = quadgk(f, l_v, r_v)
+            for (ik, ks) in enumerate(Iterators.product(1:2, 1:2, 1:2, 1:2))
+                k11, k12, k21, k22 = _bubble_indices(C, ks)
+                bubble_value_integral[i_f, ik] += res[k11, k12, k21, k22]
             end
         end
         Π_data[:, :, iw] .= overlap_f \ bubble_value_integral

@@ -1,28 +1,35 @@
+using IntervalSets
 using ContinuumArrays
 using QuasiArrays: domain
 using QuadGK
 
 # Each basis set `f` should define the following functions:
 # `Base.axes(f)`: domain of the basis, and the allowed indices of the basis functions
+# `Base.nbasis(f)`: number of basis functions
 # `Base.getindex(f, x, n)`: value of the `n`-th basis function at `x`
-# `support_domain(f, n)`: support of the `n`-th basis function
+# `support_bounds(f, n)`: support of the `n`-th basis function
 
-# FIXME: multiply some constant tail to make its norm not so small.
+abstract type AbstractRealFreqBasis{T} <: Basis{T}; end
+Base.axes(f::AbstractRealFreqBasis) = (Inclusion(-Inf..Inf), 1:nbasis(f))
 
-struct ConstantBasis{T} <: Basis{T}
-end
+struct ConstantBasis{T} <: AbstractRealFreqBasis{T}; end
 ConstantBasis(::Type{T}=Float64) where {T} = ConstantBasis{T}()
-Base.axes(::ConstantBasis) = (Inclusion(-Inf..Inf), 1:1)
+ntails(::ConstantBasis) = 1
+nbasis(::ConstantBasis) = 1
 Base.getindex(::ConstantBasis{T}, x::Number, n::Integer) where {T} = (n == 1 || throw(BoundsError()); one(T))
-support_domain(::ConstantBasis, n::Integer) = (n == 1 || throw(BoundsError()); -Inf..Inf)
-ntails(f::ConstantBasis) = 1
+
+@inline function support_bounds(f::ConstantBasis, n::Integer)
+    @boundscheck n ∈ axes(f, 2) || throw(BoundsError())
+    -Inf .. Inf
+end
+
 
 """
-- `n = 1 ~ ntail`: polynomial of 1/x ``(x0 / x)^{nmin + n - 1}`` where ``x0 = maximum(abs(grid))``
-- `n = ntail+1 ~ 2*ntail`: polynomial of 1/x multiplied by sign ``sign(x) * (x0 / x)^{nmin + n - 1}``
-- `n = 2*ntail+1 ~ end`: linear spline on `grid`
+- `n = 1 ~ ntails/2`: ``(grid[end] / x)^{nmin+n-1}`` at x > grid[end] (right tail)
+- `n = ntails/2 + 1 ~ ntails`: ``(grid[1] / x)^{nmin+n-1}`` at x < grid[1] (left tail)
+- `n = ntail + 1 ~ end`: linear spline on `grid`
 """
-struct LinearSplineAndTailBasis{T, FT} <: Basis{T}
+struct LinearSplineAndTailBasis{T, FT} <: AbstractRealFreqBasis{T}
     nmin::Int
     nmax::Int
     grid::Vector{FT}
@@ -33,20 +40,16 @@ end
 LinearSplineAndTailBasis(nmin, nmax, grid) = LinearSplineAndTailBasis(Float64, nmin, nmax, grid)
 
 ntails(f::LinearSplineAndTailBasis) = 2 * (f.nmax - f.nmin + 1)
+nbasis(f::LinearSplineAndTailBasis) = ntails(f) + length(f.grid)
 
-Base.axes(f::LinearSplineAndTailBasis) = (Inclusion(-Inf..Inf), 1:(ntails(f) + length(f.grid)))
-
-"""
-    support_domain(f::LinearSplineAndTailBasis, n::Integer)
-Domain of nonzero value of the `n`-th basis function.
-"""
-@inline function support_domain(f::LinearSplineAndTailBasis, n::Integer)
+@inline function support_bounds(f::LinearSplineAndTailBasis{T, FT}, n::Integer) where {T, FT}
     @boundscheck n ∈ axes(f, 2) || throw(BoundsError())
-    if n <= ntails(f)
-        domain(Inclusion(-Inf..prevfloat(f.grid[1])) ∪ Inclusion(nextfloat(f.grid[end])..Inf))
+    if n <= div(ntails(f), 2)  # right tail
+        nextfloat(f.grid[end]) .. FT(Inf)
+    elseif n <= ntails(f)  # left tail
+        FT(-Inf) .. prevfloat(f.grid[1])
     else
         k = n - ntails(f)
-        # domain(Inclusion(f.grid[max(1, k-1)] .. f.grid[min(end, k+1)]))
         f.grid[max(1, k-1)] .. f.grid[min(end, k+1)]
     end
 end
@@ -54,18 +57,14 @@ end
 @inline function Base.getindex(f::LinearSplineAndTailBasis{T}, x::Number, n::Integer) where {T}
     x ∈ axes(f, 1) || throw(BoundsError())
     n ∈ axes(f, 2) || throw(BoundsError())
-    if x ∈ support_domain(f, n)
-        if n <= div(ntails(f), 2)
-            # Tail 1: polynomial of 1 / x
-            x0 = max(abs(f.grid[1]), abs(f.grid[end]))
-            return T((x0 / x)^(n - 1 + f.nmin))
-        elseif n <= ntails(f)
-            # Tail 2: polynomial of 1 / x times sign(x)
-            n_ = n - div(ntails(f), 2)
-            x0 = max(abs(f.grid[1]), abs(f.grid[end]))
-            return T(sign(x) * (x0 / x)^(n_ - 1 + f.nmin))
-        else
-            # Spline interpolation
+    if x ∈ support_bounds(f, n)
+        if n <= div(ntails(f), 2)  # right tail
+            p = n - 1 + f.nmin
+            return T((f.grid[end] / x)^p)
+        elseif n <= ntails(f)  # left tail
+            p = n - div(ntails(f), 2) - 1 + f.nmin
+            return T((f.grid[1] / x)^p)
+        else  # Spline interpolation
             p = f.grid
             k = n - ntails(f)
             x == p[k] && return one(T)

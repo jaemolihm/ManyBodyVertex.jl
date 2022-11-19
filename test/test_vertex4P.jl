@@ -56,7 +56,7 @@ end
     basis2 = LinearSplineAndTailBasis(0, 1, [-2., 2.])
     Γ = Vertex4P{:ZF, :A}(Float64, basis1, basis1, basis2)
     vec(Γ.data) .= [1., 2., 3., 4., 5., 6.]
-    @test Γ(1., 1., 3., Val(:A))[1, 1] ≈ 1 + 2 * 2/3 + 3 + 2 * 4/3
+    @test Γ(1., 1., 3., Val(:A))[1, 1] ≈ 1 + 2 * 2/3
     @test Γ(1., 1., 3., Val(:P))[1, 1] ≈ 5.
     @test Γ(1., 1., 3., Val(:T))[1, 1] ≈ 5.5
     @test Γ(0., 1., 3., Val(:A)) == Γ(0., 1., 3.)

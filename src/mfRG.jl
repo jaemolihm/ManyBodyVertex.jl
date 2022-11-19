@@ -1,6 +1,7 @@
 module mfRG
 export get_nonequidistant_grid
 
+export nbasis
 export ConstantBasis, LinearSplineAndTailBasis
 export ImagConstantBasis, ImagGridAndTailBasis
 export get_fitting_points
