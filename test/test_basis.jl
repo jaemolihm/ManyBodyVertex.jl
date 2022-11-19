@@ -11,10 +11,10 @@ using mfRG
     @test basis[ 2.5, :] ≈ [0, 0, 0, 0, 0, 0.5, 0.5]
     @test basis[ 5.0, :] ≈ [0, 0, 0, 0, 0, 0, 1]
     for x in (nextfloat(5.), prevfloat(-4.), 10., -10.)
-        if x > 0
-            @test basis[x, :] ≈ [(5/x)^2, (5/x)^3, 0, 0, 0, 0, 0]
+        @test if x > 0
+            basis[x, :] ≈ [(5/x)^2, (5/x)^3, 0, 0, 0, 0, 0]
         else
-            @test basis[x, :] ≈ [0, 0, (-4/x)^2, (-4/x)^3, 0, 0, 0]
+            basis[x, :] ≈ [0, 0, (-4/x)^2, (-4/x)^3, 0, 0, 0]
         end
     end
     @test all(maximum(basis[vcat(basis.grid, prevfloat(-4.), nextfloat(5.)), :], dims=1) .≈ 1)

@@ -4,8 +4,7 @@ using QuasiArrays: domain
 using QuadGK
 
 # Each basis set `f` should define the following functions:
-# `Base.axes(f)`: domain of the basis, and the allowed indices of the basis functions
-# `Base.nbasis(f)`: number of basis functions
+# `nbasis(f)`: number of basis functions
 # `Base.getindex(f, x, n)`: value of the `n`-th basis function at `x`
 # `support_bounds(f, n)`: support of the `n`-th basis function
 
@@ -54,23 +53,27 @@ nbasis(f::LinearSplineAndTailBasis) = ntails(f) + length(f.grid)
     end
 end
 
+function _linear_spline_and_tail(::Type{T}, x, n, nmin, nmax, grid) where {T}
+    ntails_over_2 = nmax - nmin + 1
+    if n <= ntails_over_2  # right tail
+        p = n - 1 + nmin
+        return T((grid[end] / x)^p)
+    elseif n <= ntails_over_2 * 2  # left tail
+        p = n - ntails_over_2 - 1 + nmin
+        return T((grid[1] / x)^p)
+    else  # Spline interpolation
+        k = n - ntails_over_2 * 2
+        x == grid[k] && return one(T)
+        x < grid[k] && return (x-grid[k-1])/(grid[k]-grid[k-1])
+        return T((x-grid[k+1])/(grid[k]-grid[k+1])) # x > grid[k]
+    end
+end
+
 @inline function Base.getindex(f::LinearSplineAndTailBasis{T}, x::Number, n::Integer) where {T}
     x ∈ axes(f, 1) || throw(BoundsError())
     n ∈ axes(f, 2) || throw(BoundsError())
     if x ∈ support_bounds(f, n)
-        if n <= div(ntails(f), 2)  # right tail
-            p = n - 1 + f.nmin
-            return T((f.grid[end] / x)^p)
-        elseif n <= ntails(f)  # left tail
-            p = n - div(ntails(f), 2) - 1 + f.nmin
-            return T((f.grid[1] / x)^p)
-        else  # Spline interpolation
-            p = f.grid
-            k = n - ntails(f)
-            x == p[k] && return one(T)
-            x < p[k] && return (x-p[k-1])/(p[k]-p[k-1])
-            return T((x-p[k+1])/(p[k]-p[k+1])) # x > p[k]
-        end
+        _linear_spline_and_tail(T, x, n, f.nmin, f.nmax, f.grid)
     else
         return zero(T)
     end
