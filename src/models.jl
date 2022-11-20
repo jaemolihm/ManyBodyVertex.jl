@@ -27,10 +27,10 @@ end
 # SIAM: single-impurity Anderson model
 
 """
-    siam_get_green_function(v, e, Δ, t, ::Val{F}; D=Inf) where {F}
+    siam_get_green_function(v, ::Val{F}; e, Δ, t, D=Inf) where {F}
 Green function of the single-impurity anderson model in the wide-band limit.
 """
-function siam_get_green_function(v, e, Δ, t, ::Val{F}; D=Inf) where {F}
+function siam_get_green_function(v, ::Val{F}; e, Δ, t, D=Inf) where {F}
     if F === :KF
         isinf(D) || error("SIAM with finite bandwith not implemented for KF")
         GR = 1 / (v - e + im * Δ)
@@ -68,8 +68,8 @@ function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t, D=Inf) 
     for (iw, w) in enumerate(ws)
         for (iv, v) in enumerate(vs)
             v1, v2 = _bubble_frequencies(Val(F), Val(C), v, w)
-            G1 = siam_get_green_function(v1, e, Δ, t, Val(F); D)
-            G2 = siam_get_green_function(v2, e, Δ, t, Val(F); D)
+            G1 = siam_get_green_function(v1, Val(F); e, Δ, t, D)
+            G2 = siam_get_green_function(v2, Val(F); e, Δ, t, D)
             if F === :KF
                 for (i, ks) in enumerate(CartesianIndices((2, 2, 2, 2)))
                     k11, k12, k21, k22 = _bubble_indices(Val(C), ks)
@@ -115,7 +115,7 @@ function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val{:KF}, C::Va
 
     # Compute the SIAM 1-particle green function with basis_1p
     vs = get_fitting_points(basis_1p)
-    green_ = siam_get_green_function.(vs, e, Δ, t, F; D)
+    green_ = siam_get_green_function.(vs, F; e, Δ, t, D)
     green = reshape(reduce(hcat, green_), 2, 2, :)
     green_coeff = fit_basis_coeff(green, basis_1p, vs, 3)
 
@@ -170,7 +170,7 @@ function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val{:MF}, C::Va
 
     # Compute the SIAM 1-particle green function with basis_1p
     vs = get_fitting_points(basis_1p)
-    green_ = siam_get_green_function.(vs, e, Δ, t, F; D)
+    green_ = siam_get_green_function.(vs, F; e, Δ, t, D)
     green = reshape(reduce(hcat, green_), 1, 1, :)
     green_coeff = fit_basis_coeff(green, basis_1p, vs, 3)
 

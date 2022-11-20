@@ -2,7 +2,6 @@ using Test
 using mfRG
 
 # TODO: Add test with finite D
-# TODO: In siam_get_green_function, change e, Δ, t to kwarg
 
 @testset "model SIAM" begin
     using StaticArrays
@@ -11,10 +10,10 @@ using mfRG
     Δ = 1.0
     t = 0.1
     v = 10.0
-    @test siam_get_green_function(v, e, Δ, t, Val(:MF)) isa Number
-    @test siam_get_green_function(v, e, Δ, t, Val(:KF)) isa SMatrix{2,2}
+    @test siam_get_green_function(v, Val(:MF); e, Δ, t) isa Number
+    @test siam_get_green_function(v, Val(:KF); e, Δ, t) isa SMatrix{2,2}
     for F in (:MF, :KF)
-        @inferred siam_get_green_function(v, e, Δ, t, Val(F))
+        @inferred siam_get_green_function(v, Val(F); e, Δ, t)
     end
 
     basis_f = LinearSplineAndTailBasis(2, 4, -3:0.6:3)
