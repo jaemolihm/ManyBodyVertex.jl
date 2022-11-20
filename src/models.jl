@@ -57,15 +57,22 @@ end
 """
 function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t, D=Inf) where {F, C}
     Π = Bubble{F, C}(basis_f, basis_b; temperature=t)
-    vs = get_fitting_points(basis_f)
     ws = get_fitting_points(basis_b)
     if F === :KF
-        Π_data = zeros(eltype(Π.data), length(vs), 16, length(ws))
+        Π_data = zeros(eltype(Π.data), nbasis(basis_f), 16, length(ws))
     else
-        Π_data = zeros(eltype(Π.data), length(vs), 1, length(ws))
+        Π_data = zeros(eltype(Π.data), nbasis(basis_f), 1, length(ws))
     end
 
     for (iw, w) in enumerate(ws)
+        set_basis_shift!(basis_f, w)
+        vs = get_fitting_points(basis_f)
+        if F === :KF
+            Π_data_iw = zeros(eltype(Π.data), length(vs), 16)
+        else
+            Π_data_iw = zeros(eltype(Π.data), length(vs), 1)
+        end
+
         for (iv, v) in enumerate(vs)
             v1, v2 = _bubble_frequencies(Val(F), Val(C), v, w)
             G1 = siam_get_green_function(v1, Val(F); e, Δ, t, D)
@@ -73,17 +80,17 @@ function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t, D=Inf) 
             if F === :KF
                 for (i, ks) in enumerate(CartesianIndices((2, 2, 2, 2)))
                     k11, k12, k21, k22 = _bubble_indices(Val(C), ks)
-                    Π_data[iv, i, iw] = G1[k11, k12] * G2[k21, k22]
+                    Π_data_iw[iv, i] = G1[k11, k12] * G2[k21, k22]
                 end
             else
-                Π_data[iv, 1, iw] = G1 * G2
+                Π_data_iw[iv, 1] = G1 * G2
             end
         end
+        Π_data[:, :, iw] .= fit_basis_coeff(Π_data_iw, basis_f, vs, 1)
     end
     Π_data .*= _bubble_prefactor(Val(C))
-    Π_data_tmp1 = fit_basis_coeff(Π_data, basis_f, vs, 1)
-    Π_data_tmp2 = fit_basis_coeff(Π_data_tmp1, basis_b, ws, 3)
-    Π.data .= reshape(Π_data_tmp2, size(Π.data))
+    Π_data_tmp = fit_basis_coeff(Π_data, basis_b, ws, 3)
+    Π.data .= reshape(Π_data_tmp, size(Π.data))
     Π
 end
 
