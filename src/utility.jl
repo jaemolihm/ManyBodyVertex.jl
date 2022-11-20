@@ -18,3 +18,23 @@ function get_nonequidistant_grid(wmax, n; w_s=Inf)
     @assert f(inv_f(2.0)) ≈ 2.0
     f.(range(-inv_f(wmax), inv_f(wmax), length=n))
 end
+
+"""
+    deduplicate_knots!(knots)
+Copied from Interpolations.jl
+Makes knots unique by incrementing repeated but otherwise sorted knots using `nextfloat`.
+"""
+function deduplicate_knots!(knots)
+    last_knot = first(knots)
+    for i = eachindex(knots)
+        if i == 1
+            continue
+        end
+        if knots[i] == last_knot
+            @inbounds knots[i] = nextfloat(knots[i-1])
+        else
+            last_knot = @inbounds knots[i]
+        end
+    end
+    knots
+end

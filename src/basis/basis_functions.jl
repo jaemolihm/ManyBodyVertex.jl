@@ -63,9 +63,13 @@ function _linear_spline_and_tail(::Type{T}, x, n, nmin, nmax, grid) where {T}
         return T((grid[1] / x)^p)
     else  # Spline interpolation
         k = n - ntails_over_2 * 2
-        x == grid[k] && return one(T)
-        x < grid[k] && return (x-grid[k-1])/(grid[k]-grid[k-1])
-        return T((x-grid[k+1])/(grid[k]-grid[k+1])) # x > grid[k]
+        if x == grid[k]
+            return one(T)
+        elseif x < grid[k]
+            k > 1 ? (x-grid[k-1])/(grid[k]-grid[k-1]) : one(T)
+        else  # x > grid[k]
+            k < length(grid) ? T((x-grid[k+1])/(grid[k]-grid[k+1])) : one(T)
+        end
     end
 end
 
