@@ -25,7 +25,6 @@ using mfRG
     # Test _bubble_frequencies_inv
     for f in (:MF, :ZF, :KF), c in (:A, :P, :T)
         for (v, w) in [(10, 2), (-5, 2), (6, -3), (-5, -11)]
-            @info v, w
             v1, v2 = mfRG._bubble_frequencies(Val(f), Val(c), v, w)
             @test all((v, w) .≈ mfRG._bubble_frequencies_inv(Val(f), Val(c), v1, v2))
         end
