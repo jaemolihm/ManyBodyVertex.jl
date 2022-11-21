@@ -68,4 +68,38 @@ end
             end
         end
     end
+
+    # Test compute_bubble and compute_bubble_smoothed with Lazy G0 and explicit G0 gives
+    # similar results. (The two results should be identical for infinitely dense basis_1p.)
+    for F in (:KF, :MF)
+        D = F == :KF ? Inf : 5.0
+        G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
+
+        # Compute Green2P object for G0
+        if F === :KF
+            basis_f = LinearSplineAndTailBasis(2, 4, -3.:3:3)
+            basis_b = LinearSplineAndTailBasis(1, 0, -5.:5:5)
+            basis_1p = LinearSplineAndTailBasis(1, 3, get_nonequidistant_grid(7, 121))
+        else
+            basis_f = ImagGridAndTailBasis(:Fermion, 2, 4, 2)
+            basis_b = ImagGridAndTailBasis(:Boson, 1, 0, 3)
+            basis_1p = ImagGridAndTailBasis(:Fermion, 1, 3, 32)
+        end
+        nind = mfRG.get_nind(G0)
+        vs = get_fitting_points(basis_1p)
+        green_data_tmp = G0.(vs)
+        green_data = reshape(reduce(hcat, green_data_tmp), nind, nind, length(vs))
+        data = mfRG.fit_basis_coeff(green_data, basis_1p, vs, 3)
+        G0_basis = Green2P{F}(basis_1p, 1, data)
+
+        for C in (:A, :P, :T)
+            Π1 = compute_bubble(G0, basis_f, basis_b, Val(C); temperature=t)
+            Π2 = compute_bubble(G0_basis, basis_f, basis_b, Val(C); temperature=t)
+            @test norm(Π1.data - Π2.data) / norm(Π1.data) < 4e-3
+
+            Π1 = compute_bubble_smoothed(G0, basis_f, basis_b, Val(C); temperature=t)
+            Π2 = compute_bubble_smoothed(G0_basis, basis_f, basis_b, Val(C); temperature=t)
+            @test norm(Π1.data - Π2.data) / norm(Π1.data) < 4e-3
+        end
+    end
 end
