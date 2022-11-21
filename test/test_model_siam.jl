@@ -22,7 +22,7 @@ using mfRG
         G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
         @test G0 isa mfRG.AbstractFrequencyVertex{F, ComplexF64}
         v = rand()
-        @test G0(v) ≈ siam_get_green_function(v, Val(F); e, Δ, t, D)
+        @test all(G0(v) .≈ siam_get_green_function(v, Val(F); e, Δ, t, D))
         @inferred G0(v)
     end
 

@@ -89,6 +89,6 @@ end
 function siam_get_bubble_improved(basis_f, basis_b, basis_1p, ::Val{F}, ::Val{C}; e, Δ, t, D=Inf) where {F, C}
     Base.depwarn("Use SIAMLazyGreen2P and compute_bubble_smoothed", :siam_get_bubble_improved, force=true)
     G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
-    compute_bubble_smoothed(G0, basis_f, basis_b, Val(C), t)
+    compute_bubble_smoothed(G0, basis_f, basis_b, Val(C); temperature=t)
 end
 
