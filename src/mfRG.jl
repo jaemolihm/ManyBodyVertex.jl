@@ -10,7 +10,7 @@ export basis_for_bubble
 
 export Green2P
 export Vertex4P, to_matrix, vertex_keldyshview, apply_crossing
-export Bubble, compute_bubble
+export Bubble, compute_bubble, compute_bubble_smoothed
 export fit_bosonic_basis_coeff!
 export get_bare_vertex
 
@@ -37,6 +37,7 @@ include("CachedVertex.jl")
 include("AsymptoticVertex.jl")
 include("Bubble.jl")
 include("ScreenedBubble.jl")
+include("compute_bubble_smoothed.jl")
 
 include("BSE.jl")
 include("parquet_su2.jl")

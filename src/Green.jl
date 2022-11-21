@@ -9,6 +9,9 @@ get_formalism(::AbstractFrequencyVertex{F}) where {F} = F
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
 
+# Type for lazy Green function object
+abstract type AbstractLazyGreen2P{F, T} <: AbstractFrequencyVertex{F, T} end
+
 """
     Green2P{F}(::Type{T}=ComplexF64, basis, norb=1)
 2-point Green function.
