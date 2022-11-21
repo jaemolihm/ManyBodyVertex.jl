@@ -9,13 +9,16 @@ export basis_integral
 export basis_for_bubble
 
 export Green2P
-export Vertex4P, Bubble, to_matrix, vertex_keldyshview, apply_crossing
+export Vertex4P, to_matrix, vertex_keldyshview, apply_crossing
+export Bubble, compute_bubble
 export fit_bosonic_basis_coeff!
 export get_bare_vertex
 
 export vertex_bubble_integral
 export solve_BSE, solve_BSE_left
 export run_parquet
+
+export SIAMLazyGreen2P
 
 include("utility.jl")
 

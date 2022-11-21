@@ -5,7 +5,7 @@ using mfRG
 
 @testset "model SIAM" begin
     using StaticArrays
-    using mfRG: siam_get_green_function, siam_get_bubble
+    using mfRG: siam_get_green_function
     e = 0.5
     Δ = 1.0
     t = 0.1
@@ -14,12 +14,6 @@ using mfRG
     @test siam_get_green_function(v, Val(:KF); e, Δ, t) isa SMatrix{2,2}
     for F in (:MF, :KF)
         @inferred siam_get_green_function(v, Val(F); e, Δ, t)
-    end
-
-    basis_f = LinearSplineAndTailBasis(2, 4, -3:0.6:3)
-    basis_b = LinearSplineAndTailBasis(1, 3, -2:0.5:2)
-    for F in (:MF, :KF), C in (:A, :P, :T)
-        @test siam_get_bubble(basis_f, basis_b, Val(F), Val(C); e, Δ, t) isa Bubble{F, C, ComplexF64}
     end
 
     # Test SIAMLazyGreen2P
@@ -31,6 +25,15 @@ using mfRG
         @test G0(v) ≈ siam_get_green_function(v, Val(F); e, Δ, t, D)
         @inferred G0(v)
     end
+
+    # Test SIAM bubble
+    basis_f = LinearSplineAndTailBasis(2, 4, -3:0.6:3)
+    basis_b = LinearSplineAndTailBasis(1, 3, -2:0.5:2)
+    for F in (:MF, :KF), C in (:A, :P, :T)
+        G0 = SIAMLazyGreen2P{F}(; e, Δ, t)
+        @test compute_bubble(G0, basis_f, basis_b, Val(C); temperature=t) isa Bubble{F, C, ComplexF64}
+    end
+
 end
 
 @testset "siam_get_bubble_improved" begin

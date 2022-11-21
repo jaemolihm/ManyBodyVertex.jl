@@ -56,7 +56,7 @@ end
 Lazy Green2P object for getting SIAM bare Green function.
 """
 struct SIAMLazyGreen2P{F, T} <: mfRG.AbstractFrequencyVertex{F, T}
-    nind::Int
+    norb::Int
     e::Float64
     Δ::Float64
     t::Float64
@@ -65,8 +65,8 @@ struct SIAMLazyGreen2P{F, T} <: mfRG.AbstractFrequencyVertex{F, T}
         F === :KF && !isinf(D) && error("SIAM with finite bandwith not implemented for KF")
         F === :ZF && error("SIAM with ZF not implemented")
         F ∉ (:KF, :MF, :ZF) && error("Wrong formalism $formalism")
-        nind = nkeldysh(F)
-        new{F, ComplexF64}(nind, e, Δ, t, D)
+        norb = 1
+        new{F, ComplexF64}(norb, e, Δ, t, D)
     end
 end
 SIAMLazyGreen2P{F}(::Type{T}=ComplexF64; e, Δ, t, D=Inf) where {F, T} = SIAMLazyGreen2P{F, T}(; e, Δ, t, D)
@@ -77,42 +77,9 @@ SIAMLazyGreen2P{F}(::Type{T}=ComplexF64; e, Δ, t, D=Inf) where {F, T} = SIAMLaz
 # Bubble for the SIAM in the wide-band limit in formalism `F` and channel `C`.
 """
 function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t, D=Inf) where {F, C}
-    Π = Bubble{F, C}(basis_f, basis_b; temperature=t)
-    ws = get_fitting_points(basis_b)
-    if F === :KF
-        Π_data = zeros(eltype(Π.data), nbasis(basis_f), 16, length(ws))
-    else
-        Π_data = zeros(eltype(Π.data), nbasis(basis_f), 1, length(ws))
-    end
-
-    for (iw, w) in enumerate(ws)
-        set_basis_shift!(basis_f, w)
-        vs = get_fitting_points(basis_f)
-        if F === :KF
-            Π_data_iw = zeros(eltype(Π.data), length(vs), 16)
-        else
-            Π_data_iw = zeros(eltype(Π.data), length(vs), 1)
-        end
-
-        for (iv, v) in enumerate(vs)
-            v1, v2 = _bubble_frequencies(Val(F), Val(C), v, w)
-            G1 = siam_get_green_function(v1, Val(F); e, Δ, t, D)
-            G2 = siam_get_green_function(v2, Val(F); e, Δ, t, D)
-            if F === :KF
-                for (i, ks) in enumerate(CartesianIndices((2, 2, 2, 2)))
-                    k11, k12, k21, k22 = _bubble_indices(Val(C), ks)
-                    Π_data_iw[iv, i] = G1[k11, k12] * G2[k21, k22]
-                end
-            else
-                Π_data_iw[iv, 1] = G1 * G2
-            end
-        end
-        Π_data[:, :, iw] .= fit_basis_coeff(Π_data_iw, basis_f, vs, 1)
-    end
-    Π_data .*= _bubble_prefactor(Val(C))
-    Π_data_tmp = fit_basis_coeff(Π_data, basis_b, ws, 3)
-    Π.data .= reshape(Π_data_tmp, size(Π.data))
-    Π
+    Base.depwarn("Use SIAMLazyGreen2P and compute_bubble", :siam_get_bubble, force=true)
+    G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
+    compute_bubble(G0, basis_f, basis_b, Val(C); temperature=t)
 end
 
 

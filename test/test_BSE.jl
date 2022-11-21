@@ -74,7 +74,7 @@ end
 
 
 @testset "vertex caching" begin
-    using mfRG: channel, get_bare_vertex, siam_get_bubble, ScreenedBubble, cache_vertex_matrix
+    using mfRG: channel, get_bare_vertex, ScreenedBubble, cache_vertex_matrix
 
     function test_cached(ΓL, Π, ΓR, basis_w, basis_aux)
         # Test vertex_bubble_integral with cached vertex matrix.
@@ -106,8 +106,9 @@ end
     basis_b = LinearSplineAndTailBasis(1, 0, -3:1.5:3)
     basis_aux = LinearSplineAndTailBasis(1, 0, -4:1.0:4)
 
-    ΠA = siam_get_bubble(basis_f, basis_b, Val(:KF), Val(:A); e, Δ, t)
-    ΠP = siam_get_bubble(basis_f, basis_b, Val(:KF), Val(:P); e, Δ, t)
+    G0 = SIAMLazyGreen2P{:KF}(; e, Δ, t)
+    ΠA = compute_bubble(G0, basis_f, basis_b, Val(:A); temperature=t)
+    ΠP = compute_bubble(G0, basis_f, basis_b, Val(:P); temperature=t)
     Γ0_A = get_bare_vertex(U, Val(:KF), Val(:A))
     Γ0_P = get_bare_vertex(U, Val(:KF), Val(:P))
     Γ1_A = solve_BSE(Γ0_A, ΠA, Γ0_A, basis_b)
