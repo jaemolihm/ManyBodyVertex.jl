@@ -67,7 +67,11 @@ end
     @test b_boson[ 1, :] ≈ [0, 0, 0, 0, 0, 0, 0, 1, 0]
     for m in [-11, -5, 3, 10]
         x = (2 + 1) / m
-        @test b_boson[m, :] ≈ [1, x, sign(m) * 1, sign(m) * x, 0, 0, 0, 0, 0]
+        @test if m > 0
+            b_boson[m, :] ≈ [1, x, 0, 0, 0, 0, 0, 0, 0]
+        else
+            b_boson[m, :] ≈ [0, 0, 1, abs(x), 0, 0, 0, 0, 0]
+        end
     end
     @test all(maximum(b_boson[-5:5, :], dims=1) .≈ 1)
     ws = get_fitting_points(b_boson)
@@ -82,7 +86,11 @@ end
     @test b_fermion[ 1, :] ≈ [0, 0, 0, 0, 0, 0, 0, 1]
     for m in [-11, -5, 3, 10]
         x = (2 + 1/2) / (m + 1/2)
-        @test b_fermion[m, :] ≈ [1, x, sign(m) * 1, sign(m) * x, 0, 0, 0, 0]
+        @test if m > 0
+            b_fermion[m, :] ≈ [1, x, 0, 0, 0, 0, 0, 0]
+        else
+            b_fermion[m, :] ≈ [0, 0, 1, abs(x), 0, 0, 0, 0]
+        end
     end
     @test all(maximum(b_fermion[-5:5, :], dims=1) .≈ 1)
     vs = get_fitting_points(b_fermion)
@@ -95,15 +103,15 @@ end
     # Test basis_integral
     basis = ImagGridAndTailBasis(:Fermion, 2, 3, 2)
     basis2 = ImagGridAndTailBasis(:Fermion, 0, 0, 1)
-    @test basis_integral(basis) ≈ [6.129471951252935, 0, 0, 3.690688306902043, 1, 1, 1, 1]
-    @test basis_integral(basis, basis2) ≈ [6.129471951252935 0 0 0;
-                                            0 3.690688306902043 0 0;
-                                            0 6.129471951252935 0 0;
-                                            3.690688306902043 0 0 0;
-                                            1 -1 0 0;
-                                            0 0 1 0;
-                                            0 0 0 1;
-                                            1 1 0 0]
+    @test basis_integral(basis) ≈ [3.0647359756264674, 1.8453441534510215, 3.0647359756264674, 1.8453441534510215, 1, 1, 1, 1]
+    @test basis_integral(basis, basis2) ≈ [3.0647359756264674 0 0 0;
+                                           1.8453441534510215 0 0 0;
+                                           0 3.0647359756264674 0 0;
+                                           0 1.8453441534510215 0 0;
+                                           0 1 0 0;
+                                           0 0 1 0;
+                                           0 0 0 1;
+                                           1 0 0 0]
     @test basis_integral(basis, ImagConstantBasis()) ≈ basis_integral(basis)
 end
 

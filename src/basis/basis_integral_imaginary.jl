@@ -5,13 +5,14 @@ function basis_integral_imag(bases::Tuple)
         # Divide the function support by intervals and integrate each interval.
         # Directly integrating over (-Inf, Inf) is inefficient, and may even become
         # inaccurate when the support is narrow.
-        intervals = integration_intervals(bases, inds.I)
+        interval = integration_intervals(bases, inds.I)
+        isempty(interval) && continue
 
         f(x) = prod(getindex.(bases, x, inds.I))
-        for (l, r) in intervals
-            res = integrate_imag(f, l, r)
-            res !== nothing && (overlap[inds] += res.val)
-        end
+        l, r = interval.left, interval.right
+
+        res = integrate_imag(f, l, r)
+        res !== nothing && (overlap[inds] += res.val)
     end
     overlap
 end
@@ -57,43 +58,4 @@ function integrate_imag(f::Function, l::Integer, r::Integer)
     end
     err = zero(val)  # Dummy value to match the return type of integrate_real
     (; val, err)
-end
-
-@inline function support_bounds(f::ImagGridAndTailBasis, n::Integer)
-    @boundscheck n ∈ axes(f, 2) || throw(BoundsError())
-    if n <= ntails(f)
-        first(f.grid)-1, last(f.grid)+1
-    else
-        f.grid[n - ntails(f)], f.grid[n - ntails(f)]
-    end
-end
-@inline istail(f::ImagGridAndTailBasis, n::Integer) = n <= ntails(f)
-
-@inline function integration_intervals_imag(bases, inds)
-    lb_tail = typemax(Int)
-    rb_tail = typemin(Int)
-    lb_inte = typemin(Int)
-    rb_inte = typemax(Int)
-    has_tail = false
-    for (b, i) in zip(bases, inds)
-        b isa ImagConstantBasis && continue
-        lb, rb = support_bounds(b, i)
-        if istail(b, i)
-            has_tail = true
-            lb_tail = min(lb_tail, lb)
-            rb_tail = max(rb_tail, rb)
-        else
-            lb_inte = max(lb_inte, lb)
-            rb_inte = min(rb_inte, rb)
-        end
-    end
-    if has_tail
-        # ---- lb_tail]  [rb_tail ----
-        #    [lb_inte ---- rb_inte]
-        ((lb_inte, lb_tail), (rb_tail, rb_inte))
-    else
-        #    [lb_inte ---- rb_inte]
-        # Add dummy empty interval (zero(T), zero(T)) for type stability
-        ((lb_inte, rb_inte), (0, -1))
-    end
 end

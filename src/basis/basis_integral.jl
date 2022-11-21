@@ -28,11 +28,7 @@ function basis_integral_real(bases::Tuple)
 end
 
 @inline function integration_intervals(bases, inds)
-    if bases[1] isa AbstractImagBasis
-        integration_intervals_imag(bases, inds)
-    else
-        bounds = support_bounds.(bases, inds)
-        maximum(leftendpoint.(bounds)) .. minimum(rightendpoint.(bounds))
-    end
+    bounds = support_bounds.(bases, inds)
+    maximum(leftendpoint.(bounds)) .. minimum(rightendpoint.(bounds))
 end
 

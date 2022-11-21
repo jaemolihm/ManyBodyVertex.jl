@@ -1,4 +1,3 @@
-# FIXME: Switch to right and left tails
 using Infinities: InfiniteCardinal
 using ContinuumArrays
 
@@ -29,13 +28,18 @@ Base.getindex(::ImagConstantBasis{T}, x::Integer, n::Integer) where {T} = (n == 
 ntails(::ImagConstantBasis) = 1
 nbasis(::ImagConstantBasis) = 1
 
+@inline function support_bounds(f::ImagConstantBasis, n::Integer)
+    @boundscheck n ∈ axes(f, 2) || throw(BoundsError())
+    typemin(Int) .. typemax(Int)
+end
+
 
 """
     ImagGridAndTailBasis(::Type{T}=Float64, nmin, nmax, wmax)
 Polynomial tails of order `nmin` to `nmax` outside `[xmin, wmax]`, discrete basis inside.
-- `n = 1 ~ ntail`: polynomial of 1/x ``(x0 / x)^{nmin + n - 1}`` where ``x0 = maximum(abs(grid))``
-- `n = ntail+1 ~ 2*ntail`: polynomial of 1/x multiplied by sign ``sign(x) * (x0 / x)^{nmin + n - 1}``
-- `n = 2*ntail+1 ~ end`: linear spline on `grid`
+- `n = 1 ~ ntail/2`: ``(x0 / x)^{nmin + n - 1}`` at x > grid[end] (right tail)
+- `n = ntail/2+1 ~ ntail`: `(x0 / x)^{nmin + n - 1}`` at x < grid[1] (left tail)
+- `n = ntail+1 ~ end`: linear spline on `grid`
 
 ### particle_type == :Boson
 - `w = 2π/β * m`
@@ -81,24 +85,34 @@ function Base.summary(io::IO, f::ImagGridAndTailBasis)
     print(io, "grid=$(f.grid), $(length(f.grid)) points)")
 end
 
+@inline function support_bounds(f::ImagGridAndTailBasis, n::Integer)
+    @boundscheck n ∈ axes(f, 2) || throw(BoundsError())
+    if n <= div(ntails(f), 2)  # right tail
+        last(f.grid)+1 .. typemax(f.wmax)
+    elseif n <= ntails(f)  # left tail
+        typemin(f.wmax) .. first(f.grid)-1
+    else
+        k = n - ntails(f)
+        f.grid[k] .. f.grid[k]
+    end
+end
+
 @inline function Base.getindex(f::ImagGridAndTailBasis{T}, x::Integer, n::Integer) where {T}
     x ∈ axes(f, 1) || throw(BoundsError())
     n ∈ axes(f, 2) || throw(BoundsError())
-    if n <= ntails(f)  # Tail: polynomial of 1 / x
-        if n <= div(ntails(f), 2)
-            s = 1
-            pow = n - 1 + f.nmin
-        else  # For the latter half, multiply by sign(x)
-            s = sign(x)
-            pow = n - div(ntails(f), 2) - 1 + f.nmin
+    if x ∈ support_bounds(f, n)
+        if n <= ntails(f)  # Left and right tails
+            pow = mod1(n, div(ntails(f), 2)) - 1 + f.nmin
+            if f.particle_type === :Boson
+                T((sign(x) * (f.wmax + 1) / x)^pow)
+            else
+                T((sign(x) * (f.wmax + 1/2) / (x + 1/2))^pow)
+            end
+        else  # Grid: 1 if x == f.grid[n - ntails]
+            x == f.grid[n - ntails(f)] ? one(T) : zero(T)
         end
-        if f.particle_type === :Boson
-            x ∈ f.grid ? zero(T) : T(((f.wmax + 1) / x)^pow) * s
-        else
-            x ∈ f.grid ? zero(T) : T(((f.wmax + 1/2) / (x + 1/2))^pow) * s
-        end
-    else  # Grid: 1 if x == f.grid[n - ntails]
-        x == f.grid[n - ntails(f)] ? one(T) : zero(T)
+    else
+        zero(T)
     end
 end
 
