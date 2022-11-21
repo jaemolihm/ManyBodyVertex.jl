@@ -54,12 +54,14 @@ end
 
     # Test ImagConstantBasis
     b = ImagConstantBasis()
+    @test nbasis(b) == 1
     @test axes(b) == (InfRange(), 1:1)
     @test size(b) == (length(InfRange()), 1)
     @test b[10, 1] == 1
 
     # Test ImagGridAndTailBasis for bosons
     b_boson = ImagGridAndTailBasis(:Boson, 0, 1, 2)  # grid for -2:2
+    @test nbasis(b_boson) == 9
     @test axes(b_boson) == (InfRange(), 1:9)
     @test b_boson[-2, :] ≈ [0, 0, 0, 0, 1, 0, 0, 0, 0]
     @test b_boson[ 1, :] ≈ [0, 0, 0, 0, 0, 0, 0, 1, 0]
@@ -74,6 +76,7 @@ end
 
     # Test ImagGridAndTailBasis for Fermions
     b_fermion = ImagGridAndTailBasis(:Fermion, 0, 1, 2)  # grid for -2:1
+    @test nbasis(b_fermion) == 8
     @test axes(b_fermion) == (InfRange(), 1:8)
     @test b_fermion[-2, :] ≈ [0, 0, 0, 0, 1, 0, 0, 0]
     @test b_fermion[ 1, :] ≈ [0, 0, 0, 0, 0, 0, 0, 1]

@@ -17,6 +17,7 @@ Base.:(==)(x, y::InfRange) = false
 
 
 abstract type AbstractImagBasis{T} <: Basis{T} end
+Base.axes(f::AbstractImagBasis) = (InfRange(), 1:nbasis(f))
 
 """
     ImagConstantBasis(::Type{T}=Float64)
@@ -24,10 +25,9 @@ Constant imaginary-freqency basis.
 """
 struct ImagConstantBasis{T} <: AbstractImagBasis{T} end
 ImagConstantBasis(::Type{T}=Float64) where {T} = ImagConstantBasis{T}()
-
-Base.axes(::ImagConstantBasis) = (InfRange(), 1:1)
 Base.getindex(::ImagConstantBasis{T}, x::Integer, n::Integer) where {T} = (n == 1 || throw(BoundsError()); one(T))
 ntails(::ImagConstantBasis) = 1
+nbasis(::ImagConstantBasis) = 1
 
 
 """
@@ -62,7 +62,8 @@ struct ImagGridAndTailBasis{T} <: AbstractImagBasis{T}
 end
 ImagGridAndTailBasis(particle_type, nmin, nmax, wmax) = ImagGridAndTailBasis(Float64, particle_type, nmin, nmax, wmax)
 
-@inline ntails(f::ImagGridAndTailBasis) = (f.nmax - f.nmin + 1) * 2
+ntails(f::ImagGridAndTailBasis) = (f.nmax - f.nmin + 1) * 2
+nbasis(f::ImagGridAndTailBasis) = ntails(f) + length(f.grid)
 
 function Base.getproperty(f::ImagGridAndTailBasis, s::Symbol)
     if s === :grid
@@ -72,8 +73,6 @@ function Base.getproperty(f::ImagGridAndTailBasis, s::Symbol)
         getfield(f, s)
     end
 end
-
-@inline Base.axes(f::ImagGridAndTailBasis) = (InfRange(), 1:(ntails(f) + length(f.grid)))
 
 # Customize printing
 function Base.summary(io::IO, f::ImagGridAndTailBasis)
