@@ -136,6 +136,13 @@ _bubble_frequencies(::_ImagFreq, ::Val{:A}, v, w) = (floor(Int,   v+w/2), floor(
 _bubble_frequencies(::_ImagFreq, ::Val{:P}, v, w) = (ceil(Int, -v-1+w/2), floor(Int, v+w/2))
 _bubble_frequencies(::_ImagFreq, ::Val{:T}, v, w) = (floor(Int,   v+w/2), floor(Int, v-w/2))
 
+_bubble_frequencies_inv(::_RealFreq, ::Val{:A}, v1, v2) = ((v1 + v2) / 2, v1 - v2)
+_bubble_frequencies_inv(::_RealFreq, ::Val{:P}, v1, v2) = ((v2 - v1) / 2, v1 + v2)
+_bubble_frequencies_inv(::_RealFreq, ::Val{:T}, v1, v2) = ((v1 + v2) / 2, v1 - v2)
+_bubble_frequencies_inv(::_ImagFreq, ::Val{:A}, v1, v2) = (fld(v1 + v2 + 1, 2), v1 - v2)
+_bubble_frequencies_inv(::_ImagFreq, ::Val{:P}, v1, v2) = (fld(v2 - v1, 2), v1 + v2 + 1)
+_bubble_frequencies_inv(::_ImagFreq, ::Val{:T}, v1, v2) = (fld(v1 + v2 + 1, 2), v1 - v2)
+
 _bubble_indices(::Val{:A}, i) = (i[4], i[1], i[2], i[3])
 _bubble_indices(::Val{:P}, i) = (i[1], i[4], i[2], i[3])
 _bubble_indices(::Val{:T}, i) = (i[4], i[1], i[2], i[3])

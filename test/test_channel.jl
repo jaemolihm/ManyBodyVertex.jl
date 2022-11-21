@@ -22,6 +22,19 @@ using mfRG
         end
     end
 
+    # Test _bubble_frequencies_inv
+    for f in (:MF, :ZF, :KF), c in (:A, :P, :T)
+        for (v, w) in [(10, 2), (-5, 2), (6, -3), (-5, -11)]
+            @info v, w
+            v1, v2 = mfRG._bubble_frequencies(Val(f), Val(c), v, w)
+            @test all((v, w) .≈ mfRG._bubble_frequencies_inv(Val(f), Val(c), v1, v2))
+        end
+        for (v1, v2) in [(10, 2), (-5, 2), (6, -3), (-5, -11)]
+            v, w = mfRG._bubble_frequencies_inv(Val(f), Val(c), v1, v2)
+            @test all((v1, v2) .≈ mfRG._bubble_frequencies(Val(f), Val(c), v, w))
+        end
+    end
+
     # Check vertex and bubble parametrizations are consistent
     for c in (:A, :P, :T)
         # Vertex indices 3 and 4 belong to the left vertex, and 1 and 2 to the right.
