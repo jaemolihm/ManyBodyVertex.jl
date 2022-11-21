@@ -52,6 +52,27 @@ function siam_get_green_function(v, ::Val{F}; e, Δ, t, D=Inf) where {F}
 end
 
 """
+    SIAMLazyGreen2P{F}(::Type{T}=ComplexF64; e, Δ, t, D=Inf)
+Lazy Green2P object for getting SIAM bare Green function.
+"""
+struct SIAMLazyGreen2P{F, T} <: mfRG.AbstractFrequencyVertex{F, T}
+    nind::Int
+    e::Float64
+    Δ::Float64
+    t::Float64
+    D::Float64
+    function SIAMLazyGreen2P{F, T}(; e, Δ, t, D=Inf) where {F, T}
+        F === :KF && !isinf(D) && error("SIAM with finite bandwith not implemented for KF")
+        F === :ZF && error("SIAM with ZF not implemented")
+        F ∉ (:KF, :MF, :ZF) && error("Wrong formalism $formalism")
+        nind = nkeldysh(F)
+        new{F, ComplexF64}(nind, e, Δ, t, D)
+    end
+end
+SIAMLazyGreen2P{F}(::Type{T}=ComplexF64; e, Δ, t, D=Inf) where {F, T} = SIAMLazyGreen2P{F, T}(; e, Δ, t, D)
+(G0::SIAMLazyGreen2P{F, T})(v) where {F, T} = siam_get_green_function(v, Val(F); G0.e, G0.Δ, G0.t, G0.D)
+
+"""
     siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t)
 # Bubble for the SIAM in the wide-band limit in formalism `F` and channel `C`.
 """

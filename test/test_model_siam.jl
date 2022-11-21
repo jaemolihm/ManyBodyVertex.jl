@@ -21,6 +21,16 @@ using mfRG
     for F in (:MF, :KF), C in (:A, :P, :T)
         @test siam_get_bubble(basis_f, basis_b, Val(F), Val(C); e, Δ, t) isa Bubble{F, C, ComplexF64}
     end
+
+    # Test SIAMLazyGreen2P
+    for F in (:MF, :KF)
+        D = F === :MF ? 5.0 : Inf
+        G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
+        @test G0 isa mfRG.AbstractFrequencyVertex{F, ComplexF64}
+        v = rand()
+        @test G0(v) ≈ siam_get_green_function(v, Val(F); e, Δ, t, D)
+        @inferred G0(v)
+    end
 end
 
 @testset "siam_get_bubble_improved" begin
