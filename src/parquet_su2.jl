@@ -125,7 +125,7 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_aux, 
     # Update bubble
     @info "Updating self-energy and the bubble"
     @time Σ = compute_self_energy_SU2(vertex, G0, basis_1p; temperature)
-    G = solve_dyson(G0, Σ)
+    G = solve_Dyson(G0, Σ)
     ΠAscr, ΠPscr, _ = setup_screened_bubble(G, Γ0_A, Γ0_P, basis_v_bubble,
         basis_w_bubble, basis_w; temperature, smooth_bubble)
 
@@ -139,7 +139,7 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_aux, 
 
         @info "Updating self-energy and the bubble"
         @time Σ = compute_self_energy_SU2(vertex, G; temperature)
-        G = solve_dyson(G0, Σ)
+        G = solve_Dyson(G0, Σ)
         ΠAscr, ΠPscr, _ = setup_screened_bubble(G, Γ0_A, Γ0_P, basis_v_bubble,
             basis_w_bubble, basis_w; temperature, smooth_bubble)
 

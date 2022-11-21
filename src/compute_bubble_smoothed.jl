@@ -76,7 +76,8 @@ function compute_bubble_smoothed(G::AbstractLazyGreen2P{F}, basis_f, basis_b, va
 end
 
 
-function compute_bubble_smoothed(G::Green2P{F}, basis_f, basis_b, valC::Val{C}, temperature=nothing) where {F, C}
+function compute_bubble_smoothed(G::Green2P{F}, basis_f, basis_b, valC::Val{C};
+                                 temperature=nothing) where {F, C}
     # Same as above, but G is a Green2P, not a AbstractLazyGreen2P.
     # Use preallocated buffers: coeff_g1, coeff_g2, g1, g2.
 

@@ -51,10 +51,10 @@ function (G::Green2P)(v)
 end
 
 """
-    solve_dyson(G0, Σ, basis=Σ.basis)
+    solve_Dyson(G0, Σ, basis=Σ.basis) => G
 Solve Dyson equation to compute the interacting Green function: ``G = (G0⁻¹ - Σ)⁻¹``.
 """
-function solve_dyson(G0, Σ, basis=Σ.basis)
+function solve_Dyson(G0, Σ, basis=Σ.basis)
     vs = get_fitting_points(basis)
     nind = get_nind(G0)
     G_data = zeros(ComplexF64, nind, nind, length(vs))
