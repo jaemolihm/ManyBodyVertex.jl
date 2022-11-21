@@ -140,6 +140,7 @@ function siam_get_bubble_improved(basis_f, basis_b, basis_1p, F::Val{:KF}, C::Va
             intervals_v = integration_intervals((basis_f,), (i_f,))
             l_v, r_v = endpoints(intervals_v)
             l_v >= r_v && continue
+            l_v ≈ r_v && continue
             function f(v)
                 v1, v2 = _bubble_frequencies(F, C, v, w)
                 coeff_f = basis_f[v, i_f]
