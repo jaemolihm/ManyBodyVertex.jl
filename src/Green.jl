@@ -1,5 +1,8 @@
 using OMEinsum
 
+# TODO: Test for Green2P
+# TODO: Test for Dyson
+
 abstract type AbstractFrequencyVertex{F, T} end
 Base.eltype(::AbstractFrequencyVertex{F, T}) where {F, T} = T
 get_formalism(::AbstractFrequencyVertex{F}) where {F} = F
@@ -42,4 +45,19 @@ function (G::Green2P)(v)
     coeff = G.basis[v, :]
     @ein G_v[i, j] := G.data[i, j, v1] * coeff[v1]
     G_v::Matrix{eltype(G)}
+end
+
+"""
+    solve_dyson(G0, Σ, basis=Σ.basis)
+Solve Dyson equation to compute the interacting Green function: ``G = (G0⁻¹ - Σ)⁻¹``.
+"""
+function solve_dyson(G0, Σ, basis=Σ.basis)
+    vs = get_fitting_points(basis)
+    nind = get_nind(G0)
+    G_data = zeros(ComplexF64, nind, nind, length(vs))
+    for (iv, v) in enumerate(vs)
+        G_data[:, :, iv] .= inv(inv(G0(v)) .- Σ(v))
+    end
+    data = mfRG.fit_basis_coeff(G_data, basis, vs, 3)
+    Green2P{:MF}(basis, 1, data)
 end
