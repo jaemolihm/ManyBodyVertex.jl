@@ -39,8 +39,8 @@ function compute_bubble_smoothed(G::AbstractLazyGreen2P{F}, basis_f, basis_b, va
 
         bubble_value_integral = zeros(ComplexF64, size(basis_f, 2), nind^4)
         for i_f in axes(basis_f, 2)
-            intervals_v = integration_intervals((basis_f,), (i_f,))
-            isempty(intervals_v) && continue
+            interval_v = integration_interval((basis_f,), (i_f,))
+            isempty(interval_v) && continue
 
             function f(v)
                 v1, v2 = _bubble_frequencies(valF, valC, v, w)
@@ -50,7 +50,7 @@ function compute_bubble_smoothed(G::AbstractLazyGreen2P{F}, basis_f, basis_b, va
                 (g1 * transpose(g2)) .* coeff_f
             end
 
-            l_v, r_v = endpoints(intervals_v)
+            l_v, r_v = endpoints(interval_v)
             if F === :MF
                 res = integrate_imag(f, l_v, r_v)
             else
@@ -101,8 +101,8 @@ function compute_bubble_smoothed(G::Green2P{F}, basis_f, basis_b, valC::Val{C}, 
 
         bubble_value_integral = zeros(ComplexF64, size(basis_f, 2), nind^4)
         for i_f in axes(basis_f, 2)
-            intervals_v = integration_intervals((basis_f,), (i_f,))
-            isempty(intervals_v) && continue
+            interval_v = integration_interval((basis_f,), (i_f,))
+            isempty(interval_v) && continue
 
             function f(v)
                 v1, v2 = _bubble_frequencies(valF, valC, v, w)
@@ -114,7 +114,7 @@ function compute_bubble_smoothed(G::Green2P{F}, basis_f, basis_b, valC::Val{C}, 
                 (g1 * transpose(g2)) .* coeff_f
             end
 
-            l_v, r_v = endpoints(intervals_v)
+            l_v, r_v = endpoints(interval_v)
             if F === :MF
                 res = integrate_imag(f, l_v, r_v)
             else

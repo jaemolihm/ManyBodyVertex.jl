@@ -2,10 +2,10 @@ function basis_integral_imag(bases::Tuple)
     sizes = size.(bases, 2)
     overlap = zeros(eltype(bases[1]), sizes)
     for inds in CartesianIndices(sizes)
-        # Divide the function support by intervals and integrate each interval.
+        # Integrate the function only on the interval where the function is nonzero.
         # Directly integrating over (-Inf, Inf) is inefficient, and may even become
         # inaccurate when the support is narrow.
-        interval = integration_intervals(bases, inds.I)
+        interval = integration_interval(bases, inds.I)
         isempty(interval) && continue
 
         f(x) = prod(getindex.(bases, x, inds.I))
