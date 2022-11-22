@@ -39,15 +39,18 @@ Compute the matrix representation of `Γ` in channel `C` for bosonic frequencies
 store them in a `CachedVertex4P`. If `Γ` is in a different channel than `C`, use `basis_aux`.
 If in the same channel, use the bases of `Γ`.
 
-If input `Γ` is a list of vertices, add up all the matrices.
+If input `Γ` is a list of vertices, add up all the matri1ces.
 """
 cache_vertex_matrix(Γ::AbstractVertex4P, C, ws, basis_aux) = cache_vertex_matrix([Γ], C, ws, basis_aux)
 
 function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux)
     Γ = first(Γs)
     basis_f1, basis_f2 = channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux, basis_aux)
-    data = map(ws) do w
-        mapreduce(Γ -> to_matrix(Γ, w, basis_f1, basis_f2, Val(C)), .+, Γs)
+    data = [zeros(eltype(first(Γs)), nbasis(basis_f1), nbasis(basis_f1)) for _ in eachindex(ws)]
+    Base.Threads.@threads for iw in eachindex(ws)
+        for Γ in Γs
+            data[iw] .+= to_matrix(Γ, ws[iw], basis_f1, basis_f2, Val(C))
+        end
     end
     F = get_formalism(Γ)
     CachedVertex4P{F, C}(data, ws, basis_f1, basis_f2, Γ.norb)

@@ -60,8 +60,6 @@ function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
     F = mfRG.get_formalism(Γ)
     F === :MF && temperature === nothing && error("For MF, temperature must be provided")
     nind = get_nind(G)
-    Γ_vw = zeros(eltype(Γ), nind, nind)
-
     nind > 1 && error("Multiorbital not implemented yet")
 
     vs = get_fitting_points(basis)
@@ -69,9 +67,11 @@ function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
 
     # FIXME
     wmax = 500
-    for (iv, v1) in enumerate(vs)
-        for v2 in -wmax:wmax
-            G_v2 = G(v2)[1, 1]
+    Base.Threads.@threads for iv in eachindex(vs)
+        v2 = vs[iv]
+        Γ_vw = zeros(eltype(Γ), nind, nind)
+        for v1 in -wmax:wmax
+            G_v1 = G(v1)[1, 1]
             v, w = mfRG._bubble_frequencies_inv(Val(F), Val(:A), v1, v2)
             Γ_vw .= 0
             if Γ.K1_A !== nothing
@@ -80,7 +80,7 @@ function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
             if Γ.K2p_A !== nothing
                 Γ_vw .+= Γ.K2p_A[1](0, v, w) ./ 2 .+ Γ.K2p_A[2](0, v, w) .* 3 ./ 2
             end
-            Σ_data_iv[:, :, iv] .+= Γ_vw .* G_v2
+            Σ_data_iv[:, :, iv] .+= Γ_vw .* G_v1
         end
     end
 

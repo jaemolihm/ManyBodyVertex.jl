@@ -73,9 +73,7 @@ using mfRG
             end
         end
     end
-end
 
-@testset "Matsubara channel" begin
     # Check whether all MF frequencies are counted exactly once by the bubble parametrization
     for C in (:A, :P, :T)
         v12 = vec([mfRG._bubble_frequencies.(Val(:MF), Val(C), i, j) for i in -5:5, j in -5:5])

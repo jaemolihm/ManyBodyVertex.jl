@@ -175,9 +175,17 @@ function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::Abst
         coeff_f1 .= Γ.basis_f1[vvw_Γ[ifreq][1], :]
         coeff_f2 .= Γ.basis_f2[vvw_Γ[ifreq][2], :]
         coeff_b .= Γ.basis_b[vvw_Γ[ifreq][3], :]
-        mul!(Γ_array_reshape, Γ_data_reshape, coeff_b)
-        for inds in CartesianIndices(size(Γ_array)[1:4])
+        # mul!(Γ_array_reshape, Γ_data_reshape, coeff_b)
+        # Use sparsity of coeff_b to optimize.
+        Γ_array_reshape .= 0
+        @inbounds for ib in eachindex(coeff_b)
+            coeff_b[ib] == 0 && continue
+            Γ_array_reshape .+= Γ_data_reshape[:, ib] .* coeff_b[ib]
+        end
+        @inbounds for inds in CartesianIndices(size(Γ_array)[1:4])
             iv1, i, iv2, j = inds.I
+            coeff_f1[iv1] == 0 && continue
+            coeff_f2[iv2] == 0 && continue
             Γ_vvw[ifreq, i, j] += Γ_array[inds] * coeff_f1[iv1] * coeff_f2[iv2]
         end
     end
