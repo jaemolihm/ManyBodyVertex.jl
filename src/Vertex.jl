@@ -104,10 +104,10 @@ function Base.show(io::IO, Γ::Vertex4P{F, C}) where {F, C}
 end
 
 """
-    (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ, T}
+    (Γ::Vertex4P{F, C_Γ})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ}
 Evaluate vertex at given frequencies in the channel parametrization.
 """
-function (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ, T}
+function (Γ::Vertex4P{F, C_Γ})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ}
     v1234 = frequency_to_standard(Val(F), c_out, v1, v2, w)
     v1_Γ, v2_Γ, w_Γ = frequency_to_channel(Val(F), Val(C_Γ), v1234)
 
@@ -118,14 +118,19 @@ function (Γ::Vertex4P{F, C_Γ, T})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C
     # Compute the following einsum operation with a manually optimized implementation.
     # Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2), ())
     # @ein Γ_vvw[i, j] := Γ_array[v1, i, v2, j, w] * coeff_f1[v1] * coeff_f2[v2] * coeff_b[w]
-    Γ_array = zeros(T, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2))
-    Γ_array_reshape = Base.ReshapedArray(Γ_array, (length(Γ_array),), ())
-    Γ_data_reshape = Base.ReshapedArray(Γ.data, (prod(size(Γ.data)[1:2]), size(Γ.data, 3)), ())
-    mul!(Γ_array_reshape, Γ_data_reshape, coeff_b)
-    Γ_vvw = zeros(T, nind^2, nind^2)
-    @inbounds for inds in CartesianIndices(Γ_array)
-        iv1, i, iv2, j = inds.I
-        Γ_vvw[i, j] += Γ_array[inds] * coeff_f1[iv1] * coeff_f2[iv2]
+    # Use sparsity of coeffs to optimize.
+    Γ_vvw = zeros(eltype(Γ), nind^2, nind^2)
+    @inbounds for ib in 1:nb_b(Γ)
+        coeff_b[ib] == 0 && continue
+        for j in 1:nind^2, iv2 in 1:nb_f2(Γ)
+            coeff_f2[iv2] == 0 && continue
+            jj = iv2 + (j - 1) * nb_f2(Γ)
+            for i in 1:nind^2, iv1 in 1:nb_f1(Γ)
+                coeff_f1[iv1] == 0 && continue
+                ii = iv1 + (i - 1) * nb_f1(Γ)
+                Γ_vvw[i, j] += Γ.data[ii, jj, ib] * coeff_f1[iv1] * coeff_f2[iv2] * coeff_b[ib]
+            end
+        end
     end
     _permute_orbital_indices_matrix_4p(Val(C_Γ), c_out, Γ_vvw, nind)
 end
@@ -167,26 +172,23 @@ function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::Abst
     coeff_f2 = zeros(eltype(Γ.basis_f2), size(Γ.basis_f2, 2))
     coeff_b = zeros(eltype(Γ.basis_b), size(Γ.basis_b, 2))
 
-    Γ_array = zeros(eltype(Γ), (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2))
-    Γ_array_reshape = Base.ReshapedArray(Γ_array, (length(Γ_array),), ())
-    Γ_data_reshape = Base.ReshapedArray(Γ.data, (prod(size(Γ.data)[1:2]), size(Γ.data, 3)), ())
     Γ_vvw = zeros(eltype(Γ), nfreq, nind^2, nind^2)
     @views for ifreq in 1:nfreq
         coeff_f1 .= Γ.basis_f1[vvw_Γ[ifreq][1], :]
         coeff_f2 .= Γ.basis_f2[vvw_Γ[ifreq][2], :]
         coeff_b .= Γ.basis_b[vvw_Γ[ifreq][3], :]
-        # mul!(Γ_array_reshape, Γ_data_reshape, coeff_b)
-        # Use sparsity of coeff_b to optimize.
-        Γ_array_reshape .= 0
-        @inbounds for ib in eachindex(coeff_b)
+        # Use sparsity of coeffs to optimize.
+        @inbounds for ib in 1:nb_b(Γ)
             coeff_b[ib] == 0 && continue
-            Γ_array_reshape .+= Γ_data_reshape[:, ib] .* coeff_b[ib]
-        end
-        @inbounds for inds in CartesianIndices(size(Γ_array)[1:4])
-            iv1, i, iv2, j = inds.I
-            coeff_f1[iv1] == 0 && continue
-            coeff_f2[iv2] == 0 && continue
-            Γ_vvw[ifreq, i, j] += Γ_array[inds] * coeff_f1[iv1] * coeff_f2[iv2]
+            for j in 1:nind^2, iv2 in 1:nb_f2(Γ)
+                coeff_f2[iv2] == 0 && continue
+                jj = iv2 + (j - 1) * nb_f2(Γ)
+                for i in 1:nind^2, iv1 in 1:nb_f1(Γ)
+                    coeff_f1[iv1] == 0 && continue
+                    ii = iv1 + (i - 1) * nb_f1(Γ)
+                    Γ_vvw[ifreq, i, j] += Γ.data[ii, jj, ib] * coeff_f1[iv1] * coeff_f2[iv2] * coeff_b[ib]
+                end
+            end
         end
     end
     _permute_orbital_indices_matrix_4p_keep_dim1(Val(C_Γ), c_out, Γ_vvw, nind)
