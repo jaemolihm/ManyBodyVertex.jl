@@ -46,7 +46,8 @@ cache_vertex_matrix(Γ::AbstractVertex4P, C, ws, basis_aux) = cache_vertex_matri
 function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux)
     Γ = first(Γs)
     basis_f1, basis_f2 = channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux, basis_aux)
-    data = [zeros(eltype(first(Γs)), nbasis(basis_f1), nbasis(basis_f1)) for _ in eachindex(ws)]
+    nind = get_nind(Γ)
+    data = [zeros(eltype(first(Γs)), nind^2 * nbasis(basis_f1), nind^2 * nbasis(basis_f2)) for _ in eachindex(ws)]
     Base.Threads.@threads for iw in eachindex(ws)
         for Γ in Γs
             data[iw] .+= to_matrix(Γ, ws[iw], basis_f1, basis_f2, Val(C))
