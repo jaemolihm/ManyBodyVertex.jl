@@ -65,7 +65,7 @@ function compute_bubble_smoothed(G::AbstractLazyGreen2P{F}, basis_f, basis_b, va
                 bubble_value_integral[i_f, ik] += value[k11, k12, k21, k22]
             end
         end
-        Π_data[:, :, iw] .= qr(overlap_f, Val(true)) \ bubble_value_integral
+        Π_data[:, :, iw] .= qr(overlap_f, ColumnNorm()) \ bubble_value_integral
     end
 
     Π = Bubble{F, C}(basis_f, basis_b; temperature)
@@ -130,7 +130,7 @@ function compute_bubble_smoothed(G::Green2P{F}, basis_f, basis_b, valC::Val{C};
                 bubble_value_integral[i_f, ik] += value[k11, k12, k21, k22]
             end
         end
-        Π_data[:, :, iw] .= qr(overlap_f, Val(true)) \ bubble_value_integral
+        Π_data[:, :, iw] .= qr(overlap_f, ColumnNorm()) \ bubble_value_integral
     end
 
     Π = Bubble{F, C}(basis_f, basis_b; temperature)
