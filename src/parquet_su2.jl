@@ -1,38 +1,37 @@
 # FIXME: non-SU2
 
-function iterate_parquet(Γ::AsymptoticVertex, ΠAscr, ΠPscr, basis_aux)
-    basis_w = Γ.basis_k1_b
-    ws = get_fitting_points(basis_w)
-    (; Γ0_A, Γ0_P, Γ0_T) = Γ
+function iterate_parquet(Γ::AsymptoticVertex, ΠAscr, ΠPscr)
+    (; Γ0_A, Γ0_P, Γ0_T, basis_k1_b, basis_k2_b, basis_k2_f) = Γ
+    ws = get_fitting_points(basis_k2_b)
 
     # BSE for channel A
     @info "Solving BSE for channel A"
     Γ_A_irr = get_irreducible_vertices(:A, Γ)
-    @time Γ_A_irr_mat = Tuple(cache_vertex_matrix(getindex.(Γ_A_irr, i), :A, ws, basis_aux) for i in 1:2);
+    @time Γ_A_irr_mat = Tuple(cache_vertex_matrix(getindex.(Γ_A_irr, i), :A, ws, basis_k2_f) for i in 1:2);
 
-    @time K2_A = solve_BSE.(Γ_A_irr_mat, ΠAscr, Γ.Γ0_A, Ref(basis_w); basis_aux)
-    @time K1_A = vertex_bubble_integral.(Γ.Γ0_A, ΠAscr, K2_A, Ref(basis_w)) .+ getproperty.(ΠAscr, :K1)
+    @time K2_A = solve_BSE.(Γ_A_irr_mat, ΠAscr, Γ.Γ0_A, Ref(basis_k2_b))
+    @time K1_A = vertex_bubble_integral.(Γ.Γ0_A, ΠAscr, K2_A, Ref(basis_k1_b)) .+ getproperty.(ΠAscr, :K1)
 
     if Γ.max_class >= 2
-        @time K2p_A = solve_BSE_left.(Γ_A_irr_mat, ΠAscr, Γ.Γ0_A, Ref(basis_w); basis_aux)
+        @time K2p_A = solve_BSE_left.(Γ_A_irr_mat, ΠAscr, Γ.Γ0_A, Ref(basis_k2_b))
     end
     if Γ.max_class >= 3
-        @time K3_A = solve_BSE.(Γ_A_irr_mat, ΠAscr, Γ_A_irr_mat, Ref(basis_w); basis_aux)
+        @time K3_A = solve_BSE.(Γ_A_irr_mat, ΠAscr, Γ_A_irr_mat, Ref(basis_k2_b))
     end
 
     # BSE for channel P
     @info "Solving BSE for channel P"
     Γ_P_irr = get_irreducible_vertices(:P, Γ)
-    @time Γ_P_irr_mat = Tuple(cache_vertex_matrix(getindex.(Γ_P_irr, i), :P, ws, basis_aux) for i in 1:2);
+    @time Γ_P_irr_mat = Tuple(cache_vertex_matrix(getindex.(Γ_P_irr, i), :P, ws, basis_k2_f) for i in 1:2);
 
-    @time K2_P = solve_BSE.(Γ_P_irr_mat, ΠPscr, Γ.Γ0_P, Ref(basis_w); basis_aux)
-    @time K1_P = vertex_bubble_integral.(Γ.Γ0_P, ΠPscr, K2_P, Ref(basis_w)) .+ getproperty.(ΠPscr, :K1)
+    @time K2_P = solve_BSE.(Γ_P_irr_mat, ΠPscr, Γ.Γ0_P, Ref(basis_k2_b))
+    @time K1_P = vertex_bubble_integral.(Γ.Γ0_P, ΠPscr, K2_P, Ref(basis_k1_b)) .+ getproperty.(ΠPscr, :K1)
 
     if Γ.max_class >= 2
-        @time K2p_P = solve_BSE_left.(Γ_P_irr_mat, ΠPscr, Γ.Γ0_P, Ref(basis_w); basis_aux)
+        @time K2p_P = solve_BSE_left.(Γ_P_irr_mat, ΠPscr, Γ.Γ0_P, Ref(basis_k2_b))
     end
     if Γ.max_class >= 3
-        @time K3_P = solve_BSE.(Γ_P_irr_mat, ΠPscr, Γ_P_irr_mat, Ref(basis_w); basis_aux)
+        @time K3_P = solve_BSE.(Γ_P_irr_mat, ΠPscr, Γ_P_irr_mat, Ref(basis_k2_b))
     end
 
     # Channel T: use crossing symmetry
@@ -60,7 +59,10 @@ function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
     F = mfRG.get_formalism(Γ)
     F === :MF && temperature === nothing && error("For MF, temperature must be provided")
     nind = get_nind(G)
-    nind > 1 && error("Multiorbital not implemented yet")
+    if nind > 1 || F === :KF
+        @warn "Multiorbital or Keldysh not implemented yet, returning zero self-energy"
+        return Green2P{F}(basis, G.norb)
+    end
 
     vs = get_fitting_points(basis)
     Σ_data_iv = zeros(ComplexF64, nind, nind, length(vs))
@@ -94,7 +96,8 @@ function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
     Green2P{F}(basis, 1, Σ_data)
 end
 
-function setup_screened_bubble(G, Γ0_A, Γ0_P, basis_v_bubble, basis_w_bubble, basis_w; temperature, smooth_bubble)
+function setup_screened_bubble(G, Γ0_A, Γ0_P, basis_v_bubble, basis_w_bubble, basis_w;
+        temperature, smooth_bubble)
     bubble_function = smooth_bubble ? compute_bubble_smoothed : compute_bubble
     @time ΠA_ = bubble_function(G, basis_v_bubble, basis_w_bubble, Val(:A); temperature)
     @time ΠP_ = bubble_function(G, basis_v_bubble, basis_w_bubble, Val(:P); temperature)
@@ -108,7 +111,7 @@ function setup_screened_bubble(G, Γ0_A, Γ0_P, basis_v_bubble, basis_w_bubble, 
     (; ΠAscr, ΠPscr, K1_A, K1_P, K1_T)
 end
 
-function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_aux, basis_1p=G0.basis;
+function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2_b, basis_k2_f, basis_1p=G0.basis;
         max_class, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false)
     F = get_formalism(G0)
     T = eltype(G0)
@@ -119,19 +122,20 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_aux, 
 
     # 1st iteration
     ΠAscr, ΠPscr, K1_A, K1_P, K1_T = setup_screened_bubble(G0, Γ0_A, Γ0_P, basis_v_bubble,
-        basis_w_bubble, basis_w; temperature, smooth_bubble)
-    vertex = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, K1_A, K1_P, K1_T)
+        basis_w_bubble, basis_k1_b; temperature, smooth_bubble)
+    vertex = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, K1_A, K1_P, K1_T,
+        basis_k1_b, basis_k2_b, basis_k2_f)
 
     # Update bubble
     @info "Updating self-energy and the bubble"
     @time Σ = compute_self_energy_SU2(vertex, G0, basis_1p; temperature)
     G = solve_Dyson(G0, Σ)
     ΠAscr, ΠPscr, _ = setup_screened_bubble(G, Γ0_A, Γ0_P, basis_v_bubble,
-        basis_w_bubble, basis_w; temperature, smooth_bubble)
+        basis_w_bubble, basis_k1_b; temperature, smooth_bubble)
 
     for i in 2:max_iter
         @info "== Iteration $i =="
-        @time vertex_new = iterate_parquet(vertex, ΠAscr, ΠPscr, basis_aux)
+        @time vertex_new = iterate_parquet(vertex, ΠAscr, ΠPscr)
 
         Γ_diff = get_difference_norm(vertex_new, vertex)
 
@@ -141,7 +145,7 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_aux, 
         @time Σ = compute_self_energy_SU2(vertex, G; temperature)
         G = solve_Dyson(G0, Σ)
         ΠAscr, ΠPscr, _ = setup_screened_bubble(G, Γ0_A, Γ0_P, basis_v_bubble,
-            basis_w_bubble, basis_w; temperature, smooth_bubble)
+            basis_w_bubble, basis_k1_b; temperature, smooth_bubble)
 
         @info Γ_diff
         if Γ_diff.relerr < reltol
