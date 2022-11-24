@@ -34,18 +34,21 @@ function to_matrix(Γ::CachedVertex4P{F, CΓ, T}, w, basis1=Γ.basis_f1, basis2=
 end
 
 """
-    cache_vertex_matrix(Γ, C, ws, basis_aux) => CachedVertex4P
+    cache_vertex_matrix(Γ, C, ws, basis_aux1, basis_aux2) => CachedVertex4P
 Compute the matrix representation of `Γ` in channel `C` for bosonic frequencies `ws` and
-store them in a `CachedVertex4P`. If `Γ` is in a different channel than `C`, use `basis_aux`.
+store them in a `CachedVertex4P`. If `Γ` is in a different channel than `C`, use
+`basis_aux1` and `basis_aux2`.
 If in the same channel, use the bases of `Γ`.
 
 If input `Γ` is a list of vertices, add up all the matri1ces.
 """
-cache_vertex_matrix(Γ::AbstractVertex4P, C, ws, basis_aux) = cache_vertex_matrix([Γ], C, ws, basis_aux)
+function cache_vertex_matrix(Γ::AbstractVertex4P, C, ws, basis_aux1=nothing, basis_aux2=basis_aux1)
+    cache_vertex_matrix([Γ], C, ws, basis_aux1, basis_aux2)
+end
 
-function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux)
+function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux1=nothing, basis_aux2=basis_aux1)
     Γ = first(Γs)
-    basis_f1, basis_f2 = channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux, basis_aux)
+    basis_f1, basis_f2 = channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux1, basis_aux2)
     nind = get_nind(Γ)
     data = [zeros(eltype(first(Γs)), nind^2 * nbasis(basis_f1), nind^2 * nbasis(basis_f2)) for _ in eachindex(ws)]
     Base.Threads.@threads for iw in eachindex(ws)
