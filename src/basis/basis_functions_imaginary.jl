@@ -58,6 +58,9 @@ struct ImagGridAndTailBasis{T} <: AbstractImagBasis{T}
     nmax::Int
     wmax::Int
     function ImagGridAndTailBasis(::Type{T}, particle_type, nmin, nmax, wmax) where {T}
+        if nmin > nmax
+            nmin, nmax = 1, 0  # no tails
+        end
         if particle_type !== :Boson && particle_type !== :Fermion
             error("Invalid particle type $particle_type. Must be :Boson or :Fermion.")
         end

@@ -34,6 +34,9 @@ struct LinearSplineAndTailBasis{T, FT} <: AbstractRealFreqBasis{T}
     grid::Vector{FT}
 end
 function LinearSplineAndTailBasis(::Type{T}, nmin, nmax, grid) where {T}
+    if nmin > nmax
+        nmin, nmax = 1, 0  # no tails
+    end
     LinearSplineAndTailBasis{T, eltype(grid)}(nmin, nmax, Vector(grid))
 end
 LinearSplineAndTailBasis(nmin, nmax, grid) = LinearSplineAndTailBasis(Float64, nmin, nmax, grid)

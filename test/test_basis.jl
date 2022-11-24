@@ -28,6 +28,11 @@ using mfRG
     @test all(basis[-1:1, 1] .≈ 1)
     @test_throws BoundsError basis[1, 2]
 
+    # Construction without tails
+    basis = LinearSplineAndTailBasis(5, 1, [-4., 0., 5.])
+    @test mfRG.ntails(basis) == 0
+    @test nbasis(basis) == 3
+
     # Test basis_integral
     basis = LinearSplineAndTailBasis(2, 3, -4.:4.0:4.)
     basis2 = LinearSplineAndTailBasis(0, 0, [-1., 1.])
@@ -99,6 +104,11 @@ end
 
     # Special case: Fermions with only tails
     @test get_fitting_points(ImagGridAndTailBasis(:Fermion, 0, 1, 0)) == -3:2
+
+    # Construction without tails
+    basis = ImagGridAndTailBasis(:Fermion, 5, 1, 3)
+    @test mfRG.ntails(basis) == 0
+    @test nbasis(basis) == 6
 
     # Test basis_integral
     basis = ImagGridAndTailBasis(:Fermion, 2, 3, 2)
