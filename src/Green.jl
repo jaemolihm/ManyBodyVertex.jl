@@ -62,5 +62,5 @@ function solve_Dyson(G0, Σ, basis=Σ.basis)
         G_data[:, :, iv] .= inv(inv(G0(v)) .- Σ(v))
     end
     data = mfRG.fit_basis_coeff(G_data, basis, vs, 3)
-    Green2P{:MF}(basis, 1, data)
+    Green2P{get_formalism(G0)}(basis, 1, data)
 end
