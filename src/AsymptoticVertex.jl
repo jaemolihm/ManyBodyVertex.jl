@@ -12,9 +12,9 @@ Base.@kwdef struct AsymptoticVertex{F, T} <: AbstractFrequencyVertex{F, T}
     Γ0_A
     Γ0_P
     Γ0_T
-    K1_A
-    K1_P
-    K1_T
+    K1_A = nothing
+    K1_P = nothing
+    K1_T = nothing
     K2_A = nothing
     K2_P = nothing
     K2_T = nothing

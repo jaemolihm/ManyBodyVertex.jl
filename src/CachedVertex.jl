@@ -47,6 +47,7 @@ function cache_vertex_matrix(Γ::AbstractVertex4P, C, ws, basis_aux1=nothing, ba
 end
 
 function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux1=nothing, basis_aux2=basis_aux1)
+    isempty(Γs) && return nothing
     Γ = first(Γs)
     basis_f1, basis_f2 = channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux1, basis_aux2)
     nind = get_nind(Γ)
