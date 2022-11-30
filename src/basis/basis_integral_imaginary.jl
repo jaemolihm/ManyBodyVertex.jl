@@ -40,7 +40,7 @@ function integrate_imag(f::Function, l::Integer, r::Integer)
             y3 = y2 + sum(f, (2N+1):3N)
             y4 = y3 + sum(f, (3N+1):4N)
         end
-        val = if abs(y4 - y3) < eps(real(y4))
+        val = if norm(y4 - y3) < eps(real(eltype(y4)))
             y4
         else
             ( - y1 * x2 * x3 * x4 / (x1 - x2) / (x1 - x3) / (x1 - x4)

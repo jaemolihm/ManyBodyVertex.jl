@@ -103,41 +103,50 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP; iterate_by_bse=false)
     typeof(Γ)(; Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_b, Γ.basis_k2_f, Γs...)
 end
 
-function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
-    F = mfRG.get_formalism(Γ)
-    F === :MF && temperature === nothing && error("For MF, temperature must be provided")
+"""
+    compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
+Compute the self-energy by solving the Schwinger-Dyson equation.
+``Σ[a, d](v) = ∫ dw K1[ab, cd](v+w/2, w) * G[b, c](v+w) * integral_coeff * -1/2``
+"""
+function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
+    F = get_formalism(Γ)
     nind = get_nind(G)
-    if nind > 1 || F === :KF
-        @warn "Multiorbital or Keldysh not implemented yet, returning zero self-energy"
-        return Green2P{F}(basis, G.norb)
+    nb_f1(Γ) == 1 || error("Γ.basis_f1 must be a constant basis")
+    F === :MF && temperature === nothing && error("For MF, temperature must be provided")
+    if overlap === nothing
+        overlap = basis_integral_self_energy(Γ.basis_f2, Γ.basis_b, G.basis, v)
     end
+    # (ab, icd, j) -> (a, b, c, d, ij)
+    Γ_data = reshape(permutedims(reshape(Γ.data, (nind^2, nb_f2(Γ), nind^2, nb_b(Γ))), (1, 3, 2, 4)), nind^4, :)
+    # (a, b, c, d, ij) * (ij, k) -> (a, b, c, d, k)
+    Γ_data_2 = reshape(Γ_data * reshape(overlap, (:, nbasis(G.basis))), nind, nind, nind, nind, nbasis(G.basis))
+
+    Σ_v = zeros(eltype(G), nind, nind)
+    @views for b in 1:nind, d in 1:nind, c in 1:nind, a in 1:nind
+        Σ_v[a, d] += transpose(Γ_data_2[a, b, c, d, :]) * G.data[b, c, :]
+    end
+    Σ_v .*= (integral_coeff(Val(F), temperature) * -1 / 2)
+    Σ_v
+end
+
+function _compute_self_energy_SU2(Γ, G, v; temperature=nothing)
+    overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v)
+    (  _compute_self_energy(Γ[1], G, v, overlap; temperature) .* 1/2
+    .+ _compute_self_energy(Γ[2], G, v, overlap; temperature) .* 3/2)
+end
+
+function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
+    F = get_formalism(Γ)
+    nind = get_nind(G)
+    F === :MF && temperature === nothing && error("For MF, temperature must be provided")
 
     vs = get_fitting_points(basis)
     Σ_data_iv = zeros(ComplexF64, nind, nind, length(vs))
 
-    # FIXME
-    wmax = 500
     Base.Threads.@threads for iv in eachindex(vs)
-        v2 = vs[iv]
-        Γ_vw = zeros(eltype(Γ), nind, nind)
-        for v1 in -wmax:wmax
-            G_v1 = G(v1)[1, 1]
-            v, w = mfRG._bubble_frequencies_inv(Val(F), Val(:A), v1, v2)
-            Γ_vw .= 0
-            if Γ.K1_A !== nothing
-                Γ_vw .= Γ.K1_A[1](0, v, w) ./ 2 .+ Γ.K1_A[2](0, v, w) .* 3 ./ 2
-            end
-            if Γ.K2p_A !== nothing
-                Γ_vw .+= Γ.K2p_A[1](0, v, w) ./ 2 .+ Γ.K2p_A[2](0, v, w) .* 3 ./ 2
-            end
-            Σ_data_iv[:, :, iv] .+= Γ_vw .* G_v1
-        end
-    end
-
-    if F === :MF
-        Σ_data_iv .*= -temperature / 2
-    else
-        error("KF and ZF not implemented yet")
+        v = vs[iv]
+        Γ.K1_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K1_A, G, v; temperature))
+        Γ.K2p_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K2p_A, G, v; temperature))
     end
 
     Σ_data = mfRG.fit_basis_coeff(Σ_data_iv, basis, vs, 3)

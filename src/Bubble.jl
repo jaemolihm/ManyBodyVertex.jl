@@ -110,37 +110,7 @@ function to_matrix(Π::Bubble{F, C, T}, w, overlap) where {F, C, T}
     collect(Π_vertex) .* integral_coeff(Π)
 end
 
-integral_coeff(Π::AbstractBubble{:KF}) = -im / 2 / eltype(Π)(π)
-integral_coeff(Π::AbstractBubble{:MF}) = eltype(Π)(Π.temperature)::eltype(Π)
-integral_coeff(Π::AbstractBubble{:ZF}) = -im / 2 / eltype(Π)(π)
 
-
-"""
-    compute_bubble(G, basis_f, basis_b, ::Val{C}; temperature) where {C}
-Compute the Bubble in channel `C` for the 2-point Green function `G`.
-"""
-function compute_bubble(G, basis_f, basis_b, ::Val{C}; temperature) where {C}
-    F = get_formalism(G)
-    nind = get_nind(G)
-    Π = Bubble{F, C}(basis_f, basis_b, G.norb; temperature)
-    vs = get_fitting_points(basis_f)
-    ws = get_fitting_points(basis_b)
-    Π_data = zeros(eltype(Π.data), length(vs), nind^4, length(ws))
-
-    for (iw, w) in enumerate(ws)
-        for (iv, v) in enumerate(vs)
-            v1, v2 = mfRG._bubble_frequencies(Val(F), Val(C), v, w)
-            G1 = G(v1)
-            G2 = G(v2)
-            for (i, inds) in enumerate(Iterators.product(1:nind, 1:nind, 1:nind, 1:nind))
-                i11, i12, i21, i22 = mfRG._bubble_indices(Val(C), inds)
-                Π_data[iv, i, iw] = G1[i11, i12] * G2[i21, i22]
-            end
-        end
-    end
-    Π_data .*= mfRG._bubble_prefactor(Val(C))
-    Π_data_tmp1 = mfRG.fit_basis_coeff(Π_data, basis_f, vs, 1)
-    Π_data_tmp2 = mfRG.fit_basis_coeff(Π_data_tmp1, basis_b, ws, 3)
-    Π.data .= reshape(Π_data_tmp2, size(Π.data))
-    Π
-end
+integral_coeff(::Union{Val{:KF}, Val{:ZF}}, _) = -im / 2π
+integral_coeff(::Val{:MF}, temperature) = temperature
+integral_coeff(Π::AbstractBubble{F}) where {F} = eltype(Π)(integral_coeff(Val(F), Π.temperature))::eltype(Π)
