@@ -11,11 +11,14 @@ begin
     #             with the ~5% error grids. The timing is for 3rd and later iterations. The
     #             2nd iteration is very quick (~2 seconds).
     #             (Currently, multithreading is not used in run_parquet.)
+    # 2022.11.30: The parquet iteration takes ~3 seconds, but the bubble update takes ~15
+    #             seconds.
 
     e = 0
     Δ = 10.0
     U = 0.5 * Δ
     t = 0.005 * Δ
+    G0 = SIAMLazyGreen2P{:KF}(; e, Δ, t)
 
     # Parameters to ensure ~5% error
     vgrid_1p = get_nonequidistant_grid(10, 101) .* Δ;
@@ -30,17 +33,15 @@ begin
 
     basis_v_bubble_tmp = LinearSplineAndTailBasis(2, 4, vgrid_k1)
     basis_w = LinearSplineAndTailBasis(1, 3, wgrid_k1)
-    basis_aux = LinearSplineAndTailBasis(1, 0, vgrid_k3)
+    basis_v_aux = LinearSplineAndTailBasis(1, 0, vgrid_k3)
 
     basis_1p = LinearSplineAndTailBasis(1, 3, vgrid_1p)
     basis_v_bubble, basis_w_bubble = basis_for_bubble(basis_v_bubble_tmp, basis_w)
-    @time ΠA_ = mfRG.siam_get_bubble_improved(basis_v_bubble, basis_w_bubble, basis_1p, Val(:KF), Val(:A); e, Δ, t)
-    @time ΠP_ = mfRG.siam_get_bubble_improved(basis_v_bubble, basis_w_bubble, basis_1p, Val(:KF), Val(:P); e, Δ, t)
-    ΠA = (ΠA_, ΠA_)
-    ΠP = (ΠP_, ΠP_ * 2)
 
     # Run parquet calculation
-    @time vertex = run_parquet(U, ΠA, ΠP, basis_w, basis_aux; max_class=3, max_iter=10, reltol=1e-2)
+    @time vertex, Σ = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_w,
+        basis_v_aux, basis_1p; max_class=3, max_iter=10, reltol=1e-2, temperature=t,
+        smooth_bubble=true);
 end;
 
 begin
