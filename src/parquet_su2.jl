@@ -154,7 +154,8 @@ function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth
 end
 
 function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2_b, basis_k2_f, basis_1p=G0.basis;
-        max_class, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false)
+        max_class, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false,
+        mixing_history=10, mixing_coeff=0.5)
     F = get_formalism(G0)
     T = eltype(G0)
 
@@ -164,53 +165,41 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2
 
     # 1st iteration
     ΠA, ΠP = setup_bubble_SU2(G0, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
-    vertex = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, basis_k1_b, basis_k2_b, basis_k2_f)
+    Γ = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, basis_k1_b, basis_k2_b, basis_k2_f)
 
     # Initialize self-energy and Green function. Here Σ = 0, G = G0.
     Σ = Green2P{F}(basis_1p, G0.norb)
     G = solve_Dyson(G0, Σ)
 
+    acceleration = AndersonAcceleration(; m=mixing_history)
+
     for i in 1:max_iter
         @info "== Iteration $i =="
-        @time vertex_new = iterate_parquet(vertex, ΠA, ΠP)
+        @time Γ_new = iterate_parquet(Γ, ΠA, ΠP)
 
-        Γ_diff = get_difference_norm(vertex_new, vertex)
+        err = get_difference_norm(Γ_new, Γ)
 
-        vertex = vertex_new
         # Mixing
-        if i == 1
-            vertex = vertex_new
-        else i >= 2
-            mixing_coeff = 0.2
-            # mixing_coeff = i <= 20 ? 0.1 : 0.02
-            new_vertices = map(_vertex_names(vertex_new)) do name
-                xold = getproperty(vertex, name)
-                xnew = getproperty(vertex_new, name)
-                if xold !== nothing && xnew !== nothing
-                    (name, xnew .* mixing_coeff .+ xold .* (1 - mixing_coeff))
-                elseif xnew !== nothing
-                    (name, xnew .* mixing_coeff)
-                elseif xold !== nothing
-                    (name, xold .* (1 - mixing_coeff))
-                else
-                    (name, nothing)
-                end
-            end
-            vertex = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, new_vertices...)
+        if i <= 2
+            # For the first two iterations, new class of vertices may appear, so we do not
+            # apply mixing.
+            Γ = Γ_new
+        else
+            Γ_vec = vertex_to_vector(Γ)
+            Γ_diff_vec = vertex_to_vector(Γ_new) .- Γ_vec
+            Γ = vector_to_vertex(acceleration(Γ_vec, mixing_coeff, Γ_diff_vec), Γ)
         end
 
         @info "Updating self-energy and the bubble"
-        if mod1(i, 10) == 1
-            @time Σ = compute_self_energy_SU2(vertex, G; temperature)
-            G = solve_Dyson(G0, Σ)
-            ΠA, ΠP = setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
-        end
+        @time Σ = compute_self_energy_SU2(Γ, G; temperature)
+        G = solve_Dyson(G0, Σ)
+        ΠA, ΠP = setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
 
-        @info Γ_diff
-        if Γ_diff.relerr < reltol
+        @info err
+        if err.relerr < reltol
             @info "Convergence reached"
             break
         end
     end
-    (; vertex, Σ)
+    (; Γ, Σ)
 end

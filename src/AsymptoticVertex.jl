@@ -79,3 +79,36 @@ function get_difference_norm(Γ1::AsymptoticVertex, Γ2::AsymptoticVertex)
     end
     (; abserr, relerr)
 end
+
+"""
+    vertex_to_vector(Γ::AsymptoticVertex)
+Reshape and concatenate the vertices of `Γ` to a one-dimensional vector.
+"""
+function vertex_to_vector(Γ::mfRG.AsymptoticVertex)
+    v = eltype(Γ)[]
+    for x in mfRG.get_vertices(Γ)
+        append!(v, vec(x[1].data))
+        append!(v, vec(x[2].data))
+    end
+    v
+end
+
+"""
+    vector_to_vertex(v, Γ_template::AsymptoticVertex)
+Reshape a one-dimensional vector `v` to the vertices with the same type and size as
+`Γ_template`.
+"""
+function vector_to_vertex(v, Γ_template::mfRG.AsymptoticVertex)
+    ind = 0
+    vertices = Dict()
+    for name in mfRG._vertex_names(Γ_template)
+        vertices[name] = similar.(getproperty(Γ_template, name))
+        for i in eachindex(vertices[name])
+            n = length(vertices[name][i].data)
+            vec(vertices[name][i].data) .= v[ind+1:ind+n]
+            ind += n
+        end
+    end
+    typeof(Γ_template)(; Γ_template.max_class, Γ_template.Γ0_A, Γ_template.Γ0_P,
+                         Γ_template.Γ0_T, vertices...)
+end

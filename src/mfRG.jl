@@ -13,6 +13,7 @@ export Vertex4P, to_matrix, vertex_keldyshview, apply_crossing
 export Bubble, compute_bubble, compute_bubble_smoothed
 export fit_bosonic_basis_coeff!
 export get_bare_vertex
+export vertex_to_vector, vector_to_vertex
 
 export vertex_bubble_integral
 export solve_BSE, solve_BSE_left
@@ -21,6 +22,7 @@ export run_parquet
 export SIAMLazyGreen2P
 
 include("utility.jl")
+include("acceleration.jl")
 
 include("basis/basis_functions.jl")
 include("basis/basis_functions_imaginary.jl")
