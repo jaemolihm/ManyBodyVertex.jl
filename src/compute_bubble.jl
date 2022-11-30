@@ -115,19 +115,15 @@ function compute_bubble_smoothed(G::Green2P{F}, basis_f, basis_b, valC::Val{C};
     ntails(basis_b) > 0 && error("tails cannot be used for `basis_b` in compute_bubble_smoothed")
     valF = Val(F)
     nind = get_nind(G)
-    G_data_reshaped = Base.ReshapedArray(G.data, (nind^2, nbasis(G.basis)), ())
 
     # Compute ∫dv b_f(v) * b_1p(v1) * b_1p(v2) where v1 and v2 are bubble frequencies for (v, w)
     ws = get_fitting_points(basis_b)
     Π_data = zeros(ComplexF64, nbasis(basis_f), nind^4, length(ws))
-    # Base.Threads.@threads
-    for iw in axes(ws, 1)
+    Base.Threads.@threads for iw in axes(ws, 1)
         w = ws[iw]
         set_basis_shift!(basis_f, w)
         overlap_f = basis_integral(basis_f, basis_f)
 
-        coeff_g1 = zeros(eltype(G.basis), size(G.basis, 2))
-        coeff_g2 = zeros(eltype(G.basis), size(G.basis, 2))
         g1 = zeros(eltype(G), nind^2)
         g2 = zeros(eltype(G), nind^2)
 
@@ -136,23 +132,24 @@ function compute_bubble_smoothed(G::Green2P{F}, basis_f, basis_b, valC::Val{C};
             interval_v = integration_interval((basis_f,), (i_f,))
             isempty(interval_v) && continue
 
-            function f(v)
+            function f!(r, v)
                 v1, v2 = _bubble_frequencies(valF, valC, v, w)
                 coeff_f = basis_f[v, i_f]
-                @views coeff_g1 .= G.basis[v1, :]
-                @views coeff_g2 .= G.basis[v2, :]
-                mul!(g1, G_data_reshaped, coeff_g1)
-                mul!(g2, G_data_reshaped, coeff_g2)
-                (g1 * transpose(g2)) .* coeff_f
+                get_G!(Base.ReshapedArray(g1, (nind, nind), ()), G, v1)
+                get_G!(Base.ReshapedArray(g2, (nind, nind), ()), G, v2)
+                mul!(r, g1, transpose(g2), coeff_f, false)
+                r
+            end
+            function f(v)
+                f!(zeros(eltype(G), nind^2, nind^2), v)
             end
 
             l_v, r_v = endpoints(interval_v)
             if F === :MF
                 res = integrate_imag(f, l_v, r_v)
             else
-                l_v >= r_v && continue
-                l_v ≈ r_v && continue
-                res = quadgk(f, l_v, r_v)
+                (l_v >= r_v || l_v ≈ r_v) && continue
+                res = quadgk!(f!, zeros(eltype(G), nind^2, nind^2), l_v, r_v)
             end
 
             value = reshape(res[1], nind, nind, nind, nind)

@@ -46,7 +46,11 @@ Evaluate Green function `G` at frequency `v`.
 """
 function (G::Green2P)(v)
     nind = get_nind(G)
-    G_v = zeros(eltype(G), nind, nind)
+    get_G!(zeros(eltype(G), nind, nind), G, v)
+end
+
+function get_G!(G_v, G::Green2P, v)
+    G_v .= 0
     @views for ib in 1:nbasis(G.basis)
         coeff = G.basis[v, ib]
         coeff == 0 && continue

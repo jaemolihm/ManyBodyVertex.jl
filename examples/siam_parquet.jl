@@ -11,8 +11,10 @@ begin
     #             with the ~5% error grids. The timing is for 3rd and later iterations. The
     #             2nd iteration is very quick (~2 seconds).
     #             (Currently, multithreading is not used in run_parquet.)
-    # 2022.11.30: The parquet iteration takes ~3 seconds, but the bubble update takes ~15
-    #             seconds.
+    # 2022.11.30: Each iteration takes ~8 seconds with the ~5% error grids.
+    #             parquet iteration        : ~3 seconds
+    #             self-energy calculation  : ~0.5 seconds
+    #             bubble update (smoothed) : ~4 seconds
 
     e = 0
     Δ = 10.0
