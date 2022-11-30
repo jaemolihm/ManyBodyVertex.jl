@@ -45,9 +45,14 @@ end
 Evaluate Green function `G` at frequency `v`.
 """
 function (G::Green2P)(v)
-    coeff = G.basis[v, :]
-    @ein G_v[i, j] := G.data[i, j, v1] * coeff[v1]
-    G_v::Matrix{eltype(G)}
+    nind = get_nind(G)
+    G_v = zeros(eltype(G), nind, nind)
+    @views for ib in 1:nbasis(G.basis)
+        coeff = G.basis[v, ib]
+        coeff == 0 && continue
+        G_v .+= G.data[:, :, ib] .* coeff
+    end
+    G_v
 end
 
 """
