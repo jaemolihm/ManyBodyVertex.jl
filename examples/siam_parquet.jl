@@ -5,13 +5,14 @@ using PyPlot
 # Obtain Fig. 9.1 of E. Walter thesis (2021)
 
 # 2022.11.08: The script takes wall time ~ 4 mins to finish in fifi server (including compilation)
+# 2022.11.08: Wall time 2m 45s (1 thread, including compilation which takes ~50% of the time)
 
 begin
     # 2022.11.08: run_parquet (max_class = 3) takes ~50 seconds per iteration in fifi server
     #             with the ~5% error grids. The timing is for 3rd and later iterations. The
     #             2nd iteration is very quick (~2 seconds).
     #             (Currently, multithreading is not used in run_parquet.)
-    # 2022.11.30: Each iteration takes ~8 seconds with the ~5% error grids.
+    # 2022.11.30: Each iteration takes ~8 seconds with the ~5% error grids with 4 threads.
     #             parquet iteration        : ~3 seconds
     #             self-energy calculation  : ~0.5 seconds
     #             bubble update (smoothed) : ~4 seconds
@@ -114,6 +115,6 @@ begin
         ax.set_yticklabels([-5, 0, 5]; fontsize)
     end
     suptitle("Γ_↑↓↓↑ / U, t channel, ω=$w, U/Δ=$(U/Δ), t/U=$(t/U)\n(Analogous to Fig. 9.1 (upper panel) of E. Walter thesis)"; y=0.98, fontsize)
-    savefig("siam_parquet_vertex_U_$(U/Δ).png")
+    # savefig("siam_parquet_vertex_U_$(U/Δ).png")
     display(fig); close(fig)
 end
