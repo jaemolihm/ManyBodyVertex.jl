@@ -141,10 +141,22 @@ function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
     vs = get_fitting_points(basis)
     Σ_data_iv = zeros(ComplexF64, nind, nind, length(vs))
 
+    # If G is lazily defined, compute G on the basis explicitly.
+    if G isa AbstractLazyGreen2P
+        vs = get_fitting_points(basis)
+        G_data = zeros(eltype(G), nind, nind, length(vs))
+        for (iv, v) in enumerate(vs)
+            G_data[:, :, iv] .= G(v)
+        end
+        G_ = Green2P{get_formalism(G)}(basis, G.norb, fit_basis_coeff(G_data, basis, vs, 3))
+    else
+        G_ = G
+    end
+
     Base.Threads.@threads for iv in eachindex(vs)
         v = vs[iv]
-        Γ.K1_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K1_A, G, v; temperature))
-        Γ.K2p_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K2p_A, G, v; temperature))
+        Γ.K1_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K1_A, G_, v; temperature))
+        Γ.K2p_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K2p_A, G_, v; temperature))
     end
 
     Σ_data = mfRG.fit_basis_coeff(Σ_data_iv, basis, vs, 3)
