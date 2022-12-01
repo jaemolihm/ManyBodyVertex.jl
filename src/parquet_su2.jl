@@ -173,7 +173,7 @@ function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth
 end
 
 function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2_b, basis_k2_f, basis_1p=G0.basis;
-        max_class, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false,
+        max_class=3, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false,
         mixing_history=10, mixing_coeff=0.5, iterate_by_bse=false)
     F = get_formalism(G0)
     T = eltype(G0)

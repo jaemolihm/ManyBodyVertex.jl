@@ -89,7 +89,7 @@ end
 
 
 function run_parquet_without_irreducible(G0, Π₀, Γ₀, basis_1p=G0.basis;
-        max_class, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false,
+        max_class=3, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false,
         mixing_history=10, mixing_coeff=0.5)
     F = get_formalism(G0)
     T = eltype(G0)
