@@ -1,31 +1,31 @@
 # FIXME: non-SU2
 
-function iterate_parquet_asymptotic_single_channel_BSE(Π, Γ0, K1, K2, K2p, K3, Γirr;
+function iterate_parquet_asymptotic_single_channel_BSE(Π, U, γ, Irr;
                                         max_class=3, basis_k1_b, basis_k2_f, basis_k2_b)
 
     C = channel(Π[1])
-    K1_only_Γ0 = solve_BSE.(Γ0, Π, Γ0, Ref(basis_k1_b))
-    Πscr = ScreenedBubble.(Π, Γ0, K1_only_Γ0)
+    K1_only_U = solve_BSE.(U, Π, U, Ref(basis_k1_b))
+    Πscr = ScreenedBubble.(Π, U, K1_only_U)
 
-    K1_new = K1_only_Γ0
+    K1_new = K1_only_U
     K2_new = nothing
     K2p_new = nothing
     K3_new = nothing
 
-    if !isempty(Γirr)
+    if !isempty(Irr)
         ws = get_fitting_points(basis_k2_b)
-        Γirr_mat = Tuple(cache_vertex_matrix(getindex.(Γirr, i), C, ws, basis_k2_f) for i in 1:2);
-        K2_new = solve_BSE.(Γirr_mat, Πscr, Γ0, Ref(basis_k2_b))
-        K1_new = K1_new .+ vertex_bubble_integral.(Γ0, Πscr, K2_new, Ref(basis_k1_b))
+        Irr_mat = Tuple(cache_vertex_matrix(getindex.(Irr, i), C, ws, basis_k2_f) for i in 1:2);
+        K2_new = solve_BSE.(Irr_mat, Πscr, U, Ref(basis_k2_b))
+        K1_new = K1_new .+ vertex_bubble_integral.(U, Πscr, K2_new, Ref(basis_k1_b))
         if max_class >= 2
-            K2p_new = solve_BSE_left.(Γirr_mat, Πscr, Γ0, Ref(basis_k2_b))
+            K2p_new = solve_BSE_left.(Irr_mat, Πscr, U, Ref(basis_k2_b))
         end
         if max_class >= 3
-            K3_new = solve_BSE.(Γirr_mat, Πscr, Γirr_mat, Ref(basis_k2_b))
+            K3_new = solve_BSE.(Irr_mat, Πscr, Irr_mat, Ref(basis_k2_b))
         end
     end
 
-    (; K1_new, K2_new, K2p_new, K3_new)
+    (; K1=K1_new, K2=K2_new, K2p=K2p_new, K3=K3_new)
 end
 
 function _mapreduce_bubble_integrals(Γ1s, Π, Γ2s, basis_b)
@@ -38,29 +38,29 @@ function _mapreduce_bubble_integrals(Γ1s, Π, Γ2s, basis_b)
     end
 end
 
-function iterate_parquet_asymptotic_single_channel(Π, Γ0, K1, K2, K2p, K3, Γirr;
+function iterate_parquet_asymptotic_single_channel(Π, U, γ, Irr;
                                         max_class=3, basis_k1_b, basis_k2_f, basis_k2_b)
 
     C = channel(Π[1])
-    K1_new = _mapreduce_bubble_integrals([Γ0], Π, [Γ0, K1, K2], basis_k1_b)
+    K1_new = _mapreduce_bubble_integrals([U], Π, [U, γ.K1, γ.K2], basis_k1_b)
 
-    if max_class >= 2 && !isempty(Γirr)
+    if max_class >= 2 && !isempty(Irr)
         ws = get_fitting_points(basis_k2_b)
-        Γirr_mat = Tuple(cache_vertex_matrix(getindex.(Γirr, i), C, ws, basis_k2_f) for i in 1:2);
-        K2_new = _mapreduce_bubble_integrals([Γirr_mat], Π, [Γ0, K1, K2], basis_k2_b)
-        K2p_new = _mapreduce_bubble_integrals([Γ0, K1, K2p], Π, [Γirr_mat], basis_k2_b)
+        Irr_mat = Tuple(cache_vertex_matrix(getindex.(Irr, i), C, ws, basis_k2_f) for i in 1:2);
+        K2_new = _mapreduce_bubble_integrals([Irr_mat], Π, [U, γ.K1, γ.K2], basis_k2_b)
+        K2p_new = _mapreduce_bubble_integrals([U, γ.K1, γ.K2p], Π, [Irr_mat], basis_k2_b)
     else
         K2_new = nothing
         K2p_new = nothing
     end
 
-    if max_class >= 3 && !isempty(Γirr)
-        K3_new = _mapreduce_bubble_integrals([Γirr_mat], Π, [Γirr_mat, K2p, K3], basis_k2_b)
+    if max_class >= 3 && !isempty(Irr)
+        K3_new = _mapreduce_bubble_integrals([Irr_mat], Π, [Irr_mat, γ.K2p, γ.K3], basis_k2_b)
     else
         K3_new = nothing
     end
 
-    (; K1_new, K2_new, K2p_new, K3_new)
+    (; K1=K1_new, K2=K2_new, K2p=K2p_new, K3=K3_new)
 end
 
 function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP; iterate_by_bse=false)
@@ -72,17 +72,15 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP; iterate_by_bse=false)
 
     # BSE for channel A
     @info "Solving BSE for channel A"
-    Γ_A_irr = get_irreducible_vertices(:A, Γ)
     K1_A, K2_A, K2p_A, K3_A = single_channel_iterate_function(
-        ΠA, Γ.Γ0_A, Γ.K1_A, Γ.K2_A, Γ.K2p_A, Γ.K3_A, Γ_A_irr;
+        ΠA, Γ.Γ0_A, get_reducible_vertices(:A, Γ), get_irreducible_vertices(:A, Γ);
         Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_f, Γ.basis_k2_b
     )
 
     # BSE for channel P
     @info "Solving BSE for channel P"
-    Γ_P_irr = get_irreducible_vertices(:P, Γ)
     K1_P, K2_P, K2p_P, K3_P = single_channel_iterate_function(
-        ΠP, Γ.Γ0_P, Γ.K1_P, Γ.K2_P, Γ.K2p_P, Γ.K3_P, Γ_P_irr;
+        ΠP, Γ.Γ0_P, get_reducible_vertices(:P, Γ), get_irreducible_vertices(:P, Γ);
         Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_f, Γ.basis_k2_b
     )
 
@@ -164,7 +162,7 @@ end
 
 function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2_b, basis_k2_f, basis_1p=G0.basis;
         max_class, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false,
-        mixing_history=10, mixing_coeff=0.5)
+        mixing_history=10, mixing_coeff=0.5, iterate_by_bse=false)
     F = get_formalism(G0)
     T = eltype(G0)
 
@@ -184,7 +182,7 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2
 
     for i in 1:max_iter
         @info "== Iteration $i =="
-        @time Γ_new = iterate_parquet(Γ, ΠA, ΠP)
+        @time Γ_new = iterate_parquet(Γ, ΠA, ΠP; iterate_by_bse)
 
         err = get_difference_norm(Γ_new, Γ)
 

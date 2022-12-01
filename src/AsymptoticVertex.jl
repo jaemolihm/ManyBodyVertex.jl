@@ -36,6 +36,18 @@ _vertex_names(::AsymptoticVertex) = (:K1_A, :K1_P, :K1_T, :K2_A, :K2_P, :K2_T, :
 
 get_vertices(Γ::AsymptoticVertex) = filter!(!isnothing, [getproperty(Γ, n) for n in _vertex_names(Γ)])
 
+function get_reducible_vertices(C, Γ::AsymptoticVertex)
+    if C === :A
+        (; K1=Γ.K1_A, K2=Γ.K2_A, K2p=Γ.K2p_A, K3=Γ.K3_A)
+    elseif C === :P
+        (; K1=Γ.K1_P, K2=Γ.K2_P, K2p=Γ.K2p_P, K3=Γ.K3_P)
+    elseif C === :T
+        (; K1=Γ.K1_T, K2=Γ.K2_T, K2p=Γ.K2p_T, K3=Γ.K3_T)
+    else
+        error("Wrong channel $C")
+    end
+end
+
 """
     get_irreducible_vertices(C, Γ::AsymptoticVertex)
 Return the list of vertices in `Γ` that are irreducible in channel `C`, except for the fully

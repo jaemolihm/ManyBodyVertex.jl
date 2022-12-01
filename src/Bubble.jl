@@ -51,6 +51,26 @@ function Base.:*(x::Number, A::Bubble)
 end
 Base.:*(A::Bubble, x::Number) = x * A
 
+function _check_basis_identity(A::Bubble, B::Bubble)
+    channel(A) === channel(B) || error("channel must be identical")
+    A.basis_f === B.basis_f || error("basis must be identical")
+    A.basis_b === B.basis_b || error("basis must be identical")
+end
+
+function Base.:+(A::Bubble, B::Bubble)
+    _check_basis_identity(A, B)
+    C = similar(A)
+    C.data .= A.data .+ B.data
+    C
+end
+
+function Base.:-(A::Bubble, B::Bubble)
+    _check_basis_identity(A, B)
+    C = similar(A)
+    C.data .= A.data .- B.data
+    C
+end
+
 function Base.show(io::IO, Π::AbstractBubble{F, C}) where {F, C}
     print(io, Base.typename(typeof(Π)).wrapper, "{:$F, :$C}")
     print(io, "(nbasis_f=$(nb_f(Π)), nbasis_b=$(nb_b(Π)), ")
