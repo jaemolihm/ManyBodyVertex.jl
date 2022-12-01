@@ -44,31 +44,11 @@ function Base.similar(Π::Bubble{F, C, T}, ::Type{ElType}=T) where {F, C, T, ElT
     Bubble{F, C}(Π.basis_f, Π.basis_b, Π.norb, similar(Π.data, ElType); Π.temperature)
 end
 
-function Base.:*(x::Number, A::Bubble)
-    B = similar(A)
-    B.data .= A.data .* x
-    B
-end
-Base.:*(A::Bubble, x::Number) = x * A
-
 function _check_basis_identity(A::Bubble, B::Bubble)
-    channel(A) === channel(B) || error("channel must be identical")
-    A.basis_f === B.basis_f || error("basis must be identical")
-    A.basis_b === B.basis_b || error("basis must be identical")
-end
-
-function Base.:+(A::Bubble, B::Bubble)
-    _check_basis_identity(A, B)
-    C = similar(A)
-    C.data .= A.data .+ B.data
-    C
-end
-
-function Base.:-(A::Bubble, B::Bubble)
-    _check_basis_identity(A, B)
-    C = similar(A)
-    C.data .= A.data .- B.data
-    C
+    get_formalism(A) === get_formalism(B) || error("Different formalism")
+    channel(A) === channel(B) || error("Different channel")
+    A.basis_f === B.basis_f || error("Different basis_f")
+    A.basis_b === B.basis_b || error("Different basis_b")
 end
 
 function Base.show(io::IO, Π::AbstractBubble{F, C}) where {F, C}

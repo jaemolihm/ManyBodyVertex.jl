@@ -34,6 +34,7 @@ include("basis/basis_integral_self_energy.jl")
 include("channel.jl")
 include("spin_symmetry_su2.jl")
 
+include("AbstractFrequencyVertex.jl")
 include("Green.jl")
 include("Vertex.jl")
 include("CachedVertex.jl")

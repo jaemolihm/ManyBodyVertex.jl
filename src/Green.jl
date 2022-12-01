@@ -3,12 +3,6 @@ using OMEinsum
 # TODO: Test for Green2P
 # TODO: Test for Dyson
 
-abstract type AbstractFrequencyVertex{F, T} end
-Base.eltype(::AbstractFrequencyVertex{F, T}) where {F, T} = T
-get_formalism(::AbstractFrequencyVertex{F}) where {F} = F
-nkeldysh(F::Symbol) = F === :KF ? 2 : 1
-nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
-
 # Type for lazy Green function object
 abstract type AbstractLazyGreen2P{F, T} <: AbstractFrequencyVertex{F, T} end
 
@@ -38,6 +32,11 @@ Green2P{F}(basis, norb=1) where {F} = Green2P{F}(ComplexF64, basis, norb)
 
 function Base.similar(G::Green2P{F, T}, ::Type{ElType}=T) where {F, T, ElType}
     Green2P{F}(G.basis, G.norb, similar(G.data, ElType))
+end
+
+function _check_basis_identity(A::Green2P, B::Green2P)
+    get_formalism(A) === get_formalism(B) || error("Different formalism")
+    A.basis === B.basis || error("Different basis")
 end
 
 """
@@ -70,6 +69,6 @@ function solve_Dyson(G0, Σ, basis=Σ.basis)
     for (iv, v) in enumerate(vs)
         G_data[:, :, iv] .= inv(inv(G0(v)) .- Σ(v))
     end
-    data = mfRG.fit_basis_coeff(G_data, basis, vs, 3)
-    Green2P{get_formalism(G0)}(basis, 1, data)
+    data = fit_basis_coeff(G_data, basis, vs, 3)
+    Green2P{get_formalism(G0)}(basis, G0.norb, data)
 end

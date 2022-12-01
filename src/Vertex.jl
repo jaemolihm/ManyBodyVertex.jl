@@ -64,36 +64,12 @@ function Base.similar(Γ::Vertex4P{F, C, T}, ::Type{ElType}=T) where {F, C, T, E
     Vertex4P{F, C}(Γ.basis_f1, Γ.basis_f2, Γ.basis_b, Γ.norb, similar(Γ.data, ElType))
 end
 
-function Base.:*(x::Number, A::Vertex4P)
-    B = similar(A)
-    B.data .= A.data .* x
-    B
-end
-function Base.:/(A::Vertex4P, x::Number)
-    B = similar(A)
-    B.data .= A.data ./ x
-    B
-end
-Base.:*(A::Vertex4P, x::Number) = x * A
-
 function _check_basis_identity(A::Vertex4P, B::Vertex4P)
-    A.basis_f1 === B.basis_f1 || error("basis must be identical")
-    A.basis_f2 === B.basis_f2 || error("basis must be identical")
-    A.basis_b === B.basis_b || error("basis must be identical")
-end
-
-function Base.:+(A::Vertex4P, B::Vertex4P)
-    _check_basis_identity(A, B)
-    C = similar(A)
-    C.data .= A.data .+ B.data
-    C
-end
-
-function Base.:-(A::Vertex4P, B::Vertex4P)
-    _check_basis_identity(A, B)
-    C = similar(A)
-    C.data .= A.data .- B.data
-    C
+    get_formalism(A) === get_formalism(B) || error("Different formalism")
+    channel(A) === channel(B) || error("Different channel")
+    A.basis_f1 === B.basis_f1 || error("Different basis_f1")
+    A.basis_f2 === B.basis_f2 || error("Different basis_f2")
+    A.basis_b === B.basis_b || error("Different basis_b")
 end
 
 # Customize printing
