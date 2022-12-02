@@ -68,7 +68,7 @@ end
 
 frequency_to_standard(F::Val, C::Val, v1, v2, w) = indices_to_standard(C, _frequency_to_standard(F, v1, v2, w))
 frequency_to_channel(F::Val, C::Val, v1, v2, v3, v4) = _frequency_to_channel(F, indices_to_channel(C, (v1, v2, v3, v4))...)
-frequency_to_channel(F::Val, C::Val, v1234::NTuple{4}) = frequency_to_channel(F, C, v1234...)
+frequency_to_channel(F::Val, C::Val, v1234) = frequency_to_channel(F, C, v1234...)
 
 """
     _permute_orbital_indices_matrix_4p(c_in, c_out, Γ_mat_in, nind)

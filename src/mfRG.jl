@@ -8,6 +8,8 @@ export get_fitting_points
 export basis_integral
 export basis_for_bubble
 
+export RealSpaceBasis
+
 export Green2P, solve_Dyson
 export Vertex4P, to_matrix, vertex_keldyshview, apply_crossing
 export Bubble, compute_bubble, compute_bubble_smoothed
@@ -31,6 +33,7 @@ include("basis/basis_integral.jl")
 include("basis/basis_integral_imaginary.jl")
 include("basis/ShiftedSplineBasis.jl")
 include("basis/basis_integral_self_energy.jl")
+include("real_space_basis.jl")
 
 include("channel.jl")
 include("spin_symmetry_su2.jl")
