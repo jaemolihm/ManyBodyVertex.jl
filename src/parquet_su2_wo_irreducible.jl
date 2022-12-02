@@ -6,8 +6,8 @@ function iterate_parquet_asymptotic_single_channel_without_fully_irreducible(
 
     ws_12 = unique!(vcat(get_fitting_points(basis_k1_b), get_fitting_points(basis_k2_b)))
     ws_2 = get_fitting_points(basis_k2_b)
-    ΔI_mat = Tuple(cache_vertex_matrix(getindex.(ΔI, i), C, ws_12, basis_k2_f) for i in 1:2);
-    I₀_mat = Tuple(cache_vertex_matrix(getindex.(I₀, i), C, ws_2, basis_k2_f) for i in 1:2);
+    ΔI_mat = Tuple(cache_vertex_matrix(getindex.(ΔI, i), C, ws_12, basis_k2_f) for i in 1:2)
+    I₀_mat = Tuple(cache_vertex_matrix(getindex.(I₀, i), C, ws_2, basis_k2_f) for i in 1:2)
 
     Γ2p₀ = filter!(!isnothing, [U₀, γ₀.K1, γ₀.K2p])
     Γ2 = filter!(!isnothing, [U₀, γ₀.K1, γ₀.K2, Δγ.K1, Δγ.K2])
@@ -19,21 +19,21 @@ function iterate_parquet_asymptotic_single_channel_without_fully_irreducible(
     end
 
     if max_class >= 2
-        Γ2p₀_bar = filter!(!isnothing, [γ₀.K2, γ₀.K3, I₀_mat])
-        Γ2_bar = filter!(!isnothing, [γ₀.K2p, γ₀.K3, I₀_mat, Δγ.K2p, Δγ.K3])
-        Γ2p₀_bar_mat = Tuple(cache_vertex_matrix(getindex.(Γ2p₀_bar, i), C, ws_2, basis_k2_f) for i in 1:2);
-        Γ2_bar_mat = Tuple(cache_vertex_matrix(getindex.(Γ2_bar, i), C, ws_2, basis_k2_f) for i in 1:2);
+        Γ2p₀_bar = [γ₀.K2, Tuple(cache_vertex_matrix(getindex.(filter!(!isnothing,
+            [γ₀.K3, I₀_mat]), i), C, ws_2, basis_k2_f) for i in 1:2)]
+        Γ2_bar = [γ₀.K2p, Δγ.K2p, Tuple(cache_vertex_matrix(getindex.(filter!(!isnothing,
+             [γ₀.K3, I₀_mat, Δγ.K3]), i), C, ws_2, basis_k2_f) for i in 1:2)]
 
-        ΔK2_new = _mapreduce_bubble_integrals([Γ2p₀_bar_mat], ΔΠ, Γ2, basis_k2_b)
+        ΔK2_new = _mapreduce_bubble_integrals(Γ2p₀_bar, ΔΠ, Γ2, basis_k2_b)
         if !isempty(ΔI)
-            tmp = _mapreduce_bubble_integrals([Γ2p₀_bar_mat], Π₀, [ΔI_mat], basis_k2_b)
+            tmp = _mapreduce_bubble_integrals(Γ2p₀_bar, Π₀, [ΔI_mat], basis_k2_b)
             ΔK2_new = ΔK2_new .+ _mapreduce_bubble_integrals([tmp, ΔI_mat], Π, Γ2, basis_k2_b)
         end
 
-        ΔK2p_new = _mapreduce_bubble_integrals(Γ2p₀, ΔΠ, [Γ2_bar_mat], basis_k2_b)
+        ΔK2p_new = _mapreduce_bubble_integrals(Γ2p₀, ΔΠ, Γ2_bar, basis_k2_b)
         if !isempty(ΔI)
             tmp = _mapreduce_bubble_integrals(Γ2p₀, Π₀, [ΔI_mat], basis_k2_b)
-            ΔK2p_new = ΔK2p_new .+ _mapreduce_bubble_integrals([tmp], Π, [Γ2_bar_mat, ΔI_mat], basis_k2_b)
+            ΔK2p_new = ΔK2p_new .+ _mapreduce_bubble_integrals([tmp], Π, [Γ2_bar..., ΔI_mat], basis_k2_b)
             ΔK2p_new = ΔK2p_new .+ _mapreduce_bubble_integrals(Γ2p₀, Π, [ΔI_mat], basis_k2_b)
         end
     else
@@ -42,11 +42,11 @@ function iterate_parquet_asymptotic_single_channel_without_fully_irreducible(
     end
 
     if max_class >= 3
-        ΔK3_new = _mapreduce_bubble_integrals([Γ2p₀_bar_mat], ΔΠ, [Γ2_bar_mat], basis_k2_b)
+        ΔK3_new = _mapreduce_bubble_integrals(Γ2p₀_bar, ΔΠ, Γ2_bar, basis_k2_b)
         if !isempty(ΔI)
-            tmp = _mapreduce_bubble_integrals([Γ2p₀_bar_mat], Π₀, [ΔI_mat], basis_k2_b)
-            ΔK3_new = ΔK3_new .+ _mapreduce_bubble_integrals([tmp, ΔI_mat], Π, [Γ2_bar_mat, ΔI_mat], basis_k2_b)
-            ΔK3_new = ΔK3_new .+ _mapreduce_bubble_integrals([Γ2p₀_bar_mat], Π, [ΔI_mat], basis_k2_b)
+            tmp = _mapreduce_bubble_integrals(Γ2p₀_bar, Π₀, [ΔI_mat], basis_k2_b)
+            ΔK3_new = ΔK3_new .+ _mapreduce_bubble_integrals([tmp, ΔI_mat], Π, [Γ2_bar..., ΔI_mat], basis_k2_b)
+            ΔK3_new = ΔK3_new .+ _mapreduce_bubble_integrals(Γ2p₀_bar, Π, [ΔI_mat], basis_k2_b)
         end
     else
         ΔK3_new = nothing

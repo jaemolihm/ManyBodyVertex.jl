@@ -53,7 +53,7 @@ function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux1=nothing, bas
     end
 
     Γ = first(Γs)
-    basis_f1, basis_f2 = basis_aux1 === nothing ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux1, basis_aux2)
+    basis_f1, basis_f2 = channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux1, basis_aux2)
     nind = get_nind(Γ)
     data = [zeros(eltype(first(Γs)), nind^2 * nbasis(basis_f1), nind^2 * nbasis(basis_f2)) for _ in eachindex(ws)]
     Base.Threads.@threads for iw in eachindex(ws)
