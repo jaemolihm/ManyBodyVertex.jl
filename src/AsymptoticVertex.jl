@@ -66,7 +66,7 @@ Absolute and relative difference between `Γ1` and `Γ2`.
 function get_difference_norm(Γ1::AsymptoticVertex, Γ2::AsymptoticVertex)
     abserr = zero(real(eltype(Γ1)))
     relerr = zero(real(eltype(Γ1)))
-    for n in mfRG._vertex_names(Γ1)
+    for n in _vertex_names(Γ1)
         x1 = getproperty(Γ1, n)
         x2 = getproperty(Γ2, n)
         for i in 1:2
@@ -96,9 +96,9 @@ end
     vertex_to_vector(Γ::AsymptoticVertex)
 Reshape and concatenate the vertices of `Γ` to a one-dimensional vector.
 """
-function vertex_to_vector(Γ::mfRG.AsymptoticVertex)
+function vertex_to_vector(Γ::AsymptoticVertex)
     v = eltype(Γ)[]
-    for x in mfRG.get_vertices(Γ)
+    for x in get_vertices(Γ)
         append!(v, vec(x[1].data))
         append!(v, vec(x[2].data))
     end
@@ -110,10 +110,10 @@ end
 Reshape a one-dimensional vector `v` to the vertices with the same type and size as
 `Γ_template`.
 """
-function vector_to_vertex(v, Γ_template::mfRG.AsymptoticVertex)
+function vector_to_vertex(v, Γ_template::AsymptoticVertex)
     ind = 0
     vertices = Dict()
-    for name in mfRG._vertex_names(Γ_template)
+    for name in _vertex_names(Γ_template)
         vertices[name] = similar.(getproperty(Γ_template, name))
         for i in eachindex(vertices[name])
             n = length(vertices[name][i].data)

@@ -159,7 +159,7 @@ function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
         Γ.K2p_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K2p_A, G_, v; temperature))
     end
 
-    Σ_data = mfRG.fit_basis_coeff(Σ_data_iv, basis, vs, 3)
+    Σ_data = fit_basis_coeff(Σ_data_iv, basis, vs, 3)
     Green2P{F}(basis, 1, Σ_data)
 end
 

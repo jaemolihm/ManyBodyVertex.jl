@@ -55,7 +55,7 @@ end
     SIAMLazyGreen2P{F}(::Type{T}=ComplexF64; e, Δ, t, D=Inf)
 Lazy Green2P object for getting SIAM bare Green function.
 """
-struct SIAMLazyGreen2P{F, T} <: mfRG.AbstractLazyGreen2P{F, T}
+struct SIAMLazyGreen2P{F, T} <: AbstractLazyGreen2P{F, T}
     norb::Int
     e::Float64
     Δ::Float64
