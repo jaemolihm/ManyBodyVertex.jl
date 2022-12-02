@@ -146,3 +146,16 @@ _bubble_frequencies_inv(::_ImagFreq, ::Val{:T}, v1, v2) = (fld(v1 + v2 + 1, 2), 
 _bubble_indices(::Val{:A}, i) = (i[4], i[1], i[2], i[3])
 _bubble_indices(::Val{:P}, i) = (i[1], i[4], i[2], i[3])
 _bubble_indices(::Val{:T}, i) = (i[4], i[1], i[2], i[3])
+
+
+function channel_apply_crossing(C)
+    if C === :A
+        C_out = :T
+    elseif C === :T
+        C_out = :A
+    elseif C === :P
+        C_out = :P
+    else
+        error("Wrong channel $C")
+    end
+end
