@@ -34,8 +34,9 @@ between the center of the two bonds. Including the atomic positions, the distanc
 `find_minimal_distance_replica`.
 """
 
-# TODO: Rename nqs to qgrid ?
+# TODO: Better show
 # TODO: Truncation for choosing the bond bases
+# TODO: store ndegen
 
 const Bond{Dim} = Tuple{Int, Int, SVector{Dim, Int}}
 
@@ -59,7 +60,7 @@ end
 
 """
     RealSpaceBasis{Dim, T}
-Use outer constructor `RealSpaceBasis(lattice, positions, bonds_L, bonds_R, nqs)`.
+Use outer constructor `RealSpaceBasis(lattice, positions, bonds_L, bonds_R, qgrid)`.
 - `Dim`: The physical dimension of the system
 - `T`: Floating-point type for representing the lattice and the q point vectors.
 
@@ -67,25 +68,28 @@ Use outer constructor `RealSpaceBasis(lattice, positions, bonds_L, bonds_R, nqs)
 - `lattice`: lattice vector. `lattice[:, i]` is the Cartesian coordinates of the i-th lattice vector.
 - `positions`: atomic positions in reduced coordinates
 - `bonds_L`, `bonds_R`: list of bond bases vectors to use for the expansion of fermionic momenta.
-- `nqs`: size of the q-point grid
+- `qgrid`: size of the q-point grid
 - `qpts`: list of q vectors in reciprocal reduced coordinates
 - `R_B_list`: bosonic lattice vectors.
 - `R_B_replicas`: list of lattice vectors to be used for Fourier transformation.
-                  `R_B_replicas[ibL, ibR][iRB]` is the list of minimal-distance replicas
-                  of `R_B = R_B_list[iRB]` for bonds `bonds_L[ibL]` and `bonds_R[ibR]`.
+    `R_B_replicas[ibL, ibR][:]` is the list of minimal-distance replicas of
+    `R_B = R_B_list[iRB]` for bonds `bonds_L[ibL]` and `bonds_R[ibR]`.
+- `R_B_replica_inds`: index of original `R_B` in `R_B_list`. `R_B_replicas[ibL, ibR][i]` is
+    a replica of `R_B_list[R_B_replica_inds[ibL, ibR][i]`.
 """
 struct RealSpaceBasis{Dim, T}
     lattice::SMatrix{Dim, Dim, T}
     positions::Vector{SVector{Dim, T}}
     bonds_L::Vector{Bond{Dim}}
     bonds_R::Vector{Bond{Dim}}
-    nqs::NTuple{Dim, Int}
+    qgrid::NTuple{Dim, Int}
     qpts::Vector{SVector{Dim, T}}
-    R_B_list::Vector{SVector{Dim, Int}}
-    R_B_replicas::Matrix{Vector{Vector{SVector{Dim, Int}}}}
+    R_Bs::Vector{SVector{Dim, Int}}
+    R_B_replicas::Matrix{Vector{SVector{Dim, Int}}}
+    R_B_replica_inds::Matrix{Vector{Int}}
 end
 
-function RealSpaceBasis(lattice::SMatrix{Dim, Dim}, positions, bonds_L, bonds_R, nqs) where {Dim}
+function RealSpaceBasis(lattice::SMatrix{Dim, Dim}, positions, bonds_L, bonds_R, qgrid) where {Dim}
     natoms = length(positions)
     all(1 .<= getindex.(bonds_L, 1) .<= natoms) || error("Wrong 1st atomic index of bonds_L")
     all(1 .<= getindex.(bonds_L, 2) .<= natoms) || error("Wrong 2nd atomic index of bonds_L")
@@ -93,46 +97,52 @@ function RealSpaceBasis(lattice::SMatrix{Dim, Dim}, positions, bonds_L, bonds_R,
     all(1 .<= getindex.(bonds_R, 2) .<= natoms) || error("Wrong 2nd atomic index of bonds_R")
 
     lattice_ = convert.(AbstractFloat, lattice)
-    T = eltype(lattice_)
-    qpts = vec([convert.(T, SVector(x ./ nqs)) for x in Iterators.product(range.(0, nqs .- 1)...)])
-    R_B_list, R_B_replicas = find_minimal_distance_replica(nqs, lattice_, positions, bonds_L, bonds_R; nsearch=3)
-    RealSpaceBasis(lattice_, positions, bonds_L, bonds_R, nqs, qpts, R_B_list, R_B_replicas)
+    qpts = vec([SVector(x ./ qgrid) for x in Iterators.product(range.(0, qgrid .- 1)...)])
+    R_Bs, R_B_replicas, R_B_replica_inds = find_minimal_distance_replica(qgrid, lattice_,
+        positions, bonds_L, bonds_R; nsearch=3)
+    RealSpaceBasis(lattice_, positions, bonds_L, bonds_R, qgrid, qpts, R_Bs, R_B_replicas,
+        R_B_replica_inds)
 end
 
 """
-    find_minimal_distance_replica(nqs, lattice, bonds_L, bonds_R, positions; nsearch=3)
-Find the minimal-distance replica of R_B in the supercell of size `nqs`.
+    find_minimal_distance_replica(qgrid, lattice, bonds_L, bonds_R, positions; nsearch=3)
+Find the minimal-distance replica of R_B in the supercell of size `qgrid`.
 Minimize `|R_B + R_center_L - R_center_R|` where `R_center` is the center of the bonds.
 
 # Inputs
-- `nqs`: Size of the momentum-space grid for which the corresponding real-space vectors are found.
+- `qgrid`: Size of the momentum-space grid for which the corresponding real-space vectors are found.
 - `lattice`: lattice vectors
 - `positions`: atomic positions in the reduced coordinates
 - `bonds_L`, `bonds_R`: left and right bond bases
 - `nsearch=3`: Size of the supercell to search the replica (-nsearch:nsearch)
 """
-function find_minimal_distance_replica(nqs, lattice::SMatrix{Dim, Dim, T}, positions,
+function find_minimal_distance_replica(qgrid, lattice::SMatrix{Dim, Dim, T}, positions,
                                        bonds_L, bonds_R; nsearch=3) where {Dim, T}
-    R_super_list = vec([SVector(x .* nqs) for x in Iterators.product(
+    R_super_list = vec([SVector(x .* qgrid) for x in Iterators.product(
             ntuple(x -> -nsearch:nsearch, Val(Dim))...)])
 
-    R_B_list = vec(SVector.(Iterators.product(range.(0, nqs .- 1)...)))
+    R_Bs = vec(SVector.(Iterators.product(range.(0, qgrid .- 1)...)))
+
+    R_B_replicas = [SVector{Dim, Int}[] for _ in eachindex(bonds_L), _ in eachindex(bonds_R)]
+    R_B_replica_inds = [Int[] for _ in eachindex(bonds_L), _ in eachindex(bonds_R)]
 
     distances = zeros(T, length(R_super_list))
-    R_B_replicas = map(Iterators.product(eachindex(bonds_L), eachindex(bonds_R))) do (ibL, ibR)
+    is_minimal_distance = falses(length(R_super_list))
+    for ibR in eachindex(bonds_R), ibL in eachindex(bonds_L)
         i1, i2, R = bonds_L[ibL]
         i4, i3, Rp = bonds_R[ibR]
         Δτ = positions[i1] + positions[i2] - positions[i3] - positions[i4]
         ΔR = (R - Rp + Δτ) / 2
 
         # Find all R_super that minimize norm(lattice * (R_B + R_super + ΔR))
-        map(R_B_list) do R_B
+        for (iR_B, R_B) in enumerate(R_Bs)
             distances .= norm.(Ref(lattice) .* (R_super_list .+ Ref(R_B + ΔR)))
             distance_min = minimum(distances)
-            inds = findall(d -> d <= distance_min * (1 + sqrt(eps(T))), distances)
-            Ref(R_B) .+ R_super_list[inds]
+            is_minimal_distance .= distances .<= distance_min * (1 + sqrt(eps(T)))
+            append!(R_B_replicas[ibL, ibR], Ref(R_B) .+ R_super_list[is_minimal_distance])
+            append!(R_B_replica_inds[ibL, ibR], fill(iR_B, sum(is_minimal_distance)))
         end
     end
-    R_B_list, R_B_replicas
+    R_Bs, R_B_replicas, R_B_replica_inds
 end
 

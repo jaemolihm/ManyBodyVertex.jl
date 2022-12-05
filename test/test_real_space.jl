@@ -30,3 +30,18 @@ using Test
         @test k * R - kp * Rp + q * (R_B + (R - Rp) / 2) ≈ -k_dot_R
     end
 end
+
+@testset "RealSpaceBasis" begin
+    lattice = SMatrix{2, 2}([1. 0; 0 1])
+    positions = [SVector(0., 0.)]
+    bonds_L = [(1, 1, SVector(0, 0))]
+    bonds_R = [(1, 1, SVector(0, 0))]
+    qgrid = (2, 2)
+    rbasis = RealSpaceBasis(lattice, positions, bonds_L, bonds_R, qgrid)
+    @test length(rbasis.qpts) == prod(qgrid)
+    @test length(rbasis.R_Bs) == prod(qgrid)
+    @test size(rbasis.R_B_replicas) == (length(bonds_L), length(bonds_R))
+    @test length(rbasis.R_B_replicas[1, 1]) == 9
+    @test size(rbasis.R_B_replica_inds) == (length(bonds_L), length(bonds_R))
+    @test rbasis.R_B_replica_inds[1, 1] == [1, 2, 2, 3, 3, 4, 4, 4, 4]
+end
