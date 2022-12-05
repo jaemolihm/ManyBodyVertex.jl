@@ -24,6 +24,12 @@ function Base.show(io::IO, Γ::CachedVertex4P{F, C}) where {F, C}
     print(io, "norb=$(Γ.norb), data=$(Base.summary(first(Γ.data))))")
 end
 
+function Base.similar(Γ::CachedVertex4P{F, C, T}, ::Type{ElType}=T) where {F, C, T, ElType}
+    data = [zeros(ElType, size(x)) for x in Γ.data]
+    CachedVertex4P{F, C}(data, Γ.ws, Γ.basis_f1, Γ.basis_f2, Γ.norb)
+end
+Base.zero(Γ::CachedVertex4P) = (Γ_new = similar(Γ); for x in Γ_new.data; x .= 0; end; Γ_new)
+
 function to_matrix(Γ::CachedVertex4P{F, CΓ, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis_f2, c::Val=Val(CΓ)) where {F, CΓ, T}
     c === Val(CΓ) || error("Invalid channel for CachedVertex4P")
     basis1 === Γ.basis_f1 || error("Invalid basis1 for CachedVertex4P")
