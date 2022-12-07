@@ -66,7 +66,7 @@ struct SIAMLazyGreen2P{F, T} <: AbstractLazyGreen2P{F, T}
         F === :ZF && error("SIAM with ZF not implemented")
         F ∉ (:KF, :MF, :ZF) && error("Wrong formalism $formalism")
         norb = 1
-        new{F, ComplexF64}(norb, e, Δ, t, D)
+        new{F, T}(norb, e, Δ, t, D)
     end
 end
 SIAMLazyGreen2P{F}(::Type{T}=ComplexF64; e, Δ, t, D=Inf) where {F, T} = SIAMLazyGreen2P{F, T}(; e, Δ, t, D)
@@ -74,6 +74,7 @@ function (G0::SIAMLazyGreen2P{F, T})(v) where {F, T}
     g = siam_get_green_function(v, Val(F); G0.e, G0.Δ, G0.t, G0.D)
     F === :KF ? g : SMatrix{1, 1}(g)
 end
+(G0::SIAMLazyGreen2P)(k, v) = G0(v)
 
 """
     siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t)

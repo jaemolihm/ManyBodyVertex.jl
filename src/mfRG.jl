@@ -51,5 +51,6 @@ include("BSE.jl")
 include("parquet_su2.jl")
 include("parquet_su2_wo_irreducible.jl")
 
-include("models.jl")
+include("models/siam.jl")
+include("models/hubbard.jl")
 end
