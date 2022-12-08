@@ -29,8 +29,9 @@ function vertex_bubble_integral(
 
     # Compute the bubble integral on a grid of w (bosonic frequency)
     Γ_mat = zeros(T, size(basis_L1, 2) * nind2, size(basis_R2, 2) * nind2, length(ws))
-    # TODO: Threads?
-    for (iw, w) in enumerate(ws)
+    cache_and_load_overlaps(Π, basis_L2, basis_R1)
+    Threads.@threads for iw in eachindex(ws)
+        w = ws[iw]
         ΓL_mat = to_matrix(ΓL, w, basis_L1, basis_L2, Val(CB))
         Π_mat = to_matrix(Π, w, basis_L2, basis_R1)
         ΓR_mat = to_matrix(ΓR, w, basis_R1, basis_R2, Val(CB))
