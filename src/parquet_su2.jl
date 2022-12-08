@@ -101,18 +101,14 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP; iterate_by_bse=false)
     typeof(Γ)(; Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_b, Γ.basis_k2_f, Γs...)
 end
 
-"""
-    compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
-Compute the self-energy by solving the Schwinger-Dyson equation.
-``Σ[a, d](v) = ∫ dw K1[ab, cd](v+w/2, w) * G[b, c](v+w) * integral_coeff * -1/2``
-"""
 function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
     F = get_formalism(Γ)
+    C = channel(Γ)
     nind = get_nind(G)
     nb_f1(Γ) == 1 || error("Γ.basis_f1 must be a constant basis")
     F === :MF && temperature === nothing && error("For MF, temperature must be provided")
     if overlap === nothing
-        overlap = basis_integral_self_energy(Γ.basis_f2, Γ.basis_b, G.basis, v)
+        overlap = basis_integral_self_energy(Γ.basis_f2, Γ.basis_b, G.basis, v, Val(C))
     end
     # (ab, icd, j) -> (a, b, c, d, ij)
     Γ_data = reshape(permutedims(reshape(Γ.data, (nind^2, nb_f2(Γ), nind^2, nb_b(Γ))), (1, 3, 2, 4)), nind^4, :)
@@ -121,19 +117,30 @@ function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
 
     Σ_v = zeros(eltype(G), nind, nind)
     @views for b in 1:nind, d in 1:nind, c in 1:nind, a in 1:nind
-        Σ_v[a, d] += transpose(Γ_data_2[a, b, c, d, :]) * G.data[b, c, :]
+        if C === :P
+            Σ_v[a, d] += transpose(Γ_data_2[a, b, c, d, :]) * G.data[c, b, :]
+        else
+            Σ_v[a, d] += transpose(Γ_data_2[a, b, c, d, :]) * G.data[b, c, :]
+        end
     end
     Σ_v .*= (integral_coeff(Val(F), temperature) * -1 / 2)
     Σ_v
 end
 
 function _compute_self_energy_SU2(Γ, G, v; temperature=nothing)
-    overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v)
-    (  _compute_self_energy(Γ[1], G, v, overlap; temperature) .* 1/2
-    .+ _compute_self_energy(Γ[2], G, v, overlap; temperature) .* 3/2)
+    C = channel(Γ[1])
+    overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v, Val(C))
+    coeff = C === :P ? (-1/2, 3/2) : (1/2, 3/2)
+    (  _compute_self_energy(Γ[1], G, v, overlap; temperature) .* coeff[1]
+    .+ _compute_self_energy(Γ[2], G, v, overlap; temperature) .* coeff[2])
 end
 
-function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
+"""
+    compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=nothing)
+Compute the self-energy by solving the Schwinger-Dyson equation.
+``Σ[a, d](v) = ∫ dw K1[ab, cd](v+w/2, w) * G[b, c](v+w) * integral_coeff * -1/2``
+"""
+function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=nothing)
     F = get_formalism(Γ)
     nind = get_nind(G)
     F === :MF && temperature === nothing && error("For MF, temperature must be provided")
@@ -148,16 +155,42 @@ function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
         for (iv, v) in enumerate(vs)
             G_data[:, :, iv] .= G(v)
         end
-        G_ = Green2P{get_formalism(G)}(basis, G.norb, fit_basis_coeff(G_data, basis, vs, 3))
+        G_ = Green2P{F}(basis, G.norb, fit_basis_coeff(G_data, basis, vs, 3))
     else
         G_ = G
     end
 
+    U_ΠA_U = vertex_bubble_integral.(Γ.Γ0_A, ΠA, Γ.Γ0_A, Ref(Γ.basis_k1_b))
+    U_ΠA_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K2p_A, Γ.K3_A], Γ.basis_k2_b)
+
+    U_ΠP_U = vertex_bubble_integral.(Γ.Γ0_P, ΠP, Γ.Γ0_P, Ref(Γ.basis_k1_b))
+    U_ΠP_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K2p_P, Γ.K3_P], Γ.basis_k2_b)
+
     Base.Threads.@threads for iv in eachindex(vs)
+        # U_Π_U term (the O(U²) term): to avoid double counting, 1/3 for each channel.
+        # Need to consider that K1 already contains this term.
+        # Also, for P channel, multiply 2 because Π has factor 1/2.
+        # A, T channel: (1/3 + 1/3) - 2 (from K1_A) = -4/3
+        # P channel: (1/3 * 2) - 2 (from K1_P) = -4/3
+        # Factor 2 is multiplied outside the loop, so we use multiply -2/3.
         v = vs[iv]
-        Γ.K1_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K1_A, G_, v; temperature))
-        Γ.K2p_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K2p_A, G_, v; temperature))
+        Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K1_A, G_, v; temperature)
+        Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠA_U, G_, v; temperature) .* (-2/3)
+        if U_ΠA_K2pK3 !== nothing
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠA_K2pK3, G_, v; temperature)
+        end
+
+        Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K1_P, G_, v; temperature)
+        Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠP_U, G_, v; temperature) .* (-2/3)
+        if U_ΠP_K2pK3 !== nothing
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠP_K2pK3, G_, v; temperature)
+        end
     end
+
+    # Multiply by factor 2
+    # For the A channel, this accounts for the contribution of the T channel.
+    # For the P channel, this account for the factor of 1/2 in the bubble.
+    Σ_data_iv .*= 2
 
     Σ_data = fit_basis_coeff(Σ_data_iv, basis, vs, 3)
     Green2P{F}(basis, 1, Σ_data)
@@ -210,7 +243,7 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2
         end
 
         @info "Updating self-energy and the bubble"
-        @time Σ = compute_self_energy_SU2(Γ, G; temperature)
+        @time Σ = compute_self_energy_SU2(Γ, G, ΠA, ΠP; temperature)
         G = solve_Dyson(G0, Σ)
         ΠA, ΠP = setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
 

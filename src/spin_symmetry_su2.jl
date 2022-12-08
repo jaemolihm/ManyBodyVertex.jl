@@ -5,7 +5,7 @@ Under SU(2) symmetry, there are six nonzero components to the vertex, which are 
 
 We use two types of parametrizations.
 - "dm": density channel `Γd = Γ↑↑↑↑ + Γ↑↑↓↓` and magnetic channel `Γm = Γ↑↑↑↑ - Γ↑↑↓↓`.
-- "st": singlet channel `Γs = Γ↑↑↓↓ - Γ↑↓↓↑` and magnetic channel `Γt = Γ↑↑↓↓ + Γ↑↓↓↑`.
+- "st": singlet channel `Γs = Γ↑↑↓↓ - Γ↑↓↓↑` and triplet channel `Γt = Γ↑↑↓↓ + Γ↑↓↓↑`.
 For each parametrization, vertices in the two channels are stored as a 2-Tuple.
 
 We use the "dm" parametrization for the A and T channel and the "st" parametrization for the
