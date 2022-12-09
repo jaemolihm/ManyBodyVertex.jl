@@ -101,7 +101,7 @@ end
 """
 # Bubbles
 - ``Πᴬ_{12,34}(v; w) =       G_41( v + w/2) * G_23(v - w/2)``
-- ``Πᴾ_{12,34}(v; w) = 1/2 * G_14(-v + w/2) * G_23(v - w/2)``
+- ``Πᴾ_{12,34}(v; w) = 1/2 * G_14(-v - w/2) * G_23(v - w/2)``
 - ``Πᵀ_{12,34}(v; w) =  -1 * G_41( v + w/2) * G_23(v - w/2) = -Πᴬ_{12,34}(v; w)``
 
 These equations are implemented in `_bubble_prefactor`, `_bubble_frequencies`, and
