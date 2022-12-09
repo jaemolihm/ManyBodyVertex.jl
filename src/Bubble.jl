@@ -65,9 +65,13 @@ nb_b(Π::AbstractBubble) = size(Π.basis_b, 2)
 function (Π::AbstractBubble)(w)
     # Evaluate the bubble at given bosonic frequency w
     # Output: a, (i, j), (i', j')
-    coeff_w = Π.basis_b[w, :]
-    @ein Π_w[a, ij1, ij2] := Π.data[a, ij1, ij2, b] * coeff_w[b]
-    Π_w::Array{eltype(Π), 3}
+    Π_w = zeros(eltype(Π), size(Π.data)[1:3])
+    @inbounds @views for ib in 1:nb_b(Π)
+        coeff_w = Π.basis_b[w, ib]
+        coeff_w === 0 && continue
+        Π_w .+= Π.data[:, :, :, ib] .* coeff_w
+    end
+    Π_w
 end
 
 """
@@ -105,8 +109,11 @@ function to_matrix(Π::Bubble{F, C, T}, w, overlap) where {F, C, T}
     nind2 = get_nind(Π)^2
 
     Π_w = Π(w)
-    @ein Π_vertex_tmp[x1, x2, ij1, ij2] := overlap[x1, x2, a] * Π_w[a, ij1, ij2]
-    Π_vertex_tmp = Π_vertex_tmp::Array{T, 4}
+    # Implement optimized version
+    # @ein Π_vertex_tmp[x1, x2, ij1, ij2] := overlap[x1, x2, a] * Π_w[a, ij1, ij2]
+    A = Base.ReshapedArray(overlap, (nv_Γ1*nv_Γ2, nb_f(Π)), ())
+    B = Base.ReshapedArray(Π_w, (nb_f(Π), nind2^2), ())
+    Π_vertex_tmp = Base.ReshapedArray(A * B, (nv_Γ1, nv_Γ2, nind2, nind2), ())
     Π_vertex = reshape(PermutedDimsArray(Π_vertex_tmp, (1, 3, 2, 4)), nv_Γ1 * nind2, nv_Γ2 * nind2)
     collect(Π_vertex) .* integral_coeff(Π)
 end
