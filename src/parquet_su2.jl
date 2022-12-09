@@ -136,11 +136,15 @@ function _compute_self_energy_SU2(Γ, G, v; temperature=nothing)
 end
 
 """
-    compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=nothing)
+    compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=nothing, exclude_UU=false)
 Compute the self-energy by solving the Schwinger-Dyson equation.
 ``Σ[a, d](v) = ∫ dw K1[ab, cd](v+w/2, w) * G[b, c](v+w) * integral_coeff * -1/2``
+
+# Input
+- `exclude_UU=false`: if set to `true`, skip the UΠU term. Used for parquet without
+    irreducible vertex.
 """
-function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=nothing)
+function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=nothing, exclude_UU=false)
     F = get_formalism(Γ)
     nind = get_nind(G)
     F === :MF && temperature === nothing && error("For MF, temperature must be provided")
@@ -161,27 +165,35 @@ function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=not
     end
 
     U_ΠA_U = vertex_bubble_integral.(Γ.Γ0_A, ΠA, Γ.Γ0_A, Ref(Γ.basis_k1_b))
+    U_ΠA_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K1_A, Γ.K2_A], Γ.basis_k2_b)
     U_ΠA_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K2p_A, Γ.K3_A], Γ.basis_k2_b)
 
     U_ΠP_U = vertex_bubble_integral.(Γ.Γ0_P, ΠP, Γ.Γ0_P, Ref(Γ.basis_k1_b))
+    U_ΠP_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K1_P, Γ.K2_P], Γ.basis_k2_b)
     U_ΠP_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K2p_P, Γ.K3_P], Γ.basis_k2_b)
 
     Base.Threads.@threads for iv in eachindex(vs)
         # U_Π_U term (the O(U²) term): to avoid double counting, 1/3 for each channel.
-        # Need to consider that K1 already contains this term.
         # Also, for P channel, multiply 2 because Π has factor 1/2.
-        # A, T channel: (1/3 + 1/3) - 2 (from K1_A) = -4/3
-        # P channel: (1/3 * 2) - 2 (from K1_P) = -4/3
-        # Factor 2 is multiplied outside the loop, so we use multiply -2/3.
+        # A, T channel: (1/3 + 1/3) / 2 (multiplied outside the loop)= 1/3
+        # A, T channel: (1/3 * 2) / 2 (multiplied outside the loop)= 1/3
         v = vs[iv]
-        Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K1_A, G_, v; temperature)
-        Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠA_U, G_, v; temperature) .* (-2/3)
+        if !exclude_UU
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠA_U, G_, v; temperature) .* (1/3)
+        end
+        if U_ΠA_K1K2 !== nothing
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠA_K1K2, G_, v; temperature)
+        end
         if U_ΠA_K2pK3 !== nothing
             Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠA_K2pK3, G_, v; temperature)
         end
 
-        Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K1_P, G_, v; temperature)
-        Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠP_U, G_, v; temperature) .* (-2/3)
+        if !exclude_UU
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠP_U, G_, v; temperature) .* (1/3)
+        end
+        if U_ΠP_K1K2 !== nothing
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠP_K1K2, G_, v; temperature)
+        end
         if U_ΠP_K2pK3 !== nothing
             Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠP_K2pK3, G_, v; temperature)
         end
@@ -196,7 +208,8 @@ function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=not
     Green2P{F}(basis, 1, Σ_data)
 end
 
-function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
+function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature,
+        smooth_bubble=get_formalism(G) === :MF ? false : true)
     bubble_function = smooth_bubble ? compute_bubble_smoothed : compute_bubble
     @time ΠA_ = bubble_function(G, basis_v_bubble, basis_w_bubble, Val(:A); temperature)
     @time ΠP_ = bubble_function(G, basis_v_bubble, basis_w_bubble, Val(:P); temperature)
@@ -206,7 +219,8 @@ function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth
 end
 
 function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2_b, basis_k2_f, basis_1p=G0.basis;
-        max_class=3, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false,
+        max_class=3, max_iter=5, reltol=1e-2, temperature=nothing,
+        smooth_bubble=get_formalism(G0) === :MF ? false : true,
         mixing_history=10, mixing_coeff=0.5, iterate_by_bse=false)
     F = get_formalism(G0)
     T = eltype(G0)
