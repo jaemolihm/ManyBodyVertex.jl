@@ -4,8 +4,8 @@ function iterate_parquet_asymptotic_single_channel_without_fully_irreducible(
     C = channel(Π₀[1])
     ΔΠ = Π .- Π₀
 
-    ws_12 = unique!(vcat(get_fitting_points(basis_k1_b), get_fitting_points(basis_k2_b)))
-    ws_2 = get_fitting_points(basis_k2_b)
+    ws_12 = unique!(vcat(get_fitting_points(basis_k1_b.freq), get_fitting_points(basis_k2_b.freq)))
+    ws_2 = get_fitting_points(basis_k2_b.freq)
     ΔI_mat = Tuple(cache_vertex_matrix(getindex.(ΔI, i), C, ws_12, basis_k2_f) for i in 1:2)
     I₀_mat = Tuple(cache_vertex_matrix(getindex.(I₀, i), C, ws_2, basis_k2_f) for i in 1:2)
 

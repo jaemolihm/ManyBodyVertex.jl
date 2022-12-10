@@ -26,10 +26,15 @@ using Test
     G0 = SIAMLazyGreen2P{:KF}(; e, Δ, t)
 
     # Run parquet calculation
-    vertex, Σ = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w_k1, basis_w_k2,
+    Γ, Σ = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w_k1, basis_w_k2,
         basis_aux, basis_1p; max_class=3, max_iter=3)
-    @test vertex isa mfRG.AsymptoticVertex{:KF, ComplexF64}
+    @test Γ isa mfRG.AsymptoticVertex{:KF, ComplexF64}
     @test Σ isa Green2P{:KF, ComplexF64}
+    @test Γ.basis_k1_b === (; freq=basis_w_k1)
+    @test Γ.basis_k2_b === (; freq=basis_w_k2)
+    @test Γ.basis_k3_b === (; freq=basis_w_k2)
+    @test Γ.basis_k2_f === (; freq=basis_aux)
+    @test Γ.basis_k3_f === (; freq=basis_aux)
 end
 
 @testset "SIAM parquet w/o irr MF" begin

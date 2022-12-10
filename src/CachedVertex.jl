@@ -46,7 +46,7 @@ If in the same channel, use the bases of `Γ`.
 
 If input `Γ` is a list of vertices, add up all the matri1ces.
 """
-function cache_vertex_matrix(Γ::AbstractVertex4P, C, ws, basis_aux1=nothing, basis_aux2=basis_aux1)
+function cache_vertex_matrix(Γ::AbstractFrequencyVertex, C, ws, basis_aux1=nothing, basis_aux2=basis_aux1)
     cache_vertex_matrix([Γ], C, ws, basis_aux1, basis_aux2)
 end
 
@@ -55,9 +55,16 @@ function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux1=nothing, bas
     if any(channel.(Γs) .!= C) && basis_aux1 === nothing
         error("For vertex with different channel than C=$C, basis_aux must be provided")
     end
+    if basis_aux1 isa NamedTuple{(:freq,), Tuple{T}} where {T<:mfRG.Basis}
+        basis_aux1_ = basis_aux1.freq
+        basis_aux2_ = basis_aux2.freq
+    else
+        basis_aux1_ = basis_aux1
+        basis_aux2_ = basis_aux2
+    end
 
     Γ = first(Γs)
-    basis_f1, basis_f2 = channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux1, basis_aux2)
+    basis_f1, basis_f2 = channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux1_, basis_aux2_)
     nind = get_nind(Γ)
     data = zeros(eltype(first(Γs)), nind^2 * nbasis(basis_f1), nind^2 * nbasis(basis_f2), length(ws))
     Base.Threads.@threads for iw in eachindex(ws)
