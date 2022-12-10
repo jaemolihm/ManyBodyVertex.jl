@@ -76,6 +76,8 @@ Use outer constructor `RealSpaceBasis(lattice, positions, bonds_L, bonds_R, qgri
     `R_B = R_B_list[iRB]` for bonds `bonds_L[ibL]` and `bonds_R[ibR]`.
 - `R_B_replica_inds`: index of original `R_B` in `R_B_list`. `R_B_replicas[ibL, ibR][i]` is
     a replica of `R_B_list[R_B_replica_inds[ibL, ibR][i]`.
+- `R_B_ndegen`: degeneracy of the R_B replica. Need to be divided in the Fourier
+    transformation R → q.
 """
 struct RealSpaceBasis{Dim, T}
     lattice::SMatrix{Dim, Dim, T}
@@ -86,7 +88,8 @@ struct RealSpaceBasis{Dim, T}
     qpts::Vector{SVector{Dim, T}}
     R_Bs::Vector{SVector{Dim, Int}}
     R_B_replicas::Matrix{Vector{SVector{Dim, Int}}}
-    R_B_replica_inds::Matrix{Vector{Int}}
+    R_B_replica_inds::Matrix{Vector{Int}}  # TODO: Remove
+    R_B_ndegen::Matrix{Vector{Int}}
 end
 
 function RealSpaceBasis(lattice::SMatrix{Dim, Dim}, positions, bonds_L, bonds_R, qgrid) where {Dim}
@@ -98,10 +101,10 @@ function RealSpaceBasis(lattice::SMatrix{Dim, Dim}, positions, bonds_L, bonds_R,
 
     lattice_ = convert.(AbstractFloat, lattice)
     qpts = vec([SVector(x ./ qgrid) for x in Iterators.product(range.(0, qgrid .- 1)...)])
-    R_Bs, R_B_replicas, R_B_replica_inds = find_minimal_distance_replica(qgrid, lattice_,
+    R_Bs, R_B_replicas, R_B_replica_inds, R_B_ndegen = find_minimal_distance_replica(qgrid, lattice_,
         positions, bonds_L, bonds_R; nsearch=3)
     RealSpaceBasis(lattice_, positions, bonds_L, bonds_R, qgrid, qpts, R_Bs, R_B_replicas,
-        R_B_replica_inds)
+        R_B_replica_inds, R_B_ndegen)
 end
 
 """
@@ -125,6 +128,7 @@ function find_minimal_distance_replica(qgrid, lattice::SMatrix{Dim, Dim, T}, pos
 
     R_B_replicas = [SVector{Dim, Int}[] for _ in eachindex(bonds_L), _ in eachindex(bonds_R)]
     R_B_replica_inds = [Int[] for _ in eachindex(bonds_L), _ in eachindex(bonds_R)]
+    R_B_ndegen = [Int[] for _ in eachindex(bonds_L), _ in eachindex(bonds_R)]
 
     distances = zeros(T, length(R_super_list))
     is_minimal_distance = falses(length(R_super_list))
@@ -139,10 +143,12 @@ function find_minimal_distance_replica(qgrid, lattice::SMatrix{Dim, Dim, T}, pos
             distances .= norm.(Ref(lattice) .* (R_super_list .+ Ref(R_B + ΔR)))
             distance_min = minimum(distances)
             is_minimal_distance .= distances .<= distance_min * (1 + sqrt(eps(T)))
+            ndegen = sum(is_minimal_distance)
             append!(R_B_replicas[ibL, ibR], Ref(R_B) .+ R_super_list[is_minimal_distance])
-            append!(R_B_replica_inds[ibL, ibR], fill(iR_B, sum(is_minimal_distance)))
+            append!(R_B_replica_inds[ibL, ibR], fill(iR_B, ndegen))
+            append!(R_B_ndegen[ibL, ibR], fill(ndegen, ndegen))
         end
     end
-    R_Bs, R_B_replicas, R_B_replica_inds
+    R_Bs, R_B_replicas, R_B_replica_inds, R_B_ndegen
 end
 

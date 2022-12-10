@@ -44,4 +44,5 @@ end
     @test length(rbasis.R_B_replicas[1, 1]) == 9
     @test size(rbasis.R_B_replica_inds) == (length(bonds_L), length(bonds_R))
     @test rbasis.R_B_replica_inds[1, 1] == [1, 2, 2, 3, 3, 4, 4, 4, 4]
+    @test rbasis.R_B_ndegen[1, 1] == [1, 2, 2, 2, 2, 4, 4, 4, 4]
 end
