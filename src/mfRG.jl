@@ -8,7 +8,7 @@ export get_fitting_points
 export basis_integral
 export basis_for_bubble
 
-export RealSpaceBasis
+export RealSpaceBasis, indices_vector
 
 export Green2P, solve_Dyson
 export Vertex4P, to_matrix, vertex_keldyshview, apply_crossing

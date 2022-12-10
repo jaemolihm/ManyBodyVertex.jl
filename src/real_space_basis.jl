@@ -160,3 +160,12 @@ function find_minimal_distance_replica(qgrid, lattice::SMatrix{Dim, Dim, T}, pos
     R_Bs, R_B_replicas, R_B_replica_inds, R_B_ndegen
 end
 
+"""
+    indices_vector(rbasis::RealSpaceBasis)
+Return list of real-space indices `(ibL, ibR, iR_B)`.
+"""
+function indices_vector(rbasis::RealSpaceBasis)
+    mapreduce(vcat, Iterators.product(eachindex(rbasis.bonds_L), eachindex(rbasis.bonds_R))) do (ibL, ibR)
+        [(ibL, ibR, iR_B) for iR_B in eachindex(rbasis.R_B_replicas[ibL, ibR])]
+    end
+end
