@@ -26,9 +26,10 @@ mutable struct Bubble{F, C, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble
     cache_basis_L
     cache_basis_R
     cache_overlap_LR
-    function Bubble{F, C}(basis_f::BF, basis_b::BB, norb, data::DT; temperature=nothing) where {F, C, DT <: AbstractArray{T}, BF, BB} where {T}
+    function Bubble{F, C}(basis_f::BF, basis_b::BB, norb, data::DT; temperature=nothing,
+        cache_basis_L=nothing, cache_basis_R=nothing, cache_overlap_LR=nothing) where {F, C, DT <: AbstractArray{T}, BF, BB} where {T}
         F === :MF && temperature === nothing && error("For MF, temperature must be set")
-        new{F, C, T, BF, BB, DT}(basis_f, basis_b, norb, data, temperature, nothing, nothing, nothing)
+        new{F, C, T, BF, BB, DT}(basis_f, basis_b, norb, data, temperature, cache_basis_L, cache_basis_R, cache_overlap_LR)
     end
 end
 
@@ -77,7 +78,7 @@ end
 """
 Load overlap from cache, recompute if basis has changed.
 """
-function cache_and_load_overlaps(Π::Bubble, basis_L::Basis, basis_R::Basis)
+function cache_and_load_overlaps(Π::AbstractBubble, basis_L::Basis, basis_R::Basis)
     if basis_L !== Π.cache_basis_L || basis_R !== Π.cache_basis_R
         Π.cache_overlap_LR = basis_integral(basis_L, basis_R, Π.basis_f)
         Π.cache_basis_L = basis_L
