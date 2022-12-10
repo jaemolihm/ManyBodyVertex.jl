@@ -19,7 +19,7 @@ using mfRG
         end
 
         # Set static vertx
-        Γ0 = get_bare_vertex(U, Val(F), Val(C))
+        Γ0 = get_bare_vertex(Val(F), Val(C), U)
 
         # Set bubble. Use random numbers for testing.
         Π = Bubble{F, C}(basis2, basis_w; temperature)
@@ -109,8 +109,8 @@ end
     G0 = SIAMLazyGreen2P{:KF}(; e, Δ, t)
     ΠA = compute_bubble(G0, basis_f, basis_b, Val(:A); temperature=t)
     ΠP = compute_bubble(G0, basis_f, basis_b, Val(:P); temperature=t)
-    Γ0_A = get_bare_vertex(U, Val(:KF), Val(:A))
-    Γ0_P = get_bare_vertex(U, Val(:KF), Val(:P))
+    Γ0_A = get_bare_vertex(Val(:KF), Val(:A), U)
+    Γ0_P = get_bare_vertex(Val(:KF), Val(:P), U)
     Γ1_A = solve_BSE(Γ0_A, ΠA, Γ0_A, basis_b)
     Γ1_P = solve_BSE(Γ0_P, ΠP, Γ0_P, basis_b)
     Γ1_T = apply_crossing(Γ1_A)

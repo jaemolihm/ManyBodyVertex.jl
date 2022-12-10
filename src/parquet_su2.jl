@@ -225,8 +225,8 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2
     F = get_formalism(G0)
     T = eltype(G0)
 
-    Γ0_A = su2_bare_vertex(U, Val(F), Val(:A))
-    Γ0_P = su2_bare_vertex(U, Val(F), Val(:P))
+    Γ0_A = su2_bare_vertex(Val(F), Val(:A), U)
+    Γ0_P = su2_bare_vertex(Val(F), Val(:P), U)
     Γ0_T = su2_apply_crossing(Γ0_A)
 
     # 1st iteration

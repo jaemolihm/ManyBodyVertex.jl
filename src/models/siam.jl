@@ -3,10 +3,10 @@ using StaticArrays
 _val_to_value(::Val{T}) where {T} = T
 
 """
-    get_bare_vertex(U::Number, ::Val{F}, ::Val{C})
+    get_bare_vertex(::Val{F}, ::Val{C}, U::Number)
 Bare vertex of an 1-orbital model with interaction `U`, formalism `F`, and channel `C`.
 """
-function get_bare_vertex(U::Number, ::Val{F}, ::Val{C}) where {F, C}
+function get_bare_vertex(::Val{F}, ::Val{C}, U::Number) where {F, C}
     basis = F === :MF ? ImagConstantBasis() : ConstantBasis()
     Γ0 = Vertex4P{F, C}(basis, basis, basis, 1)
     if F === :KF

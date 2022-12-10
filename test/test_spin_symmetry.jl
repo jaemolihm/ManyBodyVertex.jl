@@ -35,9 +35,9 @@ using Test
     # Test su2_bare_vertex
     U = 5.0
     for F in (:KF, :MF)
-        Γ0_A = su2_bare_vertex(U, Val(F), Val(:A))
-        Γ0_P = su2_bare_vertex(U, Val(F), Val(:P))
-        Γ0_T = su2_bare_vertex(U, Val(F), Val(:T))
+        Γ0_A = su2_bare_vertex(Val(F), Val(:A), U)
+        Γ0_P = su2_bare_vertex(Val(F), Val(:P), U)
+        Γ0_T = su2_bare_vertex(Val(F), Val(:T), U)
         @test Γ0_A[1].data ≈ Γ0_A[1].data .* +1
         @test Γ0_A[2].data ≈ Γ0_A[1].data .* -1
         @test Γ0_P[1].data ≈ Γ0_A[1].data .* 2
