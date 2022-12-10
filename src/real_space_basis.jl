@@ -92,6 +92,14 @@ struct RealSpaceBasis{Dim, T}
     R_B_ndegen::Matrix{Vector{Int}}
 end
 
+function Base.show(io::IO, rbasis::RealSpaceBasis{Dim}) where {Dim}
+    println(io, "RealSpaceBasis($(Dim)D)")
+    println(io, "    lattice : $(rbasis.lattice)")
+    println(io, "    bonds_L : $(length(rbasis.bonds_L)) bonds")
+    println(io, "    bonds_R : $(length(rbasis.bonds_R)) bonds")
+    println(io, "    qgrid   : $(rbasis.qgrid)")
+end
+
 function RealSpaceBasis(lattice::SMatrix{Dim, Dim}, positions, bonds_L, bonds_R, qgrid) where {Dim}
     natoms = length(positions)
     all(1 .<= getindex.(bonds_L, 1) .<= natoms) || error("Wrong 1st atomic index of bonds_L")
