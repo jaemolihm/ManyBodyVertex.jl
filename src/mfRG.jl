@@ -1,4 +1,6 @@
 module mfRG
+using TimerOutputs
+
 export get_nonequidistant_grid
 
 export nbasis
@@ -8,8 +10,6 @@ export get_fitting_points
 export basis_integral
 export basis_for_bubble
 
-export RealSpaceBasis, get_indices
-
 export Green2P, solve_Dyson
 export Vertex4P, to_matrix, vertex_keldyshview, apply_crossing
 export Bubble, compute_bubble, compute_bubble_smoothed
@@ -17,12 +17,19 @@ export fit_bosonic_basis_coeff!
 export get_bare_vertex
 export vertex_to_vector, vector_to_vertex
 
+export RealSpaceBasis, get_indices
+export RealSpaceVertex
+export RealSpaceBubble
+
 export vertex_bubble_integral
 export solve_BSE, solve_BSE_left
 export run_parquet
 export run_parquet_without_irreducible
 
 export SIAMLazyGreen2P
+
+"""TimerOutput object used to store mfRG timings."""
+const timer = TimerOutput()
 
 include("utility.jl")
 include("acceleration.jl")
@@ -33,7 +40,6 @@ include("basis/basis_integral.jl")
 include("basis/basis_integral_imaginary.jl")
 include("basis/ShiftedSplineBasis.jl")
 include("basis/basis_integral_self_energy.jl")
-include("real_space_basis.jl")
 
 include("channel.jl")
 include("spin_symmetry_su2.jl")
@@ -46,6 +52,11 @@ include("AsymptoticVertex.jl")
 include("Bubble.jl")
 include("ScreenedBubble.jl")
 include("compute_bubble.jl")
+
+include("real_space/real_space_basis.jl")
+include("real_space/RealSpaceVertex.jl")
+include("real_space/RealSpaceBubble.jl")
+include("real_space/real_space_BSE.jl")
 
 include("BSE.jl")
 include("parquet_su2.jl")
