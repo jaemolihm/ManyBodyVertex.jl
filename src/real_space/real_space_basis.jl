@@ -34,9 +34,7 @@ between the center of the two bonds. Including the atomic positions, the distanc
 `find_minimal_distance_replica`.
 """
 
-# TODO: Better show
 # TODO: Truncation for choosing the bond bases
-# TODO: store ndegen
 
 const Bond{Dim} = Tuple{Int, Int, SVector{Dim, Int}}
 
@@ -115,6 +113,12 @@ function RealSpaceBasis(lattice::SMatrix{Dim, Dim}, positions, bonds_L, bonds_R,
         R_B_replica_inds, R_B_ndegen)
 end
 
+function center_position(bond::Bond, positions)
+    i1, i2, R = bond
+    (positions[i1] + positions[i2] + R) / 2
+end
+center_position(iatm::Integer, positions) = positions[iatm]
+
 """
     find_minimal_distance_replica(qgrid, lattice, bonds_L, bonds_R, positions; nsearch=3)
 Find the minimal-distance replica of R_B in the supercell of size `qgrid`.
@@ -141,10 +145,7 @@ function find_minimal_distance_replica(qgrid, lattice::SMatrix{Dim, Dim, T}, pos
     distances = zeros(T, length(R_super_list))
     is_minimal_distance = falses(length(R_super_list))
     for ibR in eachindex(bonds_R), ibL in eachindex(bonds_L)
-        i1, i2, R = bonds_L[ibL]
-        i4, i3, Rp = bonds_R[ibR]
-        Δτ = positions[i1] + positions[i2] - positions[i3] - positions[i4]
-        ΔR = (R - Rp + Δτ) / 2
+        ΔR = center_position(bonds_L[ibL], positions) - center_position(bonds_L[ibR], positions)
 
         # Find all R_super that minimize norm(lattice * (R_B + R_super + ΔR))
         for (iR_B, R_B) in enumerate(R_Bs)
