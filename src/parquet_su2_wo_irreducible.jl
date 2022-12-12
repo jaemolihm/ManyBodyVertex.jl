@@ -104,7 +104,7 @@ function run_parquet_without_irreducible(G0, Π₀, Γ₀, basis_1p=G0.basis;
     ΔΓ = AsymptoticVertex{F, T}(; max_class, Γ0_A=Γ0_A, Γ0_P=Γ0_P, Γ0_T=Γ0_T, basis_k1_b, basis_k2_b, basis_k2_f)
 
     # Initialize self-energy and Green function.
-    Σ₀ = compute_self_energy_SU2(Γ₀, G0, ΠA₀, ΠP₀, basis_1p; temperature)
+    Σ₀ = compute_self_energy_SU2(Γ₀, G0, ΠA₀, ΠP₀, (; freq=basis_1p); temperature)
     ΔΣ = similar(Σ₀)
     ΔΣ.data .= 0
     G = solve_Dyson(G0, Σ₀ + ΔΣ)

@@ -127,12 +127,38 @@ function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
     Σ_v
 end
 
-function _compute_self_energy_SU2(Γ, G, v; temperature=nothing)
-    C = channel(Γ[1])
-    overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v, Val(C))
-    coeff = C === :P ? (-1/2, 3/2) : (1/2, 3/2)
-    (  _compute_self_energy(Γ[1], G, v, overlap; temperature) .* coeff[1]
-    .+ _compute_self_energy(Γ[2], G, v, overlap; temperature) .* coeff[2])
+function SU2_self_energy_coeff(C)
+    # For the A channel, the factor 2 accounts for the contribution of the T channel.
+    # For the P channel, the factor 2 account for the factor of 1/2 in the bubble.
+    if C === :A
+        (1/2, 3/2) .* 2
+    elseif C === :P
+        (-1/2, 3/2) .* 2
+    elseif C === :T
+        error("Do not use the T-channel vertices for self-energy calculation under SU2
+            symmetry. Use crossing symmetry and A-channel vertices instead.")
+    else
+        error("Wrong channel $C")
+    end
+end
+
+function _compute_self_energy_SU2(Γs, G, basis; temperature=nothing)
+    F = get_formalism(G)
+    nind = get_nind(G)
+    vs = get_fitting_points(basis.freq)
+    Σ_data_iv = zeros(ComplexF64, nind, nind, length(vs))
+
+    Base.Threads.@threads for iv in eachindex(vs)
+        v = vs[iv]
+        for Γ in Γs
+            C = channel(Γ[1])
+            overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v, Val(C))
+            coeff = SU2_self_energy_coeff(C)
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy(Γ[1], G, v, overlap; temperature) .* coeff[1]
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy(Γ[2], G, v, overlap; temperature) .* coeff[2]
+        end
+    end
+    Green2P{F}(basis.freq, 1, fit_basis_coeff(Σ_data_iv, basis.freq, vs, 3))
 end
 
 """
@@ -144,68 +170,33 @@ Compute the self-energy by solving the Schwinger-Dyson equation.
 - `exclude_UU=false`: if set to `true`, skip the UΠU term. Used for parquet without
     irreducible vertex.
 """
-function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=nothing, exclude_UU=false)
+function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=get_basis(G); temperature=nothing,
+                                 exclude_UU=false)
     F = get_formalism(Γ)
-    nind = get_nind(G)
     F === :MF && temperature === nothing && error("For MF, temperature must be provided")
 
-    vs = get_fitting_points(basis)
-    Σ_data_iv = zeros(ComplexF64, nind, nind, length(vs))
-
     # If G is lazily defined, compute G on the basis explicitly.
-    if G isa AbstractLazyGreen2P
-        vs = get_fitting_points(basis)
-        G_data = zeros(eltype(G), nind, nind, length(vs))
-        for (iv, v) in enumerate(vs)
-            G_data[:, :, iv] .= G(v)
-        end
-        G_ = Green2P{F}(basis, G.norb, fit_basis_coeff(G_data, basis, vs, 3))
-    else
-        G_ = G
-    end
+    G_ = green_lazy_to_explicit(G, basis)
 
-    U_ΠA_U = vertex_bubble_integral.(Γ.Γ0_A, ΠA, Γ.Γ0_A, Ref(Γ.basis_k1_b))
-    U_ΠA_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K1_A, Γ.K2_A], Γ.basis_k2_b)
+    # U_Π_U term (the O(U²) term): to avoid double counting, multiply 1/3 to each channel.
+    # A, T channel: (1/3 + 1/3 [A + T]) / 2 (multiplied in _compute_self_energy_SU2) = 1/3
+    # P channel: (1/3 * 2 [_bubble_prefactor 1/2 in ΠP]) / 2 (multiplied in
+    #            _compute_self_energy_SU2) = 1/3
+    U_ΠA_U = vertex_bubble_integral.(Γ.Γ0_A, ΠA, Γ.Γ0_A, Ref(Γ.basis_k1_b)) .* (1/3)
+    U_ΠA_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K1_A, Γ.K2_A], Γ.basis_k1_b)
     U_ΠA_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K2p_A, Γ.K3_A], Γ.basis_k2_b)
 
-    U_ΠP_U = vertex_bubble_integral.(Γ.Γ0_P, ΠP, Γ.Γ0_P, Ref(Γ.basis_k1_b))
-    U_ΠP_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K1_P, Γ.K2_P], Γ.basis_k2_b)
+    U_ΠP_U = vertex_bubble_integral.(Γ.Γ0_P, ΠP, Γ.Γ0_P, Ref(Γ.basis_k1_b)) .* (1/3)
+    U_ΠP_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K1_P, Γ.K2_P], Γ.basis_k1_b)
     U_ΠP_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K2p_P, Γ.K3_P], Γ.basis_k2_b)
 
-    Base.Threads.@threads for iv in eachindex(vs)
-        # U_Π_U term (the O(U²) term): to avoid double counting, 1/3 for each channel.
-        # Also, for P channel, multiply 2 because Π has factor 1/2.
-        # A, T channel: (1/3 + 1/3) / 2 (multiplied outside the loop)= 1/3
-        # A, T channel: (1/3 * 2) / 2 (multiplied outside the loop)= 1/3
-        v = vs[iv]
-        if !exclude_UU
-            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠA_U, G_, v; temperature) .* (1/3)
-        end
-        if U_ΠA_K1K2 !== nothing
-            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠA_K1K2, G_, v; temperature)
-        end
-        if U_ΠA_K2pK3 !== nothing
-            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠA_K2pK3, G_, v; temperature)
-        end
-
-        if !exclude_UU
-            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠP_U, G_, v; temperature) .* (1/3)
-        end
-        if U_ΠP_K1K2 !== nothing
-            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠP_K1K2, G_, v; temperature)
-        end
-        if U_ΠP_K2pK3 !== nothing
-            Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(U_ΠP_K2pK3, G_, v; temperature)
-        end
+    vertices_use = [U_ΠA_K1K2, U_ΠA_K2pK3, U_ΠP_K1K2, U_ΠP_K2pK3]
+    if !exclude_UU
+        push!(vertices_use, U_ΠA_U, U_ΠP_U)
     end
+    filter!(!isnothing, vertices_use)
 
-    # Multiply by factor 2
-    # For the A channel, this accounts for the contribution of the T channel.
-    # For the P channel, this account for the factor of 1/2 in the bubble.
-    Σ_data_iv .*= 2
-
-    Σ_data = fit_basis_coeff(Σ_data_iv, basis, vs, 3)
-    Green2P{F}(basis, 1, Σ_data)
+    _compute_self_energy_SU2(vertices_use, G_, basis; temperature)
 end
 
 function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature,
