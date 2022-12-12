@@ -85,11 +85,11 @@ Solve Dyson equation to compute the interacting Green function: ``G = (G0⁻¹ -
 """
 function solve_Dyson(G0, Σ, basis=Σ.basis)
     vs = get_fitting_points(basis)
-    nind = get_nind(G0)
+    nind = get_nind(Σ)
     G_data = zeros(ComplexF64, nind, nind, length(vs))
     for (iv, v) in enumerate(vs)
         G_data[:, :, iv] .= inv(inv(G0(v)) .- Σ(v))
     end
     data = fit_basis_coeff(G_data, basis, vs, 3)
-    Green2P{get_formalism(G0)}(basis, G0.norb, data)
+    Green2P{get_formalism(Σ)}(basis, Σ.norb, data)
 end

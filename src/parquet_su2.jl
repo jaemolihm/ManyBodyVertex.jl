@@ -190,7 +190,8 @@ function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=get_basis(G); temperatur
     U_ΠP_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K1_P, Γ.K2_P], Γ.basis_k1_b)
     U_ΠP_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K2p_P, Γ.K3_P], Γ.basis_k2_b)
 
-    vertices_use = [U_ΠA_K1K2, U_ΠA_K2pK3, U_ΠP_K1K2, U_ΠP_K2pK3]
+    vertices_use = []
+    push!(vertices_use, U_ΠA_K1K2, U_ΠA_K2pK3, U_ΠP_K1K2, U_ΠP_K2pK3)
     if !exclude_UU
         push!(vertices_use, U_ΠA_U, U_ΠP_U)
     end

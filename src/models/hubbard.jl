@@ -55,3 +55,9 @@ function (G0::HubbardLazyGreen2P{F, T})(k, v) where {F, T}
     g = hubbard_get_green_function(k, v, Val(F); T=G0.temperature, G0.μ, G0.t, G0.t2)
     F === :KF ? g : SMatrix{1, 1}(g)
 end
+
+function interpolate_to_q(G0::HubbardLazyGreen2P, xq, iatm1::Integer, iatm2::Integer)
+    iatm1 != 1 && error("Wrong iatm1 = $iatm1")
+    iatm2 != 1 && error("Wrong iatm2 = $iatm2")
+    v -> G0(xq, v)
+end

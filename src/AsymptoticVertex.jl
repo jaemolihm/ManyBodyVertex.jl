@@ -89,7 +89,6 @@ function get_difference_norm(Γ1::AsymptoticVertex, Γ2::AsymptoticVertex)
                 relerr = max(relerr, err[i] / val[i])
             end
         end
-        # @info n, err, val
     end
     (; abserr, relerr)
 end
