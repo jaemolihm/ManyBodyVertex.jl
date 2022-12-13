@@ -120,11 +120,31 @@ function RealSpaceBasis(lattice::SMatrix{Dim, Dim}, positions, bonds_L, bonds_R,
         R_B_replica_inds, R_B_ndegen)
 end
 
-function center_position(bond::Bond, positions)
-    i1, i2, R = bond
-    (positions[i1] + positions[i2] + R) / 2
+
+"""
+    RealSpaceBasis2P(lattice, positions, qgrid)
+Real-space basis for 2-point objects.
+"""
+struct RealSpaceBasis2P{Dim, T}
+    lattice::SMatrix{Dim, Dim, T}
+    positions::Vector{SVector{Dim, T}}
+    natom::Int
+    qgrid::NTuple{Dim, Int}
+    qpts::Vector{SVector{Dim, T}}
+    Rs::Vector{SVector{Dim, Int}}
+    R_replicas::Matrix{Vector{SVector{Dim, Int}}}
+    R_ndegen::Matrix{Vector{Int}}
 end
-center_position(iatm::Integer, positions) = positions[iatm]
+
+function RealSpaceBasis2P(lattice::SMatrix{Dim, Dim}, positions, qgrid) where {Dim}
+    natom = length(positions)
+    lattice_ = convert.(AbstractFloat, lattice)
+    qpts = vec([SVector(x ./ qgrid) for x in Iterators.product(range.(0, qgrid .- 1)...)])
+    Rs, R_replicas, _, R_ndegen = find_minimal_distance_replica(qgrid, lattice_,
+        positions, 1:natom, 1:natom; nsearch=3)
+    RealSpaceBasis2P(lattice_, positions, natom, qgrid, qpts, Rs, R_replicas, R_ndegen)
+end
+
 
 """
     find_minimal_distance_replica(qgrid, lattice, bonds_L, bonds_R, positions; nsearch=3)

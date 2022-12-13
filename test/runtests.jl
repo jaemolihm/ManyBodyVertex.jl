@@ -12,6 +12,7 @@ using Test
     include("test_bubble.jl")
     include("test_spin_symmetry.jl")
     include("test_RealSpaceVertex.jl")
+    include("test_real_space_bubble.jl")
 
     include("test_BSE.jl")
     include("test_model_siam.jl")

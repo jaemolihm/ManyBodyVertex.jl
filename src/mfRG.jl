@@ -17,7 +17,8 @@ export fit_bosonic_basis_coeff!
 export get_bare_vertex
 export vertex_to_vector, vector_to_vertex
 
-export RealSpaceBasis, get_indices
+export RealSpaceBasis, RealSpaceBasis2P, get_indices
+export RealSpaceGreen2P
 export RealSpaceVertex
 export RealSpaceBubble
 
@@ -54,8 +55,10 @@ include("ScreenedBubble.jl")
 include("compute_bubble.jl")
 
 include("real_space/real_space_basis.jl")
+include("real_space/RealSpaceGreen.jl")
 include("real_space/RealSpaceVertex.jl")
 include("real_space/RealSpaceBubble.jl")
+include("real_space/self_energy.jl")
 include("real_space/real_space_BSE.jl")
 
 include("BSE.jl")
