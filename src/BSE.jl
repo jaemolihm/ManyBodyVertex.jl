@@ -48,7 +48,7 @@ function vertex_bubble_integral(
         ΓL::AbstractVertex4P,
         Π::AbstractBubble,
         ΓR::AbstractVertex4P,
-        basis_w::NamedTuple{(:freq,), Tuple{T}} where {T<:mfRG.Basis};
+        basis_w::NamedTuple{(:freq,), Tuple{T}} where {T<:Basis};
         basis_aux=nothing
     )
     basis_aux_ = basis_aux === nothing ? nothing : basis_aux.freq

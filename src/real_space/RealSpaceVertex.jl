@@ -124,14 +124,14 @@ function vector_to_vertex!(Γ::RealSpaceVertex, v, offset=0)
 end
 
 function vertex_norm(x::NTuple{2, <:RealSpaceVertex})
-    norms1 = mfRG.vertex_norm(x[1].vertices_R)
-    norms2 = mfRG.vertex_norm(x[2].vertices_R)
+    norms1 = vertex_norm(x[1].vertices_R)
+    norms2 = vertex_norm(x[2].vertices_R)
     (; err=norm.((norms1.err, norms2.err)), val=norm.((norms1.val, norms2.val)))
 end
 
 function vertex_diff_norm(x1::NTuple{2, <:RealSpaceVertex}, x2::NTuple{2, <:RealSpaceVertex})
-    norms1 = mfRG.vertex_diff_norm(x1[1].vertices_R, x2[1].vertices_R)
-    norms2 = mfRG.vertex_diff_norm(x1[2].vertices_R, x2[2].vertices_R)
+    norms1 = vertex_diff_norm(x1[1].vertices_R, x2[1].vertices_R)
+    norms2 = vertex_diff_norm(x1[2].vertices_R, x2[2].vertices_R)
     (; err=norm.((norms1.err, norms2.err)), val=norm.((norms1.val, norms2.val)))
 end
 

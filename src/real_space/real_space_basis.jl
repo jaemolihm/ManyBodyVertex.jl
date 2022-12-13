@@ -38,6 +38,13 @@ between the center of the two bonds. Including the atomic positions, the distanc
 
 const Bond{Dim} = Tuple{Int, Int, SVector{Dim, Int}}
 
+function center_position(bond::Bond, positions)
+    i1, i2, R = bond
+    (positions[i1] + positions[i2] + R) / 2
+end
+center_position(iatm::Integer, positions) = positions[iatm]
+
+
 function lattice_vectors_to_standard(C::Val, R, Rp, R_B)
     # Uniform translation of (R1, R2, R3, R4) is meaningless. We arbitraily choose R4 to
     # be zero. All operations should only use the differences between these vectors.

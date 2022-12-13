@@ -1,7 +1,7 @@
 """
     RealSpaceBubble{RC}(rbasis::RBT, bubbles_q)
 """
-Base.@kwdef mutable struct RealSpaceBubble{F, RC, C, T, BF, BB, DT <: AbstractArray{T}, RBT} <: mfRG.AbstractBubble{F, C, T}
+Base.@kwdef mutable struct RealSpaceBubble{F, RC, C, T, BF, BB, DT <: AbstractArray{T}, RBT} <: AbstractBubble{F, C, T}
     rbasis::RBT
     # Basis for fermionic frequencies
     basis_f::BF
@@ -25,7 +25,7 @@ function RealSpaceBubble{RC}(rbasis::RBT, bubbles_q) where {RC, RBT}
     data_q = [[y.data for y in x] for x in bubbles_q]
     DT = eltype(eltype(data_q))
     F = get_formalism(Π_)
-    C = mfRG.channel(Π_)
+    C = channel(Π_)
     T = eltype(Π_)
     RealSpaceBubble{F, RC, C, T, typeof(basis_f), typeof(basis_b), DT, RBT}(;
         rbasis, basis_f, basis_b, norb, data_q, temperature)
@@ -49,10 +49,10 @@ function Base.show(io::IO, A::RealSpaceBubble{F, RC}) where {F, RC}
 end
 
 """
-    interpolate_to_q(A::RealSpaceBubble, xq, bL::mfRG.Bond, bR::mfRG.Bond)
+    interpolate_to_q(A::RealSpaceBubble, xq, bL::Bond, bR::Bond)
 TODO: Interpolation (linear / Fourier)
 """
-@timeit timer "itp_Π" function interpolate_to_q(A::RealSpaceBubble, q, bL::mfRG.Bond, bR::mfRG.Bond)
+@timeit timer "itp_Π" function interpolate_to_q(A::RealSpaceBubble, q, bL::Bond, bR::Bond)
     ibL = findfirst(x -> x == bL, A.rbasis.bonds_L)
     ibL === nothing && return nothing
     ibR = findfirst(x -> x == bR, A.rbasis.bonds_R)
@@ -60,8 +60,8 @@ TODO: Interpolation (linear / Fourier)
     iq = findfirst(x -> x ≈ q, A.rbasis.qpts)
     iq === nothing && error("q point interpolation not implemented for RealSpaceBubble")
 
-    F = mfRG.get_formalism(A)
-    C = mfRG.channel(A)
+    F = get_formalism(A)
+    C = channel(A)
     Bubble{F, C}(A.basis_f, A.basis_b, A.norb, A.data_q[ibL, ibR][iq]; A.temperature,
                  A.cache_basis_L, A.cache_basis_R, A.cache_overlap_LR)
 end
@@ -81,8 +81,8 @@ function compute_bubble_nonlocal(G, basis_f, basis_b, ::Val{C}, q, nk; temperatu
             k1, k2 = _bubble_frequencies(Val(:ZF), Val(C), k, q)
             if !(G isa AbstractLazyGreen2P)
                 # TODO: Cleanup
-                G1_ = mfRG.interpolate_to_q(G, k1, 1, 1)
-                G2_ = mfRG.interpolate_to_q(G, k2, 1, 1)
+                G1_ = interpolate_to_q(G, k1, 1, 1)
+                G2_ = interpolate_to_q(G, k2, 1, 1)
             end
             for (iw, w) in enumerate(ws)
                 for (iv, v) in enumerate(vs)

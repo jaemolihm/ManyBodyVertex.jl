@@ -55,7 +55,7 @@ function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux1=nothing, bas
     if any(channel.(Γs) .!= C) && basis_aux1 === nothing
         error("For vertex with different channel than C=$C, basis_aux must be provided")
     end
-    if basis_aux1 isa NamedTuple{(:freq,), Tuple{T}} where {T<:mfRG.Basis}
+    if basis_aux1 isa NamedTuple{(:freq,), Tuple{T}} where {T<:Basis}
         basis_aux1_ = basis_aux1.freq
         basis_aux2_ = basis_aux2.freq
     else
