@@ -21,10 +21,14 @@ for BSE can be obtained by just flattening without additional permutation.
 # Frequency parametrization
 The frequency parametrization reads
 - A channel: ``(v1, v2; w) = (v1-w/2, -v1-w/2,  v2+w/2, -v2+w/2)``
-- P channel: ``(v1, v2; w) = (v1+w/2,  v2-w/2, -v1+w/2, -v2-w/2)``
+- P channel: ``(v1, v2; w) = (v1-w/2,  v2+w/2, -v1-w/2, -v2+w/2)``
 - T channel: ``(v1, v2; w) = (v2+w/2, -v1-w/2,  v1-w/2, -v2+w/2)``
 (Frequency is positive for an outgoing leg.)
-Ref: Gievers et al, Eur. Phys. J. B 95, 108 (2022), Fig. 3
+The frequencies can be obtained by reordering the A channel frequencies using the indices
+ordering shown above.
+Note that compared to Gievers et al, Eur. Phys. J. B 95, 108 (2022), Fig. 3, we use opposite
+sign for `w` in the P channel to make the frequencies are related to the A channel ones
+via a simple exchange of 2nd and 3rd indices.
 
 # Matsubara frequencies
 Matsubara frequencies at finite temperature are discrete. We index the frequencies as
@@ -51,38 +55,20 @@ indices_to_channel(::Val{:A}, i) = (i[1], i[2], i[3], i[4])
 indices_to_channel(::Val{:P}, i) = (i[1], i[3], i[2], i[4])
 indices_to_channel(::Val{:T}, i) = (i[3], i[2], i[1], i[4])
 
-# Real frequencies
-frequency_to_standard(::_RealFreq, ::Val{:A}, v1, v2, w) = (v1-w/2, -v1-w/2,  v2+w/2, -v2+w/2)
-frequency_to_standard(::_RealFreq, ::Val{:P}, v1, v2, w) = (v1+w/2,  v2-w/2, -v1+w/2, -v2-w/2)
-frequency_to_standard(::_RealFreq, ::Val{:T}, v1, v2, w) = (v2+w/2, -v1-w/2,  v1-w/2, -v2+w/2)
-
-# v1 + v2 + v3 + v4 = 0 is assumed to hold.
-frequency_to_channel(::_RealFreq, ::Val{:A}, v1, v2, v3, v4) = ((v1-v2)/2, (v3-v4)/2, v3+v4)
-frequency_to_channel(::_RealFreq, ::Val{:P}, v1, v2, v3, v4) = ((v1-v3)/2, (v2-v4)/2, v1+v3)
-frequency_to_channel(::_RealFreq, ::Val{:T}, v1, v2, v3, v4) = ((v3-v2)/2, (v1-v4)/2, v1+v4)
-frequency_to_channel(F, C, v1234::NTuple{4}) = frequency_to_channel(F, C, v1234...)
-
-# Imaginary frequencies
-@inline function frequency_to_standard(::_ImagFreq, ::Val{:A}, v1, v2, w)
+_frequency_to_standard(::_RealFreq, v1, v2, w) = (v1-w/2, -v1-w/2,  v2+w/2, -v2+w/2)
+@inline function _frequency_to_standard(::_ImagFreq, v1, v2, w)
     (floor(Int, v1-w/2), ceil(Int, -v1-1-w/2), floor(Int, v2+w/2), ceil(Int, -v2-1+w/2))
 end
-@inline function frequency_to_standard(::_ImagFreq, ::Val{:P}, v1, v2, w)
-    (floor(Int, v1+w/2), floor(Int, v2-w/2), ceil(Int, -v1-1+w/2), ceil(Int, -v2-1-w/2))
-end
-@inline function frequency_to_standard(::_ImagFreq, ::Val{:T}, v1, v2, w)
-    (floor(Int, v2+w/2), ceil(Int, -v1-1-w/2), floor(Int, v1-w/2), ceil(Int, -v2-1+w/2))
-end
 
-# v1 + v2 + v3 + v4 = -2 is assumed to hold.
-@inline function frequency_to_channel(::_ImagFreq, ::Val{:A}, v1, v2, v3, v4)
+# v1 + v2 + v3 + v4 = 0 is assumed to hold.
+_frequency_to_channel(::_RealFreq, v1, v2, v3, v4) = ((v1-v2)/2, (v3-v4)/2, v3+v4)
+@inline function _frequency_to_channel(::_ImagFreq, v1, v2, v3, v4)
     (ceil(Int, (v1-v2-1)/2), ceil(Int, (v3-v4-1)/2), v3+v4+1)
 end
-@inline function frequency_to_channel(::_ImagFreq, ::Val{:P}, v1, v2, v3, v4)
-    (ceil(Int, (v1-v3-1)/2), ceil(Int, (v2-v4-1)/2), v1+v3+1)
-end
-@inline function frequency_to_channel(::_ImagFreq, ::Val{:T}, v1, v2, v3, v4)
-    (ceil(Int, (v3-v2-1)/2), ceil(Int, (v1-v4-1)/2), v1+v4+1)
-end
+
+frequency_to_standard(F::Val, C::Val, v1, v2, w) = indices_to_standard(C, _frequency_to_standard(F, v1, v2, w))
+frequency_to_channel(F::Val, C::Val, v1, v2, v3, v4) = _frequency_to_channel(F, indices_to_channel(C, (v1, v2, v3, v4))...)
+frequency_to_channel(F::Val, C::Val, v1234) = frequency_to_channel(F, C, v1234...)
 
 """
     _permute_orbital_indices_matrix_4p(c_in, c_out, Γ_mat_in, nind)
@@ -115,7 +101,7 @@ end
 """
 # Bubbles
 - ``Πᴬ_{12,34}(v; w) =       G_41( v + w/2) * G_23(v - w/2)``
-- ``Πᴾ_{12,34}(v; w) = 1/2 * G_14(-v + w/2) * G_23(v - w/2)``
+- ``Πᴾ_{12,34}(v; w) = 1/2 * G_14(-v - w/2) * G_23(v - w/2)``
 - ``Πᵀ_{12,34}(v; w) =  -1 * G_41( v + w/2) * G_23(v - w/2) = -Πᴬ_{12,34}(v; w)``
 
 These equations are implemented in `_bubble_prefactor`, `_bubble_frequencies`, and
@@ -130,19 +116,32 @@ _bubble_prefactor(::Val{:P}) = 1/2
 _bubble_prefactor(::Val{:T}) = -1
 
 _bubble_frequencies(::_RealFreq, ::Val{:A}, v, w) = ( v+w/2, v-w/2)
-_bubble_frequencies(::_RealFreq, ::Val{:P}, v, w) = (-v+w/2, v+w/2)
+_bubble_frequencies(::_RealFreq, ::Val{:P}, v, w) = (-v-w/2, v-w/2)
 _bubble_frequencies(::_RealFreq, ::Val{:T}, v, w) = ( v+w/2, v-w/2)
 _bubble_frequencies(::_ImagFreq, ::Val{:A}, v, w) = (floor(Int,   v+w/2), floor(Int, v-w/2))
-_bubble_frequencies(::_ImagFreq, ::Val{:P}, v, w) = (ceil(Int, -v-1+w/2), floor(Int, v+w/2))
+_bubble_frequencies(::_ImagFreq, ::Val{:P}, v, w) = (ceil(Int, -v-1-w/2), floor(Int, v-w/2))
 _bubble_frequencies(::_ImagFreq, ::Val{:T}, v, w) = (floor(Int,   v+w/2), floor(Int, v-w/2))
 
-_bubble_frequencies_inv(::_RealFreq, ::Val{:A}, v1, v2) = ((v1 + v2) / 2, v1 - v2)
-_bubble_frequencies_inv(::_RealFreq, ::Val{:P}, v1, v2) = ((v2 - v1) / 2, v1 + v2)
-_bubble_frequencies_inv(::_RealFreq, ::Val{:T}, v1, v2) = ((v1 + v2) / 2, v1 - v2)
+_bubble_frequencies_inv(::_RealFreq, ::Val{:A}, v1, v2) = ((v1 + v2) / 2,  v1 - v2)
+_bubble_frequencies_inv(::_RealFreq, ::Val{:P}, v1, v2) = ((v2 - v1) / 2, -v1 - v2)
+_bubble_frequencies_inv(::_RealFreq, ::Val{:T}, v1, v2) = ((v1 + v2) / 2,  v1 - v2)
 _bubble_frequencies_inv(::_ImagFreq, ::Val{:A}, v1, v2) = (fld(v1 + v2 + 1, 2), v1 - v2)
-_bubble_frequencies_inv(::_ImagFreq, ::Val{:P}, v1, v2) = (fld(v2 - v1, 2), v1 + v2 + 1)
+_bubble_frequencies_inv(::_ImagFreq, ::Val{:P}, v1, v2) = (fld(v2 - v1, 2), -v1 - v2 - 1)
 _bubble_frequencies_inv(::_ImagFreq, ::Val{:T}, v1, v2) = (fld(v1 + v2 + 1, 2), v1 - v2)
 
 _bubble_indices(::Val{:A}, i) = (i[4], i[1], i[2], i[3])
 _bubble_indices(::Val{:P}, i) = (i[1], i[4], i[2], i[3])
 _bubble_indices(::Val{:T}, i) = (i[4], i[1], i[2], i[3])
+
+
+function channel_apply_crossing(C)
+    if C === :A
+        C_out = :T
+    elseif C === :T
+        C_out = :A
+    elseif C === :P
+        C_out = :P
+    else
+        error("Wrong channel $C")
+    end
+end

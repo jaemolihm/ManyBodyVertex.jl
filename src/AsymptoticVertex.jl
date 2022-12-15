@@ -1,5 +1,7 @@
 # FIXME: Better treatment of Γ0_A, Γ0_P (why no Γ0_T...?)
 
+# TODO: Add test for vector_to_vertex and vector_to_vector
+
 """
     AsymptoticVertex
 4-point vertex in the asymptotic decomposition.
@@ -24,12 +26,15 @@ Base.@kwdef struct AsymptoticVertex{F, T} <: AbstractFrequencyVertex{F, T}
     K3_A = nothing
     K3_P = nothing
     K3_T = nothing
-    basis_k1_b = K1_A[1].basis_b
-    basis_k2_f = K2_A === nothing ? nothing : K2_A[1].basis_f1
-    basis_k2_b = K2_A === nothing ? nothing : K2_A[1].basis_b
-    basis_k3_f = K3_A === nothing ? nothing : K3_A[1].basis_f1
-    basis_k3_b = K3_A === nothing ? nothing : K3_A[1].basis_b
+    basis_k1_b = K1_A === nothing ? nothing : get_bosonic_basis(K1_A[1])
+    basis_k2_f = K2_A === nothing ? nothing : get_fermionic_basis_1(K2_A[1])
+    basis_k2_b = K2_A === nothing ? nothing : get_bosonic_basis(K2_A[1])
+    basis_k3_f = K3_A === nothing ? nothing : get_fermionic_basis_1(K3_A[1])
+    basis_k3_b = K3_A === nothing ? nothing : get_bosonic_basis(K3_A[1])
 end
+
+get_fermionic_basis_1(Γ::AbstractVertex4P) = (; freq=Γ.basis_f1)
+get_bosonic_basis(Γ::AbstractVertex4P) = (; freq=Γ.basis_b)
 
 _vertex_names(::AsymptoticVertex) = (:K1_A, :K1_P, :K1_T, :K2_A, :K2_P, :K2_T, :K2p_A,
     :K2p_P, :K2p_T, :K3_A, :K3_P, :K3_T)
@@ -59,6 +64,13 @@ function get_irreducible_vertices(C, Γ::AsymptoticVertex)
     su2_convert_spin_channel.(C, filter!(x -> channel(x[1]) != C, get_vertices(Γ)))
 end
 
+vertex_norm(x) = (; err=norm.(getproperty.(x, :data)), val=norm.(getproperty.(x, :data)))
+
+vertex_diff_norm(x1, x2) = (; err=norm.(getproperty.(x1, :data) .- getproperty.(x2, :data)), val=(norm(getproperty.(x1, :data)) .+ norm.(getproperty.(x2, :data))) ./ 2)
+vertex_diff_norm(x1, x2::Nothing) = vertex_norm(x1)
+vertex_diff_norm(x1::Nothing, x2) = vertex_norm(x2)
+vertex_diff_norm(x1::Nothing, x2::Nothing) = (; err=nothing, val=nothing)
+
 """
     get_difference_norm(Γ1::AsymptoticVertex, Γ2::AsymptoticVertex) => (; abserr, relerr)
 Absolute and relative difference between `Γ1` and `Γ2`.
@@ -66,26 +78,15 @@ Absolute and relative difference between `Γ1` and `Γ2`.
 function get_difference_norm(Γ1::AsymptoticVertex, Γ2::AsymptoticVertex)
     abserr = zero(real(eltype(Γ1)))
     relerr = zero(real(eltype(Γ1)))
-    for n in mfRG._vertex_names(Γ1)
+    for n in _vertex_names(Γ1)
         x1 = getproperty(Γ1, n)
         x2 = getproperty(Γ2, n)
+        err, val = vertex_diff_norm(x1, x2)
+        err === nothing && continue
         for i in 1:2
-            if x1 !== nothing && x2 !== nothing
-                err = norm(x1[i].data .- x2[i].data)
-                val = (norm(x1[i].data) + norm(x2[i].data)) / 2
-            elseif x1 === nothing && x2 !== nothing
-                err = norm(x2[i].data)
-                val = norm(x2[i].data)
-            elseif x1 !== nothing && x2 === nothing
-                err = norm(x1[i].data)
-                val = norm(x1[i].data)
-            elseif x1 === nothing && x2 === nothing
-                continue
-            end
-            abserr += err
-            if val > 1e-10
-                # skip relative error if value is too small
-                relerr = max(relerr, err / val)
+            abserr += err[i]
+            if val[i] > 1e-10  # skip relative error if value is too small
+                relerr = max(relerr, err[i] / val[i])
             end
         end
     end
@@ -96,11 +97,12 @@ end
     vertex_to_vector(Γ::AsymptoticVertex)
 Reshape and concatenate the vertices of `Γ` to a one-dimensional vector.
 """
-function vertex_to_vector(Γ::mfRG.AsymptoticVertex)
+function vertex_to_vector(Γ::AsymptoticVertex)
     v = eltype(Γ)[]
-    for x in mfRG.get_vertices(Γ)
-        append!(v, vec(x[1].data))
-        append!(v, vec(x[2].data))
+    for Γ_field in get_vertices(Γ)
+        for x in Γ_field
+            vertex_to_vector!(v, x)
+        end
     end
     v
 end
@@ -110,17 +112,32 @@ end
 Reshape a one-dimensional vector `v` to the vertices with the same type and size as
 `Γ_template`.
 """
-function vector_to_vertex(v, Γ_template::mfRG.AsymptoticVertex)
-    ind = 0
+function vector_to_vertex(v, Γ_template::AsymptoticVertex)
+    offset = 0
     vertices = Dict()
-    for name in mfRG._vertex_names(Γ_template)
+    for name in _vertex_names(Γ_template)
+        getproperty(Γ_template, name) === nothing && continue
         vertices[name] = similar.(getproperty(Γ_template, name))
-        for i in eachindex(vertices[name])
-            n = length(vertices[name][i].data)
-            vec(vertices[name][i].data) .= v[ind+1:ind+n]
-            ind += n
+        for x in vertices[name]
+            offset = vector_to_vertex!(x, v, offset)
         end
     end
     typeof(Γ_template)(; Γ_template.max_class, Γ_template.Γ0_A, Γ_template.Γ0_P,
                          Γ_template.Γ0_T, vertices...)
+end
+
+"""
+    vertex_to_vector!(v, Γ::AbstractVertex4P)
+Flatten the data of the vertex `Γ` and append it to `v`.
+"""
+vertex_to_vector!(v, Γ::AbstractVertex4P) = append!(v, vec(Γ.data))
+
+"""
+    vector_to_vertex(Γ::AbstractVertex4P, v, offset=0)
+Use `v[offset+1 : offset+n]` to set the vertex `Γ`. Return the new offset.
+"""
+function vector_to_vertex!(Γ::AbstractVertex4P, v, offset=0)
+    n = length(Γ.data)
+    vec(Γ.data) .= v[offset+1:offset+n]
+    return offset + n
 end

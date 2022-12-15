@@ -45,7 +45,7 @@ function iterate_parquet_asymptotic_single_channel(Π, U, γ, Irr;
     K1_new = _mapreduce_bubble_integrals([U], Π, [U, γ.K1, γ.K2], basis_k1_b)
 
     if max_class >= 2 && !isempty(Irr)
-        ws = get_fitting_points(basis_k2_b)
+        ws = get_fitting_points(basis_k2_b.freq)
         Irr_mat = Tuple(cache_vertex_matrix(getindex.(Irr, i), C, ws, basis_k2_f) for i in 1:2);
         K2_new = _mapreduce_bubble_integrals([Irr_mat], Π, [U, γ.K1, γ.K2], basis_k2_b)
         K2p_new = _mapreduce_bubble_integrals([U, γ.K1, γ.K2p], Π, [Irr_mat], basis_k2_b)
@@ -101,18 +101,14 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP; iterate_by_bse=false)
     typeof(Γ)(; Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_b, Γ.basis_k2_f, Γs...)
 end
 
-"""
-    compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
-Compute the self-energy by solving the Schwinger-Dyson equation.
-``Σ[a, d](v) = ∫ dw K1[ab, cd](v+w/2, w) * G[b, c](v+w) * integral_coeff * -1/2``
-"""
 function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
     F = get_formalism(Γ)
+    C = channel(Γ)
     nind = get_nind(G)
     nb_f1(Γ) == 1 || error("Γ.basis_f1 must be a constant basis")
     F === :MF && temperature === nothing && error("For MF, temperature must be provided")
     if overlap === nothing
-        overlap = basis_integral_self_energy(Γ.basis_f2, Γ.basis_b, G.basis, v)
+        overlap = basis_integral_self_energy(Γ.basis_f2, Γ.basis_b, G.basis, v, Val(C))
     end
     # (ab, icd, j) -> (a, b, c, d, ij)
     Γ_data = reshape(permutedims(reshape(Γ.data, (nind^2, nb_f2(Γ), nind^2, nb_b(Γ))), (1, 3, 2, 4)), nind^4, :)
@@ -121,49 +117,91 @@ function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
 
     Σ_v = zeros(eltype(G), nind, nind)
     @views for b in 1:nind, d in 1:nind, c in 1:nind, a in 1:nind
-        Σ_v[a, d] += transpose(Γ_data_2[a, b, c, d, :]) * G.data[b, c, :]
+        if C === :P
+            Σ_v[a, d] += transpose(Γ_data_2[a, b, c, d, :]) * G.data[c, b, :]
+        else
+            Σ_v[a, d] += transpose(Γ_data_2[a, b, c, d, :]) * G.data[b, c, :]
+        end
     end
     Σ_v .*= (integral_coeff(Val(F), temperature) * -1 / 2)
     Σ_v
 end
 
-function _compute_self_energy_SU2(Γ, G, v; temperature=nothing)
-    overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v)
-    (  _compute_self_energy(Γ[1], G, v, overlap; temperature) .* 1/2
-    .+ _compute_self_energy(Γ[2], G, v, overlap; temperature) .* 3/2)
+function SU2_self_energy_coeff(C)
+    # For the A channel, the factor 2 accounts for the contribution of the T channel.
+    # For the P channel, the factor 2 account for the factor of 1/2 in the bubble.
+    if C === :A
+        (1/2, 3/2) .* 2
+    elseif C === :P
+        (-1/2, 3/2) .* 2
+    elseif C === :T
+        error("Do not use the T-channel vertices for self-energy calculation under SU2
+            symmetry. Use crossing symmetry and A-channel vertices instead.")
+    else
+        error("Wrong channel $C")
+    end
 end
 
-function compute_self_energy_SU2(Γ, G, basis=G.basis; temperature=nothing)
-    F = get_formalism(Γ)
+function _compute_self_energy_SU2(Γs, G, basis; temperature=nothing)
+    F = get_formalism(G)
     nind = get_nind(G)
-    F === :MF && temperature === nothing && error("For MF, temperature must be provided")
-
-    vs = get_fitting_points(basis)
+    vs = get_fitting_points(basis.freq)
     Σ_data_iv = zeros(ComplexF64, nind, nind, length(vs))
-
-    # If G is lazily defined, compute G on the basis explicitly.
-    if G isa AbstractLazyGreen2P
-        vs = get_fitting_points(basis)
-        G_data = zeros(eltype(G), nind, nind, length(vs))
-        for (iv, v) in enumerate(vs)
-            G_data[:, :, iv] .= G(v)
-        end
-        G_ = Green2P{get_formalism(G)}(basis, G.norb, fit_basis_coeff(G_data, basis, vs, 3))
-    else
-        G_ = G
-    end
 
     Base.Threads.@threads for iv in eachindex(vs)
         v = vs[iv]
-        Γ.K1_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K1_A, G_, v; temperature))
-        Γ.K2p_A !== nothing && (Σ_data_iv[:, :, iv] .+= _compute_self_energy_SU2(Γ.K2p_A, G_, v; temperature))
+        for Γ in Γs
+            C = channel(Γ[1])
+            overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v, Val(C))
+            coeff = SU2_self_energy_coeff(C)
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy(Γ[1], G, v, overlap; temperature) .* coeff[1]
+            Σ_data_iv[:, :, iv] .+= _compute_self_energy(Γ[2], G, v, overlap; temperature) .* coeff[2]
+        end
     end
-
-    Σ_data = mfRG.fit_basis_coeff(Σ_data_iv, basis, vs, 3)
-    Green2P{F}(basis, 1, Σ_data)
+    Green2P{F}(basis.freq, 1, fit_basis_coeff(Σ_data_iv, basis.freq, vs, 3))
 end
 
-function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
+"""
+    compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=G.basis; temperature=nothing, exclude_UU=false)
+Compute the self-energy by solving the Schwinger-Dyson equation.
+``Σ[a, d](v) = ∫ dw K1[ab, cd](v+w/2, w) * G[b, c](v+w) * integral_coeff * -1/2``
+
+# Input
+- `exclude_UU=false`: if set to `true`, skip the UΠU term. Used for parquet without
+    irreducible vertex.
+"""
+function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=get_basis(G); temperature=nothing,
+                                 exclude_UU=false)
+    F = get_formalism(Γ)
+    F === :MF && temperature === nothing && error("For MF, temperature must be provided")
+
+    # If G is lazily defined, compute G on the basis explicitly.
+    G_ = green_lazy_to_explicit(G, basis)
+
+    # U_Π_U term (the O(U²) term): to avoid double counting, multiply 1/3 to each channel.
+    # A, T channel: (1/3 + 1/3 [A + T]) / 2 (multiplied in _compute_self_energy_SU2) = 1/3
+    # P channel: (1/3 * 2 [_bubble_prefactor 1/2 in ΠP]) / 2 (multiplied in
+    #            _compute_self_energy_SU2) = 1/3
+    U_ΠA_U = vertex_bubble_integral.(Γ.Γ0_A, ΠA, Γ.Γ0_A, Ref(Γ.basis_k1_b)) .* (1/3)
+    U_ΠA_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K1_A, Γ.K2_A], Γ.basis_k1_b)
+    U_ΠA_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K2p_A, Γ.K3_A], Γ.basis_k2_b)
+
+    U_ΠP_U = vertex_bubble_integral.(Γ.Γ0_P, ΠP, Γ.Γ0_P, Ref(Γ.basis_k1_b)) .* (1/3)
+    U_ΠP_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K1_P, Γ.K2_P], Γ.basis_k1_b)
+    U_ΠP_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K2p_P, Γ.K3_P], Γ.basis_k2_b)
+
+    vertices_use = []
+    push!(vertices_use, U_ΠA_K1K2, U_ΠA_K2pK3, U_ΠP_K1K2, U_ΠP_K2pK3)
+    if !exclude_UU
+        push!(vertices_use, U_ΠA_U, U_ΠP_U)
+    end
+    filter!(!isnothing, vertices_use)
+
+    _compute_self_energy_SU2(vertices_use, G_, basis; temperature)
+end
+
+function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature,
+        smooth_bubble=get_formalism(G) === :MF ? false : true)
     bubble_function = smooth_bubble ? compute_bubble_smoothed : compute_bubble
     @time ΠA_ = bubble_function(G, basis_v_bubble, basis_w_bubble, Val(:A); temperature)
     @time ΠP_ = bubble_function(G, basis_v_bubble, basis_w_bubble, Val(:P); temperature)
@@ -173,18 +211,19 @@ function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth
 end
 
 function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2_b, basis_k2_f, basis_1p=G0.basis;
-        max_class=3, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false,
+        max_class=3, max_iter=5, reltol=1e-2, temperature=nothing,
+        smooth_bubble=get_formalism(G0) === :MF ? false : true,
         mixing_history=10, mixing_coeff=0.5, iterate_by_bse=false)
     F = get_formalism(G0)
     T = eltype(G0)
 
-    Γ0_A = su2_bare_vertex(U, Val(F), Val(:A))
-    Γ0_P = su2_bare_vertex(U, Val(F), Val(:P))
+    Γ0_A = su2_bare_vertex(Val(F), Val(:A), U)
+    Γ0_P = su2_bare_vertex(Val(F), Val(:P), U)
     Γ0_T = su2_apply_crossing(Γ0_A)
 
     # 1st iteration
     ΠA, ΠP = setup_bubble_SU2(G0, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
-    Γ = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, basis_k1_b, basis_k2_b, basis_k2_f)
+    Γ = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, basis_k1_b=(; freq=basis_k1_b), basis_k2_b=(; freq=basis_k2_b), basis_k2_f=(; freq=basis_k2_f))
 
     # Initialize self-energy and Green function. Here Σ = 0, G = G0.
     Σ = Green2P{F}(basis_1p, G0.norb)
@@ -210,7 +249,7 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2
         end
 
         @info "Updating self-energy and the bubble"
-        @time Σ = compute_self_energy_SU2(Γ, G; temperature)
+        @time Σ = compute_self_energy_SU2(Γ, G, ΠA, ΠP; temperature)
         G = solve_Dyson(G0, Σ)
         ΠA, ΠP = setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
 

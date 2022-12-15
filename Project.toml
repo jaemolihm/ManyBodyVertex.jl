@@ -5,27 +5,27 @@ version = "0.1.0"
 
 [deps]
 ContinuumArrays = "7ae1f121-cc2c-504b-ac30-9b923412ae5c"
+Dictionaries = "85a47980-9c8c-11e8-2b9f-f7ca1fa99fb4"
 DomainSets = "5b8099bc-c8ec-5219-889f-1d9e522a28bf"
 Infinities = "e1ba4f0e-776d-440f-acd9-e1d2e9742647"
 IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
-IterativeSolvers = "42fd0dbc-a981-5370-80f2-aaf504508153"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
 OMEinsum = "ebe7aa44-baf0-506c-a96f-8464559b3922"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 QuasiArrays = "c4ea9172-b204-11e9-377d-29865faadc5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [compat]
-ContinuumArrays = "0.10, 0.11"
+ContinuumArrays = "0.10, 0.11, 0.12"
 DomainSets = "0.5, 0.6"
 Infinities = "0.1"
 IntervalSets = "0.7"
-LinearMaps = "3"
 OMEinsum = "0.7"
 QuadGK = "2"
 QuasiArrays = "0.9"
+StaticArrays = "1"
 julia = "1.7"
 
 [extras]

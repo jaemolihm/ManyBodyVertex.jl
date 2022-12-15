@@ -7,6 +7,24 @@ using OMEinsum
 abstract type AbstractLazyGreen2P{F, T} <: AbstractFrequencyVertex{F, T} end
 
 """
+    green_lazy_to_explicit(G::AbstractLazyGreen2P{F}, basis) where {F} => Green2P{F}
+Convert a lazily-defined Green function to an explicitly-defined Green function on `basis`.
+"""
+function green_lazy_to_explicit(G::AbstractLazyGreen2P{F}, basis::Basis) where {F}
+    nind = get_nind(G)
+    vs = get_fitting_points(basis)
+    G_data = zeros(eltype(G), nind, nind, length(vs))
+    for (iv, v) in enumerate(vs)
+        G_data[:, :, iv] .= G(v)
+    end
+    Green2P{F}(basis, G.norb, fit_basis_coeff(G_data, basis, vs, 3))
+end
+function green_lazy_to_explicit(G::AbstractLazyGreen2P, basis::NamedTuple{(:freq,)})
+    green_lazy_to_explicit(G, basis.freq)
+end
+
+
+"""
     Green2P{F}(::Type{T}=ComplexF64, basis, norb=1)
 2-point Green function.
 """
@@ -39,6 +57,9 @@ function _check_basis_identity(A::Green2P, B::Green2P)
     A.basis === B.basis || error("Different basis")
 end
 
+green_lazy_to_explicit(G::Green2P, basis) = G
+get_basis(G::Green2P) = (; freq=G.basis)
+
 """
     (G::Green2P{F, T})(v) where {F, T}
 Evaluate Green function `G` at frequency `v`.
@@ -64,11 +85,11 @@ Solve Dyson equation to compute the interacting Green function: ``G = (G0⁻¹ -
 """
 function solve_Dyson(G0, Σ, basis=Σ.basis)
     vs = get_fitting_points(basis)
-    nind = get_nind(G0)
+    nind = get_nind(Σ)
     G_data = zeros(ComplexF64, nind, nind, length(vs))
     for (iv, v) in enumerate(vs)
         G_data[:, :, iv] .= inv(inv(G0(v)) .- Σ(v))
     end
     data = fit_basis_coeff(G_data, basis, vs, 3)
-    Green2P{get_formalism(G0)}(basis, G0.norb, data)
+    Green2P{get_formalism(Σ)}(basis, Σ.norb, data)
 end

@@ -4,8 +4,8 @@ function iterate_parquet_asymptotic_single_channel_without_fully_irreducible(
     C = channel(Π₀[1])
     ΔΠ = Π .- Π₀
 
-    ws_12 = unique!(vcat(get_fitting_points(basis_k1_b), get_fitting_points(basis_k2_b)))
-    ws_2 = get_fitting_points(basis_k2_b)
+    ws_12 = unique!(vcat(get_fitting_points(basis_k1_b.freq), get_fitting_points(basis_k2_b.freq)))
+    ws_2 = get_fitting_points(basis_k2_b.freq)
     ΔI_mat = Tuple(cache_vertex_matrix(getindex.(ΔI, i), C, ws_12, basis_k2_f) for i in 1:2)
     I₀_mat = Tuple(cache_vertex_matrix(getindex.(I₀, i), C, ws_2, basis_k2_f) for i in 1:2)
 
@@ -89,7 +89,8 @@ end
 
 
 function run_parquet_without_irreducible(G0, Π₀, Γ₀, basis_1p=G0.basis;
-        max_class=3, max_iter=5, reltol=1e-2, temperature=nothing, smooth_bubble=false,
+        max_class=3, max_iter=5, reltol=1e-2, temperature=nothing,
+        smooth_bubble=get_formalism(G0) === :MF ? false : true,
         mixing_history=10, mixing_coeff=0.5)
     F = get_formalism(G0)
     T = eltype(G0)
@@ -100,10 +101,10 @@ function run_parquet_without_irreducible(G0, Π₀, Γ₀, basis_1p=G0.basis;
     basis_v_bubble = ΠA₀[1].basis_f
 
     # 1st iteration
-    ΔΓ = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, basis_k1_b, basis_k2_b, basis_k2_f)
+    ΔΓ = AsymptoticVertex{F, T}(; max_class, Γ0_A=Γ0_A, Γ0_P=Γ0_P, Γ0_T=Γ0_T, basis_k1_b, basis_k2_b, basis_k2_f)
 
     # Initialize self-energy and Green function.
-    Σ₀ = compute_self_energy_SU2(Γ₀, G0, basis_1p; temperature)
+    Σ₀ = compute_self_energy_SU2(Γ₀, G0, ΠA₀, ΠP₀, (; freq=basis_1p); temperature)
     ΔΣ = similar(Σ₀)
     ΔΣ.data .= 0
     G = solve_Dyson(G0, Σ₀ + ΔΣ)
@@ -129,8 +130,8 @@ function run_parquet_without_irreducible(G0, Π₀, Γ₀, basis_1p=G0.basis;
         end
 
         @info "Updating self-energy and the bubble"
-        @time Σ₀ = compute_self_energy_SU2(Γ₀, G; temperature)
-        @time ΔΣ = compute_self_energy_SU2(ΔΓ, G; temperature)
+        @time Σ₀ = compute_self_energy_SU2(Γ₀, G, ΠA, ΠP; temperature)
+        @time ΔΣ = compute_self_energy_SU2(ΔΓ, G, ΠA, ΠP; temperature, exclude_UU=true)
         G = solve_Dyson(G0, Σ₀ + ΔΣ)
         ΠA, ΠP = setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
 
@@ -140,5 +141,6 @@ function run_parquet_without_irreducible(G0, Π₀, Γ₀, basis_1p=G0.basis;
             break
         end
     end
-    (; ΔΓ, ΔΣ)
+    Σ = Σ₀ + ΔΣ
+    (; ΔΓ, Σ)
 end

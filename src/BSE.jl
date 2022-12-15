@@ -29,7 +29,9 @@ function vertex_bubble_integral(
 
     # Compute the bubble integral on a grid of w (bosonic frequency)
     Γ_mat = zeros(T, size(basis_L1, 2) * nind2, size(basis_R2, 2) * nind2, length(ws))
-    for (iw, w) in enumerate(ws)
+    cache_and_load_overlaps(Π, basis_L2, basis_R1)
+    Threads.@threads for iw in eachindex(ws)
+        w = ws[iw]
         ΓL_mat = to_matrix(ΓL, w, basis_L1, basis_L2, Val(CB))
         Π_mat = to_matrix(Π, w, basis_L2, basis_R1)
         ΓR_mat = to_matrix(ΓR, w, basis_R1, basis_R2, Val(CB))
@@ -40,6 +42,17 @@ function vertex_bubble_integral(
     Γ = Vertex4P{F, CB}(T, basis_L1, basis_R2, basis_w, Π.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
+end
+
+function vertex_bubble_integral(
+        ΓL::AbstractVertex4P,
+        Π::AbstractBubble,
+        ΓR::AbstractVertex4P,
+        basis_w::NamedTuple{(:freq,), Tuple{T}} where {T<:Basis};
+        basis_aux=nothing
+    )
+    basis_aux_ = basis_aux === nothing ? nothing : basis_aux.freq
+    vertex_bubble_integral(ΓL, Π, ΓR, basis_w.freq; basis_aux=basis_aux_)
 end
 
 """

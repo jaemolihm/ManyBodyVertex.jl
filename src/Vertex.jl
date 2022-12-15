@@ -24,7 +24,8 @@ channel).
 """
 
 abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
-channel(::AbstractVertex4P{F, C}) where {F, C} = C
+channel(::T) where {T <:AbstractVertex4P} = channel(T)
+channel(::Type{T}) where {T <: AbstractVertex4P{F, C}} where {F, C} = C
 
 struct Vertex4P{F, C, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{F, C, T}
     # Basis for fermionic frequencies
@@ -63,6 +64,7 @@ end
 function Base.similar(Γ::Vertex4P{F, C, T}, ::Type{ElType}=T) where {F, C, T, ElType}
     Vertex4P{F, C}(Γ.basis_f1, Γ.basis_f2, Γ.basis_b, Γ.norb, similar(Γ.data, ElType))
 end
+Base.zero(Γ::Vertex4P) = (x = similar(Γ); x.data .= 0; x)
 
 function _check_basis_identity(A::Vertex4P, B::Vertex4P)
     get_formalism(A) === get_formalism(B) || error("Different formalism")
@@ -219,16 +221,9 @@ end
 Apply the crossing operation: swap indices 1 and 3. Works only for channel A and T.
 """
 function apply_crossing(Γ::Vertex4P{F, C}) where {F, C}
-    if C === :A
-        C_out = :T
-    elseif C === :T
-        C_out = :A
-    elseif C === :P
-        # For channel P, we need to additionally change v1 -> -v1. This is not implemented.
-        error("Not implemented for channel P")
-    else
-        error("Wrong channel $C")
-    end
+    # For channel P, we need to additionally change v1 -> -v1. This is not implemented.
+    C === :P && error("Not implemented for channel P")
+    C_out = channel_apply_crossing(C)
     # Multiply -1 to data to account the fermionic parity.
     Vertex4P{F, C_out}(Γ.basis_f1, Γ.basis_f2, Γ.basis_b, Γ.norb, .-Γ.data)
 end

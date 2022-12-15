@@ -5,7 +5,7 @@ Under SU(2) symmetry, there are six nonzero components to the vertex, which are 
 
 We use two types of parametrizations.
 - "dm": density channel `Γd = Γ↑↑↑↑ + Γ↑↑↓↓` and magnetic channel `Γm = Γ↑↑↑↑ - Γ↑↑↓↓`.
-- "st": singlet channel `Γs = Γ↑↑↓↓ - Γ↑↓↓↑` and magnetic channel `Γt = Γ↑↑↓↓ + Γ↑↓↓↑`.
+- "st": singlet channel `Γs = Γ↑↑↓↓ - Γ↑↓↓↑` and triplet channel `Γt = Γ↑↑↓↓ + Γ↑↓↓↑`.
 For each parametrization, vertices in the two channels are stored as a 2-Tuple.
 
 We use the "dm" parametrization for the A and T channel and the "st" parametrization for the
@@ -41,12 +41,12 @@ function su2_apply_crossing(Γ)
 end
 su2_apply_crossing(::Nothing) = nothing
 
-function su2_bare_vertex(U::Number, F::Val, C::Val)
+function su2_bare_vertex(F::Val, C::Val, U::Number, args...)
     # SU2 symmetric bare vertex: +1, -1, 0 for spin channels d, m, p.
     if C === Val(:A) || C === Val(:T)  # (d, m)
-        (get_bare_vertex(U, F, C), -1 * get_bare_vertex(U, F, C))
+        (get_bare_vertex(F, C, U, args...), get_bare_vertex(F, C, -U, args...))
     elseif C === Val(:P)  # (s, t)
-        (2 * get_bare_vertex(U, F, C), 0 * get_bare_vertex(U, F, C))
+        (get_bare_vertex(F, C, 2 * U, args...),get_bare_vertex(F, C, 0 * U, args...))
     else
         error("Wrong channel $C")
     end

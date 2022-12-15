@@ -1,4 +1,6 @@
 abstract type AbstractBubble{F, C, T} <: AbstractFrequencyVertex{F, T} end
+channel(::T) where {T <:AbstractBubble} = channel(T)
+channel(::Type{T}) where {T <: AbstractBubble{F, C}} where {F, C} = C
 
 """
     Bubble{F}(basis_f, basis_b, norb, data)
@@ -24,9 +26,10 @@ mutable struct Bubble{F, C, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble
     cache_basis_L
     cache_basis_R
     cache_overlap_LR
-    function Bubble{F, C}(basis_f::BF, basis_b::BB, norb, data::DT; temperature=nothing) where {F, C, DT <: AbstractArray{T}, BF, BB} where {T}
+    function Bubble{F, C}(basis_f::BF, basis_b::BB, norb, data::DT; temperature=nothing,
+        cache_basis_L=nothing, cache_basis_R=nothing, cache_overlap_LR=nothing) where {F, C, DT <: AbstractArray{T}, BF, BB} where {T}
         F === :MF && temperature === nothing && error("For MF, temperature must be set")
-        new{F, C, T, BF, BB, DT}(basis_f, basis_b, norb, data, temperature, nothing, nothing, nothing)
+        new{F, C, T, BF, BB, DT}(basis_f, basis_b, norb, data, temperature, cache_basis_L, cache_basis_R, cache_overlap_LR)
     end
 end
 
@@ -57,22 +60,25 @@ function Base.show(io::IO, Π::AbstractBubble{F, C}) where {F, C}
     print(io, "norb=$(Π.norb), data=$(Base.summary(Π.data)))")
 end
 
-channel(::AbstractBubble{F, C}) where {F, C} = C
 nb_f(Π::AbstractBubble) = size(Π.basis_f, 2)
 nb_b(Π::AbstractBubble) = size(Π.basis_b, 2)
 
 function (Π::AbstractBubble)(w)
     # Evaluate the bubble at given bosonic frequency w
     # Output: a, (i, j), (i', j')
-    coeff_w = Π.basis_b[w, :]
-    @ein Π_w[a, ij1, ij2] := Π.data[a, ij1, ij2, b] * coeff_w[b]
-    Π_w::Array{eltype(Π), 3}
+    Π_w = zeros(eltype(Π), size(Π.data)[1:3])
+    @inbounds @views for ib in 1:nb_b(Π)
+        coeff_w = Π.basis_b[w, ib]
+        coeff_w === 0 && continue
+        Π_w .+= Π.data[:, :, :, ib] .* coeff_w
+    end
+    Π_w
 end
 
 """
 Load overlap from cache, recompute if basis has changed.
 """
-function cache_and_load_overlaps(Π::Bubble, basis_L::Basis, basis_R::Basis)
+function cache_and_load_overlaps(Π::AbstractBubble, basis_L::Basis, basis_R::Basis)
     if basis_L !== Π.cache_basis_L || basis_R !== Π.cache_basis_R
         Π.cache_overlap_LR = basis_integral(basis_L, basis_R, Π.basis_f)
         Π.cache_basis_L = basis_L
@@ -104,8 +110,11 @@ function to_matrix(Π::Bubble{F, C, T}, w, overlap) where {F, C, T}
     nind2 = get_nind(Π)^2
 
     Π_w = Π(w)
-    @ein Π_vertex_tmp[x1, x2, ij1, ij2] := overlap[x1, x2, a] * Π_w[a, ij1, ij2]
-    Π_vertex_tmp = Π_vertex_tmp::Array{T, 4}
+    # Implement optimized version
+    # @ein Π_vertex_tmp[x1, x2, ij1, ij2] := overlap[x1, x2, a] * Π_w[a, ij1, ij2]
+    A = Base.ReshapedArray(overlap, (nv_Γ1*nv_Γ2, nb_f(Π)), ())
+    B = Base.ReshapedArray(Π_w, (nb_f(Π), nind2^2), ())
+    Π_vertex_tmp = Base.ReshapedArray(A * B, (nv_Γ1, nv_Γ2, nind2, nind2), ())
     Π_vertex = reshape(PermutedDimsArray(Π_vertex_tmp, (1, 3, 2, 4)), nv_Γ1 * nind2, nv_Γ2 * nind2)
     collect(Π_vertex) .* integral_coeff(Π)
 end

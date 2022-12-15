@@ -1,6 +1,7 @@
 abstract type AbstractFrequencyVertex{F, T} end
-Base.eltype(::AbstractFrequencyVertex{F, T}) where {F, T} = T
-get_formalism(::AbstractFrequencyVertex{F}) where {F} = F
+Base.eltype(::Type{<:AbstractFrequencyVertex{F, T}}) where {F, T} = T
+get_formalism(::Type{<:AbstractFrequencyVertex{F, T}}) where {F, T} = F
+get_formalism(::T) where {T <: AbstractFrequencyVertex} = get_formalism(T)
 nkeldysh(F::Symbol) = F === :KF ? 2 : 1
 nkeldysh(::AbstractFrequencyVertex{F}) where {F} = nkeldysh(F)
 
