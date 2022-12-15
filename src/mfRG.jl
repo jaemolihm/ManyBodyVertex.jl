@@ -30,6 +30,7 @@ export interpolate_to_q
 export run_parquet_nonlocal
 
 export susceptibility_operator_SU2, compute_response_SU2
+export compute_occupation_matrix, compute_occupation
 
 export SIAMLazyGreen2P
 
@@ -57,6 +58,7 @@ include("AsymptoticVertex.jl")
 include("Bubble.jl")
 include("ScreenedBubble.jl")
 include("compute_bubble.jl")
+include("self_energy.jl")
 
 include("real_space/real_space_basis.jl")
 include("real_space/RealSpaceGreen.jl")

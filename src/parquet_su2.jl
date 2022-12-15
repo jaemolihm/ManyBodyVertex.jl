@@ -197,7 +197,12 @@ function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=get_basis(G); temperatur
     end
     filter!(!isnothing, vertices_use)
 
-    _compute_self_energy_SU2(vertices_use, G_, basis; temperature)
+    Σ = _compute_self_energy_SU2(vertices_use, G_, basis; temperature)
+
+    # Add Hartree self-energy
+    Σ.offset .= self_energy_hartree_SU2(Γ.Γ0_A, G, temperature)
+
+    Σ
 end
 
 function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature,
