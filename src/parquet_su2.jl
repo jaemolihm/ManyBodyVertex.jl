@@ -259,5 +259,5 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2
             break
         end
     end
-    (; Γ, Σ)
+    (; Γ, Σ, Π=(; A=ΠA, P=ΠP))
 end
