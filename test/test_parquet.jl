@@ -80,3 +80,48 @@ end
     # Test self-energy
     @test Σ_exact.data ≈ Σ.data rtol=1e-5
 end
+
+
+@testset "SIAM parquet linear response" begin
+    # Test linear response for parquet calculation
+    nmax = 4
+    basis_w_k1 = ImagGridAndTailBasis(:Boson, 1, 0, 4 * nmax)
+    basis_w = ImagGridAndTailBasis(:Boson, 1, 0, 2 * nmax)
+    basis_v_aux = ImagGridAndTailBasis(:Fermion, 1, 0, nmax)
+    basis_w_bubble = ImagGridAndTailBasis(:Boson, 1, 0, maximum(get_fitting_points(basis_w_k1)))
+    basis_v_bubble = ImagGridAndTailBasis(:Fermion, 2, 4, maximum(get_fitting_points(basis_w_k1)))
+    basis_1p = ImagGridAndTailBasis(:Fermion, 1, 3, nmax * 3 + 10)
+
+    Δ = 2.0
+    t = 0.5
+    U = 1.0
+    D = 10
+    op_suscep_L, op_suscep_R = susceptibility_operator_SU2(Val(:MF));
+
+    function do_parquet(μ)
+        # Run parquet calculation with given chemical potential μ.
+        G0 = SIAMLazyGreen2P{:MF}(; e=-μ, Δ, t, D)
+        Γ, Σ, Π = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w_k1, basis_w,
+            basis_v_aux, basis_1p; max_iter=15, reltol=1e-3, temperature=t);
+        G = solve_Dyson(G0, Σ)
+        chi = compute_response_SU2(op_suscep_L, op_suscep_R, Γ, Π.A)
+        n = compute_occupation(G, t)
+        (; Γ, Σ, Π, G, chi, n)
+    end
+
+    # Test μ = 0 gives half filling
+    res_half_filling = do_parquet(0.)
+    @test res_half_filling.n ≈ 0.5
+    @test all(res_half_filling.Σ.offset .≈ 0)
+
+    # Test consistency between the interacting charge susceptibility computed from finite
+    # differences and linear response.
+    μ = 0.5
+    δμ = 1e-3
+    chi_lr_vertex = do_parquet(μ).chi
+    chi_lr = chi_lr_vertex.total[1](0, 0, 0)[1, 1]
+    chi_lr_dis = chi_lr_vertex.disconnected[1](0, 0, 0)[1, 1]
+    chi_fd = (do_parquet(μ + δμ).n - do_parquet(μ - δμ).n) / 2 / δμ
+    @test chi_fd ≈ chi_lr rtol=1e-3
+    @test !isapprox(chi_lr, chi_lr_dis; rtol=1e-3)
+end;
