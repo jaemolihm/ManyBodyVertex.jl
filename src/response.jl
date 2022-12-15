@@ -31,16 +31,22 @@ function susceptibility_operator_SU2(::Val{F}, rbasis::RealSpaceBasis{Dim}, norb
     iR_B === nothing && error("onsite R_B not found")
 
     basis = F === :MF ? ImagConstantBasis() : ConstantBasis()
-    A_d = Vertex4P{F, :A}(basis, basis, basis, norb)
-    A_m = Vertex4P{F, :A}(basis, basis, basis, norb)
+    op_L_d = Vertex4P{F, :A}(basis, basis, basis, norb)
+    op_L_m = Vertex4P{F, :A}(basis, basis, basis, norb)
+    op_R_d = Vertex4P{F, :A}(basis, basis, basis, norb)
+    op_R_m = Vertex4P{F, :A}(basis, basis, basis, norb)
     if F === :MF
         # TODO: Resolve orbital
-        @views reshape(A_d.data[1, :, 1], norb, norb) .= I(norb)
-        @views reshape(A_m.data[1, :, 1], norb, norb) .= I(norb)
+        @views reshape(op_L_d.data[1, :, 1], norb, norb) .= I(norb)
+        @views reshape(op_L_m.data[1, :, 1], norb, norb) .= I(norb)
+        @views reshape(op_R_d.data[:, 1, 1], norb, norb) .= I(norb)
+        @views reshape(op_R_m.data[:, 1, 1], norb, norb) .= I(norb)
     end
-    A = (RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => A_d,))),
-         RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => A_m,))))
-    A
+    op_L = (RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => op_L_d,))),
+            RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => op_L_m,))))
+    op_R = (RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => op_R_d,))),
+            RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => op_R_m,))))
+    op_L, op_R
 end
 
 """
