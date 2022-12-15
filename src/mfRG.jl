@@ -17,16 +17,17 @@ export fit_bosonic_basis_coeff!
 export get_bare_vertex
 export vertex_to_vector, vector_to_vertex
 
+export vertex_bubble_integral
+export solve_BSE, solve_BSE_left
+export run_parquet
+export run_parquet_without_irreducible
+
 export RealSpaceBasis, RealSpaceBasis2P, get_indices
 export RealSpaceGreen2P
 export RealSpaceVertex
 export RealSpaceBubble
 export interpolate_to_q
-
-export vertex_bubble_integral
-export solve_BSE, solve_BSE_left
-export run_parquet
-export run_parquet_without_irreducible
+export run_parquet_nonlocal
 
 export susceptibility_operator_SU2, compute_response_SU2
 
@@ -57,18 +58,18 @@ include("Bubble.jl")
 include("ScreenedBubble.jl")
 include("compute_bubble.jl")
 
+include("BSE.jl")
+include("parquet_su2.jl")
+include("parquet_su2_wo_irreducible.jl")
+include("response.jl")
+
 include("real_space/real_space_basis.jl")
 include("real_space/RealSpaceGreen.jl")
 include("real_space/RealSpaceVertex.jl")
 include("real_space/RealSpaceBubble.jl")
 include("real_space/self_energy.jl")
 include("real_space/real_space_BSE.jl")
-
-include("BSE.jl")
-include("parquet_su2.jl")
-include("parquet_su2_wo_irreducible.jl")
-
-include("response.jl")
+include("real_space/parquet.jl")
 
 include("models/siam.jl")
 include("models/hubbard.jl")
