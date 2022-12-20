@@ -79,6 +79,7 @@ end
 
     # Test self-energy
     @test Σ_exact.data ≈ Σ.data rtol=1e-5
+    @test Σ_exact.offset ≈ Σ.offset rtol=1e-5
 end
 
 @testset "SIAM parquet linear response" begin
@@ -115,8 +116,6 @@ end
             basis_v_bubble_tmp = LinearSplineAndTailBasis(2, 4, vgrid_k1)
             basis_v_bubble, basis_w_bubble = basis_for_bubble(basis_v_bubble_tmp, basis_w)
         end
-
-        G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
 
         function do_parquet(μ)
             # Run parquet calculation with given chemical potential μ.

@@ -43,6 +43,7 @@ struct Green2P{F, T, BT, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F, T
         new{F, eltype(data), BT, DT}(basis, norb, data, offset)
     end
 end
+data_fieldnames(::Type{<:Green2P}) = (:data, :offset)
 
 function Green2P{F}(::Type{T}, basis, norb=1) where {F, T}
     nb = size(basis, 2)
@@ -53,7 +54,7 @@ end
 Green2P{F}(basis, norb=1) where {F} = Green2P{F}(ComplexF64, basis, norb)
 
 function Base.similar(G::Green2P{F, T}, ::Type{ElType}=T) where {F, T, ElType}
-    Green2P{F}(G.basis, G.norb, similar(G.data, ElType))
+    Green2P{F}(G.basis, G.norb, similar(G.data, ElType), similar(G.offset, ElType))
 end
 
 function _check_basis_identity(A::Green2P, B::Green2P)

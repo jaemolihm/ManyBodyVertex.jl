@@ -200,7 +200,9 @@ function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=get_basis(G); temperatur
     Σ = _compute_self_energy_SU2(vertices_use, G_, basis; temperature)
 
     # Add Hartree self-energy
-    Σ.offset .= self_energy_hartree_SU2(Γ.Γ0_A, G, temperature)
+    if !exclude_UU
+        Σ.offset .= self_energy_hartree_SU2(Γ.Γ0_A, G_, temperature)
+    end
 
     Σ
 end

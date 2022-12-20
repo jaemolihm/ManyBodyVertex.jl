@@ -42,6 +42,7 @@ struct Vertex4P{F, C, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex
         new{F, C, T, BF1, BF2, BB, DT}(basis_f1, basis_f2, basis_b, norb, data)
     end
 end
+data_fieldnames(::Type{<:Vertex4P}) = (:data,)
 
 nb_f1(Γ::Vertex4P) = size(Γ.basis_f1, 2)
 nb_f2(Γ::Vertex4P) = size(Γ.basis_f2, 2)

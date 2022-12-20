@@ -32,6 +32,7 @@ mutable struct Bubble{F, C, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble
         new{F, C, T, BF, BB, DT}(basis_f, basis_b, norb, data, temperature, cache_basis_L, cache_basis_R, cache_overlap_LR)
     end
 end
+data_fieldnames(::Type{<:Bubble}) = (:data,)
 
 Bubble{F, C}(basis_f, basis_b, norb=1; temperature=nothing) where {F, C} = Bubble{F, C}(ComplexF64, basis_f, basis_b, norb; temperature)
 
