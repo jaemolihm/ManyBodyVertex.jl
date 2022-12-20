@@ -33,6 +33,7 @@ export susceptibility_operator_SU2, compute_response_SU2
 export compute_occupation_matrix, compute_occupation
 
 export SIAMLazyGreen2P
+export HubbardLazyGreen2P
 
 """TimerOutput object used to store mfRG timings."""
 const timer = TimerOutput()

@@ -7,8 +7,12 @@ struct RealSpaceGreen2P{F, T, BT, RBT <: RealSpaceBasis2P} <: AbstractFrequencyV
     rbasis::RBT
     norb::Int
     data::Matrix{Array{T, 4}}  # [iatm1, iatm2][i1, i2, ibasis, iR]
+    offset::Matrix{Array{T, 3}}  # [iatm1, iatm2][i1, i2, iR]
     function RealSpaceGreen2P{F}(basis, rbasis, norb, data) where {F}
-        new{F, eltype(eltype(data)), typeof(basis), typeof(rbasis)}(basis, rbasis, norb, data)
+        T = eltype(eltype(data))
+        nind = norb * nkeldysh(F)
+        offset = [zeros(T, nind, nind, length(rs)) for rs in rbasis.R_replicas]
+        new{F, T, typeof(basis), typeof(rbasis)}(basis, rbasis, norb, data, offset)
     end
 end
 
@@ -60,6 +64,7 @@ function interpolate_to_q(G::RealSpaceGreen2P, xq, iatm1::Integer, iatm2::Intege
         # Fouirer transform R_B -> xq
         coeff = cispi(2 * xq' * R)
         G_q.data .+= G.data[iatm1, iatm2][:, :, :, iR] .* coeff
+        G_q.offset .+= G.offset[iatm1, iatm2][:, :, iR] .* coeff
     end
     G_q
 end
@@ -67,7 +72,9 @@ end
 function Base.getindex(G::RealSpaceGreen2P{F}, iatm1::Integer, iatm2::Integer, R) where {F}
     iR = findfirst(x -> x == R, G.rbasis.R_replicas[iatm1, iatm2])
     iR === nothing && return nothing
-    Green2P{F}(G.basis, G.norb, view(G.data[iatm1, iatm2], :, :, :, iR))
+    data = view(G.data[iatm1, iatm2], :, :, :, iR)
+    offset = view(G.offset[iatm1, iatm2], :, :, iR)
+    Green2P{F}(G.basis, G.norb, data, offset)
 end
 
 """

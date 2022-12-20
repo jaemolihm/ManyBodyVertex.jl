@@ -37,9 +37,9 @@ struct Green2P{F, T, BT, DT <: AbstractArray{T}} <: AbstractFrequencyVertex{F, T
     data::DT
     # Constant offset matrix to be added. Used for the Hartree self-energy. Size (nind, nind).
     offset::Matrix{T}
-    function Green2P{F}(basis::BT, norb, data::DT) where {F, DT, BT}
+    function Green2P{F}(basis::BT, norb, data::DT, offset=nothing) where {F, DT, BT}
         nind = norb * nkeldysh(F)
-        offset = zeros(eltype(data), nind, nind)
+        offset === nothing && (offset = zeros(eltype(data), nind, nind))
         new{F, eltype(data), BT, DT}(basis, norb, data, offset)
     end
 end

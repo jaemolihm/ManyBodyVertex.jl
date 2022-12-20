@@ -40,9 +40,9 @@ function _compute_self_energy_SU2_single_vertex!(Σ_data_iv_iR, Γ, G::RealSpace
                 G_R = G[iatmG1, iatmG2, R_G]
                 G_R === nothing && continue
 
-                Σ_data_iv_iR[1, 1][:, :, iv, iR] .+= _compute_self_energy(
+                Σ_data_iv_iR[iatm1, iatm2][:, :, iv, iR] .+= _compute_self_energy(
                         Γ_R[1], G_R, v, overlap; temperature) .* coeff[1]
-                Σ_data_iv_iR[1, 1][:, :, iv, iR] .+= _compute_self_energy(
+                Σ_data_iv_iR[iatm1, iatm2][:, :, iv, iR] .+= _compute_self_energy(
                         Γ_R[2], G_R, v, overlap; temperature) .* coeff[2]
             end
         end
@@ -50,4 +50,26 @@ function _compute_self_energy_SU2_single_vertex!(Σ_data_iv_iR, Γ, G::RealSpace
     Σ_data_iv_iR
 end
 
+function self_energy_hartree(U, G::RealSpaceGreen2P, temperature)
+    channel(U) === :A || error("Channel of the bare vertex must be :A")
+    nind = get_nind(G)
+    Σ_H_data = [zeros(eltype(G), nind, nind, length(Rs)) for Rs in G.rbasis.R_replicas]
+    for bR in U.rbasis.bonds_R, bL in U.rbasis.bonds_L
+        iatm1, iatm2 = bL[1], bR[1]
+        iatmG1, iatmG2 = bL[2], bR[2]
+        Rs = G.rbasis.R_replicas[iatm1, iatm2]
 
+        for iR in eachindex(Rs)
+            R = Rs[iR]
+            U_R = U[bL, bR, -R]
+            U_R === nothing && continue
+
+            R_G = bR[3] + R
+            G_R = G[iatmG1, iatmG2, R_G]
+            G_R === nothing && continue
+
+            Σ_H_data[iatm1, iatm2][:, :, iR] .+= self_energy_hartree(U_R, G_R, temperature)
+        end
+    end
+    Σ_H_data
+end

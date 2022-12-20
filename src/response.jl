@@ -89,9 +89,9 @@ function compute_response_SU2(op1, op2, Γ, Π, basis_response=Γ.basis_k1_b)
     vertices = [get_irreducible_vertices(C, Γ), [Γ.K1_A], [Γ.K2_A], [Γ.K2p_A], [Γ.K3_A], [Γ.Γ0_A]]
     filter!(!Base.Fix1(all, isnothing), vertices)
     connected = mapreduce(.+, vertices) do Γ_
-        @time Γ_cache = Tuple(cache_vertex_matrix(getindex.(Γ_, i), C, ws, Γ.basis_k2_f) for i in 1:2)
-        @time tmp = vertex_bubble_integral.(Γ_cache, Π, op2, Ref(basis_response))
-        @time -1 .* vertex_bubble_integral.(op1, Π, tmp, Ref(basis_response))
+        Γ_cache = Tuple(cache_vertex_matrix(getindex.(Γ_, i), C, ws, Γ.basis_k2_f) for i in 1:2)
+        tmp = vertex_bubble_integral.(Γ_cache, Π, op2, Ref(basis_response))
+        -1 .* vertex_bubble_integral.(op1, Π, tmp, Ref(basis_response))
     end;
     (; total=disconnected .+ connected, disconnected, connected)
 end
@@ -102,6 +102,7 @@ end
 Compute the equilibrium occupation matrix (density matrix). 0 is empty and 1 is fully filled.
 """
 function compute_occupation_matrix(G, temperature=nothing)
+    # FIXME: I/2 should not be added for nonlocal G
     F = get_formalism(G)
     overlap = basis_integral(G.basis; skip_divergence=true)
     coeff = integral_coeff(Val(F), temperature)
