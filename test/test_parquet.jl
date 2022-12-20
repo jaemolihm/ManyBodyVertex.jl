@@ -81,47 +81,76 @@ end
     @test Σ_exact.data ≈ Σ.data rtol=1e-5
 end
 
-
 @testset "SIAM parquet linear response" begin
     # Test linear response for parquet calculation
-    nmax = 4
-    basis_w_k1 = ImagGridAndTailBasis(:Boson, 1, 0, 4 * nmax)
-    basis_w = ImagGridAndTailBasis(:Boson, 1, 0, 2 * nmax)
-    basis_v_aux = ImagGridAndTailBasis(:Fermion, 1, 0, nmax)
-    basis_w_bubble = ImagGridAndTailBasis(:Boson, 1, 0, maximum(get_fitting_points(basis_w_k1)))
-    basis_v_bubble = ImagGridAndTailBasis(:Fermion, 2, 4, maximum(get_fitting_points(basis_w_k1)))
-    basis_1p = ImagGridAndTailBasis(:Fermion, 1, 3, nmax * 3 + 10)
+    for F in (:MF, :KF)
+        if F === :MF
+            Δ = 2.0
+            t = 0.5
+            D = 10
+            U = 1.0
 
-    Δ = 2.0
-    t = 0.5
-    U = 1.0
-    D = 10
-    op_suscep_L, op_suscep_R = susceptibility_operator_SU2(Val(:MF));
+            nmax = 4
+            basis_1p = ImagGridAndTailBasis(:Fermion, 1, 3, nmax * 3 + 10)
+            basis_w_k1 = ImagGridAndTailBasis(:Boson, 1, 0, 4 * nmax)
+            basis_w = ImagGridAndTailBasis(:Boson, 1, 0, 2 * nmax)
+            basis_v_aux = ImagGridAndTailBasis(:Fermion, 1, 0, nmax)
+            basis_w_bubble = ImagGridAndTailBasis(:Boson, 1, 0, maximum(get_fitting_points(basis_w_k1)))
+            basis_v_bubble = ImagGridAndTailBasis(:Fermion, 2, 4, maximum(get_fitting_points(basis_w_k1)))
+        elseif F === :KF
+            Δ = 2.0
+            t = 0.5
+            D = Inf
+            U = 1.0
 
-    function do_parquet(μ)
-        # Run parquet calculation with given chemical potential μ.
-        G0 = SIAMLazyGreen2P{:MF}(; e=-μ, Δ, t, D)
-        Γ, Σ, Π = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w_k1, basis_w,
-            basis_v_aux, basis_1p; max_iter=15, reltol=1e-3, temperature=t);
-        G = solve_Dyson(G0, Σ)
-        chi = compute_response_SU2(op_suscep_L, op_suscep_R, Γ, Π.A)
-        n = compute_occupation(G, t)
-        (; Γ, Σ, Π, G, chi, n)
+            vgrid_1p = get_nonequidistant_grid(8, 31) .* Δ;
+            vgrid_k1 = get_nonequidistant_grid(8, 7) .* Δ;
+            wgrid_k1 = get_nonequidistant_grid(8, 7) .* Δ;
+            vgrid_k3 = get_nonequidistant_grid(8, 11) .* Δ;
+
+            basis_1p = LinearSplineAndTailBasis(1, 3, vgrid_1p)
+            basis_w = LinearSplineAndTailBasis(1, 3, wgrid_k1)
+            basis_w_k1 = LinearSplineAndTailBasis(1, 3, wgrid_k1)
+            basis_v_aux = LinearSplineAndTailBasis(1, 0, vgrid_k3)
+            basis_v_bubble_tmp = LinearSplineAndTailBasis(2, 4, vgrid_k1)
+            basis_v_bubble, basis_w_bubble = basis_for_bubble(basis_v_bubble_tmp, basis_w)
+        end
+
+        G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
+
+        function do_parquet(μ)
+            # Run parquet calculation with given chemical potential μ.
+            G0 = SIAMLazyGreen2P{F}(; e=-μ, Δ, t, D)
+            Γ, Σ, Π = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w_k1, basis_w,
+                basis_v_aux, basis_1p; max_iter=15, reltol=1e-3, temperature=t, mixing_coeff=1.);
+            G = solve_Dyson(G0, Σ)
+            op_suscep_L, op_suscep_R = susceptibility_operator_SU2(Val(F))
+            chi = compute_response_SU2(op_suscep_L, op_suscep_R, Γ, Π.A)
+            n = compute_occupation(G, t)
+            (; Γ, Σ, Π, G, chi, n)
+        end
+
+        # Test μ = 0 gives half filling
+        res_half_filling = do_parquet(0.)
+        @test res_half_filling.n ≈ 0.5
+        @test norm(res_half_filling.Σ.offset) ≈ 0 atol=sqrt(eps(Float64))
+
+        # Test consistency between the interacting charge susceptibility computed from finite
+        # differences and linear response.
+        μ = 0.5
+        δμ = 1e-3
+        chi_lr_vertex = do_parquet(μ).chi
+        chi_fd = (do_parquet(μ + δμ).n - do_parquet(μ - δμ).n) / 2 / δμ
+        if F === :MF
+            chi_lr = chi_lr_vertex.total[1](0, 0, 0)[1, 1]
+            chi_lr_dis = chi_lr_vertex.disconnected[1](0, 0, 0)[1, 1]
+            @test chi_fd ≈ chi_lr rtol=1e-3
+            @test !isapprox(chi_lr, chi_lr_dis; rtol=1e-3)
+        elseif F === :KF
+            chi_lr = chi_lr_vertex.total[1](0, 0, 0)[1, 2]
+            chi_lr_dis = chi_lr_vertex.disconnected[1](0, 0, 0)[1, 2]
+            @test chi_fd ≈ chi_lr rtol=1e-2
+            @test !isapprox(chi_lr, chi_lr_dis; rtol=1e-2)
+        end
     end
-
-    # Test μ = 0 gives half filling
-    res_half_filling = do_parquet(0.)
-    @test res_half_filling.n ≈ 0.5
-    @test all(res_half_filling.Σ.offset .≈ 0)
-
-    # Test consistency between the interacting charge susceptibility computed from finite
-    # differences and linear response.
-    μ = 0.5
-    δμ = 1e-3
-    chi_lr_vertex = do_parquet(μ).chi
-    chi_lr = chi_lr_vertex.total[1](0, 0, 0)[1, 1]
-    chi_lr_dis = chi_lr_vertex.disconnected[1](0, 0, 0)[1, 1]
-    chi_fd = (do_parquet(μ + δμ).n - do_parquet(μ - δμ).n) / 2 / δμ
-    @test chi_fd ≈ chi_lr rtol=1e-3
-    @test !isapprox(chi_lr, chi_lr_dis; rtol=1e-3)
-end;
+end

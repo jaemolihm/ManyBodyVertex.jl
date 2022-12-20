@@ -88,6 +88,25 @@ function Base.summary(io::IO, f::ImagGridAndTailBasis)
     print(io, "grid=$(f.grid), $(length(f.grid)) points)")
 end
 
+"""
+    integral_divergent(f::ImagGridAndTailBasis, n::Integer)
+Return true if the integral ∑_x f_n(x) is divergent.
+"""
+function integral_divergent(f::ImagGridAndTailBasis, n::Integer)
+    @boundscheck n ∈ axes(f, 2) || throw(BoundsError())
+    if f.nmin <= 1
+        ntails_over_2 = f.nmax - f.nmin + 1
+        if n <= ntails_over_2
+            p = n - 1 + f.nmin
+            p <= 1 && return true
+        elseif n <= ntails_over_2 * 2
+            p = n - ntails_over_2 - 1 + f.nmin
+            p <= 1 && return true
+        end
+    end
+    return false
+end
+
 @inline function support_bounds(f::ImagGridAndTailBasis, n::Integer)
     @boundscheck n ∈ axes(f, 2) || throw(BoundsError())
     if n <= div(ntails(f), 2)  # right tail

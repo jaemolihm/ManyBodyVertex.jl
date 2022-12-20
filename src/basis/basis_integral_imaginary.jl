@@ -1,7 +1,9 @@
-function basis_integral_imag(bases::Tuple)
+function basis_integral_imag(bases::Tuple; skip_divergence=false)
+    skip_divergence && length(bases) > 1 && error("skip_divergence is allowed only for a single basis")
     sizes = size.(bases, 2)
     overlap = zeros(eltype(bases[1]), sizes)
     for inds in CartesianIndices(sizes)
+        skip_divergence && integral_divergent(bases[1], inds[1]) && continue
         # Integrate the function only on the interval where the function is nonzero.
         # Directly integrating over (-Inf, Inf) is inefficient, and may even become
         # inaccurate when the support is narrow.

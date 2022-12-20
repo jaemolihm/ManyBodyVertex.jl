@@ -1,6 +1,11 @@
 using Dictionaries
 
-# TODO: Add test
+"""
+# Response
+For the KF, the physical (retarded) response is the k = (1, 2) component.
+"""
+
+
 # TODO: Add example
 
 
@@ -10,7 +15,6 @@ Return a (local) Vertex4P object for computing charge and magnetic susceptibilit
 spin symmetry.
 """
 function susceptibility_operator_SU2(::Val{F}, norb=1) where {F}
-    F !== :MF && error("Only MF implemented yet")
     basis = F === :MF ? ImagConstantBasis() : ConstantBasis()
     op_L_d = Vertex4P{F, :A}(basis, basis, basis, norb)
     op_L_m = Vertex4P{F, :A}(basis, basis, basis, norb)
@@ -22,6 +26,21 @@ function susceptibility_operator_SU2(::Val{F}, norb=1) where {F}
         @views reshape(op_L_m.data[1, :, 1], norb, norb) .= I(norb)
         @views reshape(op_R_d.data[:, 1, 1], norb, norb) .= I(norb)
         @views reshape(op_R_m.data[:, 1, 1], norb, norb) .= I(norb)
+    elseif F === :KF
+        op_L_d_kv = vertex_keldyshview(op_L_d)
+        op_L_m_kv = vertex_keldyshview(op_L_m)
+        op_R_d_kv = vertex_keldyshview(op_R_d)
+        op_R_m_kv = vertex_keldyshview(op_R_m)
+        for ks in CartesianIndices((2, 2, 2, 2))
+            @views if mod(sum(ks.I), 2) == 1
+                op_L_d_kv[1, 1, 1, 1, :, :, ks, 1] .= I(norb) ./ sqrt(2)
+                op_L_m_kv[1, 1, 1, 1, :, :, ks, 1] .= I(norb) ./ sqrt(2)
+                op_R_d_kv[1, 1, :, :, 1, 1, ks, 1] .= I(norb) ./ sqrt(2)
+                op_R_m_kv[1, 1, :, :, 1, 1, ks, 1] .= I(norb) ./ sqrt(2)
+            end
+        end
+    else
+        error("Wrong formalism $F. Only :KF an :MF are allowed")
     end
     (op_L_d, op_L_m), (op_R_d, op_R_m)
 end
@@ -41,10 +60,6 @@ X_spin_q_w   = interpolate_to_q(X.total[2], xq, b0, b0)(0, 0, w)[1, 1]
 ```
 """
 function susceptibility_operator_SU2(::Val{F}, rbasis::RealSpaceBasis{Dim}, norb=1) where {F, Dim}
-    F !== :MF && error("Only MF implemented yet")
-    # TODO: KF
-    # TODO: impurity-only version
-
     R0 = zeros(SVector{Dim, Int})
     ibL = findfirst(x -> x == (1, 1, R0), rbasis.bonds_L)
     ibL === nothing && error("onsite bond not found in bonds_L")
@@ -84,20 +99,24 @@ end
 
 """
     compute_occupation_matrix(G, temperature=nothing)
-Compute the equilibrium occupation matrix (density matrix).
+Compute the equilibrium occupation matrix (density matrix). 0 is empty and 1 is fully filled.
 """
 function compute_occupation_matrix(G, temperature=nothing)
     F = get_formalism(G)
-    overlap = basis_integral(G.basis)
+    overlap = basis_integral(G.basis; skip_divergence=true)
+    coeff = integral_coeff(Val(F), temperature)
+    F === :KF && (coeff /= 2)
 
-    if F === :MF
-        @ein n[i, j] := G.data[i, j, ib] * overlap[ib]
-        n = n::Matrix{eltype(G)}
-    else
-        error("Only MF implemented yet")
+    @ein n[i, j] := G.data[i, j, ib] * overlap[ib]
+    n = n::Matrix{eltype(G)}
+    n .= n .* coeff .+ I(G.norb) ./ 2
+
+    if F === :KF  # select the Keldysh component
+        n = reshape(n, G.norb, 2, G.norb, 2)[:, 2, :, 2]
     end
-    n .= n .* integral_coeff(Val(F), temperature) .+ I(G.norb) ./ 2
-    n
+
+    # Impose Hermiticity
+    (n .+ n') ./ 2
 end
 
 """

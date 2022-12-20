@@ -44,6 +44,25 @@ LinearSplineAndTailBasis(nmin, nmax, grid) = LinearSplineAndTailBasis(Float64, n
 ntails(f::LinearSplineAndTailBasis) = 2 * (f.nmax - f.nmin + 1)
 nbasis(f::LinearSplineAndTailBasis) = ntails(f) + length(f.grid)
 
+"""
+    integral_divergent(f::LinearSplineAndTailBasis, n::Integer)
+Return true if the integral ∫dx f_n(x) is divergent.
+"""
+function integral_divergent(f::LinearSplineAndTailBasis, n::Integer)
+    @boundscheck n ∈ axes(f, 2) || throw(BoundsError())
+    if f.nmin <= 1
+        ntails_over_2 = f.nmax - f.nmin + 1
+        if n <= ntails_over_2
+            p = n - 1 + f.nmin
+            p <= 1 && return true
+        elseif n <= ntails_over_2 * 2
+            p = n - ntails_over_2 - 1 + f.nmin
+            p <= 1 && return true
+        end
+    end
+    return false
+end
+
 @inline function support_bounds(f::LinearSplineAndTailBasis{T, FT}, n::Integer) where {T, FT}
     @boundscheck n ∈ axes(f, 2) || throw(BoundsError())
     if n <= div(ntails(f), 2)  # right tail
