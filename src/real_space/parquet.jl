@@ -6,8 +6,6 @@ function run_parquet_nonlocal(G0, U, basis_v_bubble, basis_w_bubble, rbasis,
         smooth_bubble=get_formalism(G0) === :MF ? false : true,
         mixing_history=10, mixing_coeff=0.5, iterate_by_bse=false)
 
-    smooth_bubble && error("smooth_bubble in run_parquet_nonlocal not implementd yet")
-
     F = get_formalism(G0)
     T = eltype(G0)
 
@@ -20,8 +18,8 @@ function run_parquet_nonlocal(G0, U, basis_v_bubble, basis_w_bubble, rbasis,
     @time G = green_lazy_to_explicit(G0, basis_1p)
 
     # 1st iteration
-    @time ΠA_ = compute_bubble_nonlocal_real_space(G, basis_v_bubble, basis_w_bubble, Val(:A), rbasis; temperature);
-    @time ΠP_ = compute_bubble_nonlocal_real_space(G, basis_v_bubble, basis_w_bubble, Val(:P), rbasis; temperature);
+    @time ΠA_ = compute_bubble(G, G, basis_v_bubble, basis_w_bubble, Val(:A), rbasis; temperature, smooth_bubble);
+    @time ΠP_ = compute_bubble(G, G, basis_v_bubble, basis_w_bubble, Val(:P), rbasis; temperature, smooth_bubble);
     ΠA = (ΠA_, ΠA_)
     ΠP = (ΠP_ * -1, ΠP_)
 
@@ -52,8 +50,8 @@ function run_parquet_nonlocal(G0, U, basis_v_bubble, basis_w_bubble, rbasis,
         @info "Updating self-energy and the bubble"
         @time Σ = compute_self_energy_SU2(Γ, G, ΠA, ΠP; temperature);
         @time G = solve_Dyson(G0, Σ)
-        @time ΠA_ = compute_bubble_nonlocal_real_space(G, basis_v_bubble, basis_w_bubble, Val(:A), rbasis; temperature);
-        @time ΠP_ = compute_bubble_nonlocal_real_space(G, basis_v_bubble, basis_w_bubble, Val(:P), rbasis; temperature);
+        @time ΠA_ = compute_bubble(G, G, basis_v_bubble, basis_w_bubble, Val(:A), rbasis; temperature, smooth_bubble);
+        @time ΠP_ = compute_bubble(G, G, basis_v_bubble, basis_w_bubble, Val(:P), rbasis; temperature, smooth_bubble);
         ΠA = (ΠA_, ΠA_)
         ΠP = (ΠP_ * -1, ΠP_)
 
