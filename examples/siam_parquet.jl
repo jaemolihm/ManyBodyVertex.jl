@@ -16,6 +16,12 @@ begin
     #             parquet iteration        : ~3 seconds
     #             self-energy calculation  : ~0.5 seconds
     #             bubble update (smoothed) : ~4 seconds
+    # 2022.12.21: Each iteration takes ~4 seconds with the ~5% error grids with 4 threads.
+    #             parquet iteration        : ~2 seconds
+    #             self-energy calculation  : ~1.1 seconds
+    #             bubble update (smoothed) : ~0.6 seconds
+    #             (The increase in self-energy calculation is due to changing to a more
+    #             accurate implementation.)
 
     e = 0
     Δ = 10.0
@@ -42,7 +48,7 @@ begin
     basis_v_bubble, basis_w_bubble = basis_for_bubble(basis_v_bubble_tmp, basis_w)
 
     # Run parquet calculation
-    @time vertex, Σ = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_w,
+    @time vertex, Σ, Π = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_w,
         basis_v_aux, basis_1p; max_class=3, max_iter=10, reltol=1e-2, temperature=t,
         smooth_bubble=true);
 end;

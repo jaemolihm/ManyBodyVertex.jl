@@ -163,7 +163,7 @@ function compute_bubble(G1::RealSpaceGreen2P{F}, G2::RealSpaceGreen2P{F}, basis_
             G2_R === nothing && continue
 
             Π_R_datas[iR] .= if smooth_bubble
-                compute_bubble_smoothed_v2(G1_R, G2_R, basis_f, basis_b, Val(C),
+                compute_bubble_smoothed(G1_R, G2_R, basis_f, basis_b, Val(C),
                     overlap_bubble_cached; temperature).data
             else
                 compute_bubble(G1_R, G2_R, basis_f, basis_b, Val(C); temperature).data
