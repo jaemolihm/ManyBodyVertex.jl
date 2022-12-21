@@ -22,6 +22,9 @@ end
 function green_lazy_to_explicit(G::AbstractLazyGreen2P, basis::NamedTuple{(:freq,)})
     green_lazy_to_explicit(G, basis.freq)
 end
+function get_G!(G_v, G::AbstractLazyGreen2P, v)
+    G_v .= G(v)
+end
 
 
 """

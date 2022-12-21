@@ -123,8 +123,8 @@ end
 
 
 """
-    compute_bubble_nonlocal_real_space(G::RealSpaceGreen2P{F}, basis_f, basis_b, ::Val{C},
-                                       rbasis; temperature=nothing)
+    compute_bubble_nonlocal_real_space(G1::RealSpaceGreen2P{F}, G2::RealSpaceGreen2P{F},
+            basis_f, basis_b, ::Val{C}, rbasis; temperature=nothing, smooth_bubble=false)
 (k1, k2) = ( k + q/2, k - q/2) : channel A, T
          = (-k - q/2, k - q/2) : channel P
 
@@ -133,60 +133,51 @@ end
      = ∑_{R} exp(i*q*R) * G(R) * G(-R)  : channel A, T
      = ∑_{R} exp(i*q*R) * G(-R) * G(-R) : channel P
 """
-function compute_bubble_nonlocal_real_space(G::RealSpaceGreen2P{F}, basis_f, basis_b, ::Val{C}, rbasis; temperature=nothing) where {F, C}
-    nind = get_nind(G)
-
-    vs = get_fitting_points(basis_f)
-    ws = get_fitting_points(basis_b)
-    Πs = [[Bubble{F, C}(basis_f, basis_b, G.norb; temperature) for _ in rbasis.qpts]
+function compute_bubble(G1::RealSpaceGreen2P{F}, G2::RealSpaceGreen2P{F}, basis_f, basis_b,
+            ::Val{C}, rbasis; temperature=nothing, smooth_bubble=false) where {F, C}
+    Πs = [[Bubble{F, C}(eltype(G1), basis_f, basis_b, G1.norb; temperature) for _ in rbasis.qpts]
         for _ in eachindex(rbasis.bonds_L), _ in eachindex(rbasis.bonds_R)]
+
+    # Precompute overlap_bubble
+    if smooth_bubble
+        ws = get_fitting_points(basis_b)
+        overlap_bubble_cached = [basis_integral_bubble(basis_f, G1.basis, G2.basis, w, Val(C))
+                                 for w in ws]
+    end
 
     for ibR in eachindex(rbasis.bonds_R), ibL in eachindex(rbasis.bonds_L)
         bL = rbasis.bonds_L[ibL]
         bR = rbasis.bonds_R[ibR]
         iatm11, iatm12, iatm21, iatm22 = _bubble_indices(Val(C), (bL[2], bL[1], bR[1], bR[2]))
 
-        Π_data_iR = zeros(eltype(G), length(vs), nind^4, length(ws))
-        Π_data_iq_all = [zeros(eltype(G), length(vs), nind^4, length(ws)) for _ in rbasis.qpts]
-        G1 = zeros(eltype(G), nind, nind)
-        G2 = zeros(eltype(G), nind, nind)
+        Rs = G1.rbasis.R_replicas[iatm11, iatm12]
+        Π_R_datas = [zeros(eltype(G1), size(first(Πs[ibL, ibR]).data)) for _ in eachindex(Rs)]
 
-        # TODO: multithreading
-        for R1 in G.rbasis.R_replicas[iatm11, iatm12]
+        Threads.@threads for iR in eachindex(Rs)
+            R1 = Rs[iR]
             R2 = (C === :A || C === :T) ? bL[3] - bR[3] - R1 : bL[3] - bR[3] + R1
-            iR2 = findfirst(x -> x == R2, G.rbasis.R_replicas[iatm21, iatm22])
-            iR2 === nothing && continue
 
-            G_R1 = G[iatm11, iatm12, R1]
-            G_R2 = G[iatm21, iatm22, R2]
-            G_R1 === nothing && continue
-            G_R2 === nothing && continue
+            G1_R = G1[iatm11, iatm12, R1]
+            G2_R = G2[iatm21, iatm22, R2]
+            G1_R === nothing && continue
+            G2_R === nothing && continue
 
-            Π_data_iR .= 0
-            for (iw, w) in enumerate(ws)
-                for (iv, v) in enumerate(vs)
-                    v1, v2 = _bubble_frequencies(Val(F), Val(C), v, w)
-                    get_G!(G1, G_R1, v1)
-                    get_G!(G2, G_R2, v2)
-                    for (i, inds) in enumerate(Iterators.product(1:nind, 1:nind, 1:nind, 1:nind))
-                        i11, i12, i21, i22 = _bubble_indices(Val(C), inds)
-                        Π_data_iR[iv, i, iw] += G1[i11, i12] * G2[i21, i22]
-                    end
-                end
-            end
-
-            for (iq, xq) in enumerate(rbasis.qpts)
-                R = (C === :A || C === :T) ? (R1 - R2) / 2 : (-R1 - R2) / 2
-                coeff = cispi(2 * xq' * R)
-                Π_data_iq_all[iq] .+= Π_data_iR .* coeff
+            Π_R_datas[iR] .= if smooth_bubble
+                compute_bubble_smoothed_v2(G1_R, G2_R, basis_f, basis_b, Val(C),
+                    overlap_bubble_cached; temperature).data
+            else
+                compute_bubble(G1_R, G2_R, basis_f, basis_b, Val(C); temperature).data
             end
         end
 
-        for (Π_data_iq, Π_iq) in zip(Π_data_iq_all, Πs[ibL, ibR])
-            Π_data_iq .*= _bubble_prefactor(Val(C))
-            Π_data_tmp1 = fit_basis_coeff(Π_data_iq, basis_f, vs, 1)
-            Π_data_tmp2 = fit_basis_coeff(Π_data_tmp1, basis_b, ws, 3)
-            Π_iq.data .= reshape(Π_data_tmp2, size(Π_iq.data))
+        for iR in eachindex(Rs)
+            R1 = Rs[iR]
+            R2 = (C === :A || C === :T) ? bL[3] - bR[3] - R1 : bL[3] - bR[3] + R1
+            for (iq, xq) in enumerate(rbasis.qpts)
+                R = (C === :A || C === :T) ? (R1 - R2) / 2 : (-R1 - R2) / 2
+                coeff = cispi(2 * xq' * R)
+                Πs[ibL, ibR][iq].data .+= Π_R_datas[iR] .* coeff
+            end
         end
     end
     RealSpaceBubble{C}(rbasis, Πs)

@@ -47,6 +47,7 @@ include("basis/basis_integral.jl")
 include("basis/basis_integral_imaginary.jl")
 include("basis/ShiftedSplineBasis.jl")
 include("basis/basis_integral_self_energy.jl")
+include("basis/basis_integral_bubble.jl")
 
 include("channel.jl")
 include("spin_symmetry_su2.jl")

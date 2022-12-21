@@ -210,8 +210,8 @@ end
 function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature,
         smooth_bubble=get_formalism(G) === :MF ? false : true)
     bubble_function = smooth_bubble ? compute_bubble_smoothed : compute_bubble
-    @time ΠA_ = bubble_function(G, basis_v_bubble, basis_w_bubble, Val(:A); temperature)
-    @time ΠP_ = bubble_function(G, basis_v_bubble, basis_w_bubble, Val(:P); temperature)
+    @time ΠA_ = bubble_function(G, G, basis_v_bubble, basis_w_bubble, Val(:A); temperature)
+    @time ΠP_ = bubble_function(G, G, basis_v_bubble, basis_w_bubble, Val(:P); temperature)
     ΠA = (ΠA_, ΠA_)
     ΠP = (ΠP_ * -1, ΠP_)
     (; ΠA, ΠP)

@@ -1,5 +1,5 @@
 """
-    basis_integral_self_energy(b1, b2, b3, v)
+    basis_integral_self_energy(b1, b2, b3, v, ::Val{C})
 Basis integral for calculating self-energy
 ```
        -<- ±(v+w) -<-
@@ -22,7 +22,7 @@ For `b1` with Matsubara frequencies, the bound `a <= (v + w/2) <= b` becomes
 `2(a - v) - 1 <= w <= 2(b - v)` (see `_bubble_frequencies_inv`: `v + w/2` is implemented as
 `_bubble_frequencies_inv(v, v+w)[1] = fld(v + v + w + 1, 2)`).
 """
-function basis_integral_self_energy(b1::AbstractImagBasis, b2, b3, v,  ::Val{C}) where {C}
+function basis_integral_self_energy(b1::AbstractImagBasis, b2, b3, v, ::Val{C}) where {C}
     bases = (b1, b2, b3)
     sizes = nbasis.(bases)
     overlap = zeros(eltype(bases[1]), sizes)
