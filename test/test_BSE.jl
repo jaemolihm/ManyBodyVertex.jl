@@ -107,8 +107,8 @@ end
     basis_aux = LinearSplineAndTailBasis(1, 0, -4:1.0:4)
 
     G0 = SIAMLazyGreen2P{:KF}(; e, Δ, t)
-    ΠA = compute_bubble(G0, basis_f, basis_b, Val(:A); temperature=t)
-    ΠP = compute_bubble(G0, basis_f, basis_b, Val(:P); temperature=t)
+    ΠA = compute_bubble(G0, G0, basis_f, basis_b, Val(:A); temperature=t)
+    ΠP = compute_bubble(G0, G0, basis_f, basis_b, Val(:P); temperature=t)
     Γ0_A = get_bare_vertex(Val(:KF), Val(:A), U)
     Γ0_P = get_bare_vertex(Val(:KF), Val(:P), U)
     Γ1_A = solve_BSE(Γ0_A, ΠA, Γ0_A, basis_b)

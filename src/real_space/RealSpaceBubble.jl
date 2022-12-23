@@ -66,37 +66,30 @@ TODO: Interpolation (linear / Fourier)
                  A.cache_basis_L, A.cache_basis_R, A.cache_overlap_LR)
 end
 
-function compute_bubble_nonlocal(G, basis_f, basis_b, ::Val{C}, q, nk; temperature=nothing) where {C}
-    F = get_formalism(G)
-    nind = get_nind(G)
+function compute_bubble_nonlocal(G1, G2, basis_f, basis_b, ::Val{C}, q, nk; temperature=nothing) where {C}
+    F = get_formalism(G1)
+    nind = get_nind(G1)
 
     vs = get_fitting_points(basis_f)
     ws = get_fitting_points(basis_b)
 
-    Π_data = zeros(eltype(G), length(vs), nind^4, length(ws))
+    Π_data = zeros(eltype(G1), length(vs), nind^4, length(ws))
 
     for ky in range(0, 1; length=nk+1)[1:end-1]
         for kx in range(0, 1; length=nk+1)[1:end-1]
             k = SVector(kx, ky)
             k1, k2 = _bubble_frequencies(Val(:ZF), Val(C), k, q)
-            if !(G isa AbstractLazyGreen2P)
-                # TODO: Cleanup
-                G1_ = interpolate_to_q(G, k1, 1, 1)
-                G2_ = interpolate_to_q(G, k2, 1, 1)
-            end
+            # TODO: Cleanup
+            G1_ = G1 isa AbstractLazyGreen2P ? G1 : interpolate_to_q(G1, k1, 1, 1)
+            G2_ = G2 isa AbstractLazyGreen2P ? G2 : interpolate_to_q(G2, k2, 1, 1)
             for (iw, w) in enumerate(ws)
                 for (iv, v) in enumerate(vs)
                     v1, v2 = _bubble_frequencies(Val(F), Val(C), v, w)
-                    if G isa AbstractLazyGreen2P
-                        G1 = G(k1, v1)
-                        G2 = G(k2, v2)
-                    else
-                        G1 = G1_(v1)
-                        G2 = G2_(v2)
-                    end
+                    G1_v = G1 isa AbstractLazyGreen2P ? G1(k1, v1) : G1_(v1)
+                    G2_v = G2 isa AbstractLazyGreen2P ? G2(k2, v2) : G2_(v2)
                     for (i, inds) in enumerate(Iterators.product(1:nind, 1:nind, 1:nind, 1:nind))
                         i11, i12, i21, i22 = _bubble_indices(Val(C), inds)
-                        Π_data[iv, i, iw] += G1[i11, i12] * G2[i21, i22]
+                        Π_data[iv, i, iw] += G1_v[i11, i12] * G2_v[i21, i22]
                     end
                 end
             end
@@ -106,7 +99,7 @@ function compute_bubble_nonlocal(G, basis_f, basis_b, ::Val{C}, q, nk; temperatu
     Π_data_tmp1 = fit_basis_coeff(Π_data, basis_f, vs, 1)
     Π_data_tmp2 = fit_basis_coeff(Π_data_tmp1, basis_b, ws, 3)
 
-    Π = Bubble{F, C}(basis_f, basis_b, G.norb; temperature)
+    Π = Bubble{F, C}(basis_f, basis_b, G1.norb; temperature)
     Π.data .= reshape(Π_data_tmp2, size(Π.data))
     Π
 end
