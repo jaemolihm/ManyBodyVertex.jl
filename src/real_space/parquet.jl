@@ -44,7 +44,7 @@ function run_parquet_nonlocal(G0, U, basis_v_bubble, basis_w_bubble, rbasis,
         else
             Γ_vec = vertex_to_vector(Γ)
             Γ_diff_vec = vertex_to_vector(Γ_new) .- Γ_vec
-            Γ = vector_to_vertex(acceleration(Γ_vec, mixing_coeff, Γ_diff_vec), Γ)
+            @time Γ = vector_to_vertex(acceleration(Γ_vec, mixing_coeff, Γ_diff_vec), Γ)
         end
 
         @info "Updating self-energy and the bubble"
