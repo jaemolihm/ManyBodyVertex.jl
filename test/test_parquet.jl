@@ -84,13 +84,14 @@ end
 
 @testset "SIAM parquet linear response" begin
     # Test linear response for parquet calculation
+    Δ = 2.0
+    t = 0.5
+    D = Inf
+    U = 1.0
+    results = Dict()
+
     for F in (:MF, :KF)
         if F === :MF
-            Δ = 2.0
-            t = 0.5
-            D = 10
-            U = 1.0
-
             nmax = 4
             basis_1p = ImagGridAndTailBasis(:Fermion, 1, 3, nmax * 3 + 10)
             basis_w_k1 = ImagGridAndTailBasis(:Boson, 1, 0, 4 * nmax)
@@ -99,15 +100,10 @@ end
             basis_w_bubble = ImagGridAndTailBasis(:Boson, 1, 0, maximum(get_fitting_points(basis_w_k1)))
             basis_v_bubble = ImagGridAndTailBasis(:Fermion, 2, 4, maximum(get_fitting_points(basis_w_k1)))
         elseif F === :KF
-            Δ = 2.0
-            t = 0.5
-            D = Inf
-            U = 1.0
-
-            vgrid_1p = get_nonequidistant_grid(8, 31) .* Δ;
+            vgrid_1p = get_nonequidistant_grid(8, 51) .* Δ;
             vgrid_k1 = get_nonequidistant_grid(8, 7) .* Δ;
             wgrid_k1 = get_nonequidistant_grid(8, 7) .* Δ;
-            vgrid_k3 = get_nonequidistant_grid(8, 11) .* Δ;
+            vgrid_k3 = get_nonequidistant_grid(8, 5) .* Δ;
 
             basis_1p = LinearSplineAndTailBasis(1, 3, vgrid_1p)
             basis_w = LinearSplineAndTailBasis(1, 3, wgrid_k1)
@@ -138,7 +134,8 @@ end
         # differences and linear response.
         μ = 0.5
         δμ = 1e-3
-        chi_lr_vertex = do_parquet(μ).chi
+        res = do_parquet(μ)
+        chi_lr_vertex = res.chi
         chi_fd = (do_parquet(μ + δμ).n - do_parquet(μ - δμ).n) / 2 / δμ
         if F === :MF
             chi_lr = chi_lr_vertex.total[1](0, 0, 0)[1, 1]
@@ -148,8 +145,18 @@ end
         elseif F === :KF
             chi_lr = chi_lr_vertex.total[1](0, 0, 0)[1, 2]
             chi_lr_dis = chi_lr_vertex.disconnected[1](0, 0, 0)[1, 2]
-            @test chi_fd ≈ chi_lr rtol=1e-2
-            @test !isapprox(chi_lr, chi_lr_dis; rtol=1e-2)
+            @test chi_fd ≈ chi_lr rtol=5e-3
+            @test !isapprox(chi_lr, chi_lr_dis; rtol=5e-3)
         end
+        results[(F, "n")] = res.n
+        results[(F, "fd")] = chi_fd
+        results[(F, "lr")] = chi_lr
+        results[(F, "lr_dis")] = chi_lr_dis
     end
+
+    # Check MF and KF gives the same results
+    @test results[(:MF, "n")] ≈ results[(:KF, "n")] rtol=1e-3
+    @test results[(:MF, "fd")] ≈ results[(:KF, "fd")] rtol=5e-3
+    @test results[(:MF, "lr")] ≈ results[(:KF, "lr")] rtol=5e-3
+    @test results[(:MF, "lr_dis")] ≈ results[(:KF, "lr_dis")] rtol=5e-3
 end
