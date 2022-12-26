@@ -96,9 +96,10 @@ function compute_response_SU2(op1, op2, Γ, Π, basis_response=Γ.basis_k1_b)
     (; total=disconnected .+ connected, disconnected, connected)
 end
 
+
 """
-    response_4p_to_2p(X::Vertex4P)
-Convert a response function in `Vertex4P` to a bosonic `Green2P`.
+    response_4p_to_2p(X)
+Convert a response function in the 4-point vertex form to a bosonic 2-point Green function.
 """
 function response_4p_to_2p(X::Vertex4P{F}) where {F}
     if F === :MF
@@ -117,6 +118,10 @@ function response_4p_to_2p(X::Vertex4P{F}) where {F}
         nind = get_nind(X)
         Green2P{F}(X.basis_b, X.norb, reshape(data, nind, nind, :))
     end
+end
+
+function response_4p_to_2p(X::RealSpaceVertex{F, RC}) where {F, RC}
+    RealSpaceVertex{RC}(X.rbasis, response_4p_to_2p.(X.vertices_R))
 end
 
 
