@@ -88,6 +88,23 @@ function get_G!(G_v, G::Green2P, v)
 end
 
 """
+    keldyshview(G::Green2P{:KF})
+Return a the 2-point KF vertex as a 5-dimensional array
+- `a`: frequency basis index
+- `i`: Orbital index
+- `k`: Keldysh index
+- Input `G.data`: `(i1, k1), (i2, k2), a`
+- Output: `k1, k2, i1, i2, a`
+"""
+function keldyshview(G::Green2P{:KF})
+    norb = G.norb
+    data_size = (norb, 2, norb, 2, nbasis(G.basis))
+    # (i1, k1, i2, k2, a) -> (k1, k2, i1, i2, a)
+    perm = [2, 4, 1, 3, 5]
+    PermutedDimsArray(Base.ReshapedArray(G.data, data_size, ()), perm)
+end
+
+"""
     solve_Dyson(G0, Σ, basis=Σ.basis) => G
 Solve Dyson equation to compute the interacting Green function: ``G = (G0⁻¹ - Σ)⁻¹``.
 """

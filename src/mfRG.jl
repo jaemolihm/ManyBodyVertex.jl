@@ -11,7 +11,7 @@ export basis_integral
 export basis_for_bubble
 
 export Green2P, solve_Dyson
-export Vertex4P, to_matrix, vertex_keldyshview, apply_crossing
+export Vertex4P, to_matrix, keldyshview, apply_crossing
 export Bubble, compute_bubble, compute_bubble_smoothed
 export fit_bosonic_basis_coeff!
 export get_bare_vertex

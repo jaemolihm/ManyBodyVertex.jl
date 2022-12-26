@@ -11,7 +11,7 @@ function get_bare_vertex(::Val{F}, ::Val{C}, U::Number) where {F, C}
     basis = F === :MF ? ImagConstantBasis() : ConstantBasis()
     Γ0 = Vertex4P{F, C}(basis, basis, basis, 1)
     if F === :KF
-        Γ0_kv = vertex_keldyshview(Γ0)
+        Γ0_kv = keldyshview(Γ0)
         for ks in CartesianIndices((2, 2, 2, 2))
             k1, k2, k3, k4 = ks.I
             if mod(k1 + k2 + k3 + k4, 2) == 1

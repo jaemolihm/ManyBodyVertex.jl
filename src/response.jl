@@ -27,10 +27,10 @@ function susceptibility_operator_SU2(::Val{F}, norb=1) where {F}
         @views reshape(op_R_d.data[:, 1, 1], norb, norb) .= I(norb)
         @views reshape(op_R_m.data[:, 1, 1], norb, norb) .= I(norb)
     elseif F === :KF
-        op_L_d_kv = vertex_keldyshview(op_L_d)
-        op_L_m_kv = vertex_keldyshview(op_L_m)
-        op_R_d_kv = vertex_keldyshview(op_R_d)
-        op_R_m_kv = vertex_keldyshview(op_R_m)
+        op_L_d_kv = keldyshview(op_L_d)
+        op_L_m_kv = keldyshview(op_L_m)
+        op_R_d_kv = keldyshview(op_R_d)
+        op_R_m_kv = keldyshview(op_R_m)
         for ks in CartesianIndices((2, 2, 2, 2))
             @views if mod(sum(ks.I), 2) == 1
                 op_L_d_kv[1, 1, 1, 1, :, :, ks, 1] .= I(norb) ./ sqrt(2)

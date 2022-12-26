@@ -16,7 +16,7 @@ using mfRG
     Γ = Vertex4P{:KF, :A}(basis1, basis1, basis2)
     @test mfRG.nkeldysh(Γ) == 2
     @test size(Γ.data) == (n1 * 2^2, n1 * 2^2, n2)
-    @test size(vertex_keldyshview(Γ)) == (n1, n1, 1, 1, 1, 1, 2, 2, 2, 2, n2)
+    @test size(keldyshview(Γ)) == (n1, n1, 1, 1, 1, 1, 2, 2, 2, 2, n2)
     @test size(to_matrix(Γ, 0.3)) == (n1 * 2^2, n1 * 2^2)
 
     Γ = Vertex4P{:ZF, :A}(basis1, basis1, basis2, 3)
