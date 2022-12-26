@@ -172,7 +172,7 @@ function find_minimal_distance_replica(qgrid, lattice::SMatrix{Dim, Dim, T}, pos
     distances = zeros(T, length(R_super_list))
     is_minimal_distance = falses(length(R_super_list))
     for ibR in eachindex(bonds_R), ibL in eachindex(bonds_L)
-        ΔR = center_position(bonds_L[ibL], positions) - center_position(bonds_L[ibR], positions)
+        ΔR = center_position(bonds_L[ibL], positions) - center_position(bonds_R[ibR], positions)
 
         # Find all R_super that minimize norm(lattice * (R_B + R_super + ΔR))
         for (iR_B, R_B) in enumerate(R_Bs)
