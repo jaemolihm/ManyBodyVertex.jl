@@ -59,6 +59,7 @@ Green2P{F}(basis, norb=1) where {F} = Green2P{F}(ComplexF64, basis, norb)
 function Base.similar(G::Green2P{F, T}, ::Type{ElType}=T) where {F, T, ElType}
     Green2P{F}(G.basis, G.norb, similar(G.data, ElType), similar(G.offset, ElType))
 end
+Base.zero(G::Green2P) = (x = similar(G); x.data .= 0; x.offset .= 0; x)
 
 function _check_basis_identity(A::Green2P, B::Green2P)
     get_formalism(A) === get_formalism(B) || error("Different formalism")
