@@ -84,16 +84,39 @@ Compute linear response function ``X(q) = <op1(q) op2(-q)>``.
 function compute_response_SU2(op1, op2, Γ, Π, basis_response=Γ.basis_k1_b)
     C = channel(op1[1])
     ws = get_fitting_points(basis_response.freq)
-    disconnected = -1 .* vertex_bubble_integral.(op1, Π, op2, Ref(basis_response))
+    disconnected = -1 .* response_4p_to_2p.(vertex_bubble_integral.(op1, Π, op2, Ref(basis_response)))
 
     vertices = [get_irreducible_vertices(C, Γ), [Γ.K1_A], [Γ.K2_A], [Γ.K2p_A], [Γ.K3_A], [Γ.Γ0_A]]
     filter!(!Base.Fix1(all, isnothing), vertices)
     connected = mapreduce(.+, vertices) do Γ_
         Γ_cache = Tuple(cache_vertex_matrix(getindex.(Γ_, i), C, ws, Γ.basis_k2_f) for i in 1:2)
         tmp = vertex_bubble_integral.(Γ_cache, Π, op2, Ref(basis_response))
-        -1 .* vertex_bubble_integral.(op1, Π, tmp, Ref(basis_response))
+        -1 .* response_4p_to_2p.(vertex_bubble_integral.(op1, Π, tmp, Ref(basis_response)))
     end;
     (; total=disconnected .+ connected, disconnected, connected)
+end
+
+"""
+    response_4p_to_2p(X::Vertex4P)
+Convert a response function in `Vertex4P` to a bosonic `Green2P`.
+"""
+function response_4p_to_2p(X::Vertex4P{F}) where {F}
+    if F === :MF
+        Green2P{F}(X.basis_b, X.norb, X.data)
+    else
+        data = zeros(eltype(X), X.norb, 2, X.norb, 2, nb_b(X))
+        data_vertex_kv = keldyshview(X)
+        # Map 2 Keldysh indices to 1: (2, 1) (or (1, 2)) -> 1, (1, 1) (or (2, 2)) -> 2
+        # This mapping is designed to satisfy k1 + k2 = k12 (mod 2).
+        for (i2, ks2) in enumerate(((2, 1), (1, 1)))
+            for (i1, ks1) in enumerate(((2, 1), (1, 1)))
+                # Select orbital index 1.
+                data[1, i1, 1, i2, :] .= data_vertex_kv[1, 1, 1, 1, 1, 1, ks1..., ks2..., :]
+            end
+        end
+        nind = get_nind(X)
+        Green2P{F}(X.basis_b, X.norb, reshape(data, nind, nind, :))
+    end
 end
 
 
