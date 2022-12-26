@@ -29,6 +29,7 @@ export RealSpaceBubble
 export interpolate_to_q
 export run_parquet_nonlocal
 
+export analytic_continuation_KF_to_MF
 export susceptibility_operator_SU2, compute_response_SU2
 export compute_occupation_matrix, compute_occupation
 
@@ -70,6 +71,7 @@ include("real_space/RealSpaceBubble.jl")
 include("BSE.jl")
 include("parquet_su2.jl")
 include("parquet_su2_wo_irreducible.jl")
+include("analytic_continuation.jl")
 include("response.jl")
 
 include("real_space/self_energy.jl")
