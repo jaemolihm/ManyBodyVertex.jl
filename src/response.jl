@@ -89,6 +89,7 @@ function compute_response_SU2(op1, op2, Γ, Π, basis_response=Γ.basis_k1_b)
     vertices = [get_irreducible_vertices(C, Γ), [Γ.K1_A], [Γ.K2_A], [Γ.K2p_A], [Γ.K3_A], [Γ.Γ0_A]]
     filter!(!Base.Fix1(all, isnothing), vertices)
     connected = mapreduce(.+, vertices) do Γ_
+        # FIXME: different real space
         Γ_cache = Tuple(cache_vertex_matrix(getindex.(Γ_, i), C, ws, Γ.basis_k2_f) for i in 1:2)
         tmp = vertex_bubble_integral.(Γ_cache, Π, op2, Ref(basis_response))
         -1 .* response_4p_to_2p.(vertex_bubble_integral.(op1, Π, tmp, Ref(basis_response)))
@@ -107,7 +108,7 @@ function response_4p_to_2p(X::Vertex4P{F}) where {F}
     else
         data = zeros(eltype(X), X.norb, 2, X.norb, 2, nb_b(X))
         data_vertex_kv = keldyshview(X)
-        # Map 2 Keldysh indices to 1: (2, 1) (or (1, 2)) -> 1, (1, 1) (or (2, 2)) -> 2
+        # Map two Keldysh indices to one: (2, 1) (or (1, 2)) -> 1, (1, 1) (or (2, 2)) -> 2
         # This mapping is designed to satisfy k1 + k2 = k12 (mod 2).
         for (i2, ks2) in enumerate(((2, 1), (1, 1)))
             for (i1, ks1) in enumerate(((2, 1), (1, 1)))

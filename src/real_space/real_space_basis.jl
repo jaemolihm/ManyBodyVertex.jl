@@ -197,3 +197,7 @@ function get_indices(rbasis::RealSpaceBasis)
         [(ibL, ibR, iR_B) for iR_B in eachindex(rbasis.R_B_replicas[ibL, ibR])]
     end
 end
+
+
+get_dimension(::RealSpaceBasis{Dim}) where {Dim} = Dim
+get_dimension(::RealSpaceBasis2P{Dim}) where {Dim} = Dim

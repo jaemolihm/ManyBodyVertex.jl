@@ -123,4 +123,5 @@ end
 
 integral_coeff(::Union{Val{:KF}, Val{:ZF}}, _) = -im / 2π
 integral_coeff(::Val{:MF}, temperature) = temperature
+integral_coeff(::Val{:MF}, ::Nothing) = error("For MF, temperature must be provided")
 integral_coeff(Π::AbstractBubble{F}) where {F} = eltype(Π)(integral_coeff(Val(F), Π.temperature))::eltype(Π)
