@@ -76,21 +76,3 @@ function (G0::SIAMLazyGreen2P{F, T})(v) where {F, T}
     F === :KF ? g : SMatrix{1, 1}(g)
 end
 (G0::SIAMLazyGreen2P)(k, v) = G0(v)
-
-"""
-    siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t)
-# Bubble for the SIAM in the wide-band limit in formalism `F` and channel `C`.
-"""
-function siam_get_bubble(basis_f, basis_b, ::Val{F}, ::Val{C}; e, Δ, t, D=Inf) where {F, C}
-    Base.depwarn("Use SIAMLazyGreen2P and compute_bubble", :siam_get_bubble, force=true)
-    G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
-    compute_bubble(G0, basis_f, basis_b, Val(C); temperature=t)
-end
-
-
-function siam_get_bubble_improved(basis_f, basis_b, basis_1p, ::Val{F}, ::Val{C}; e, Δ, t, D=Inf) where {F, C}
-    Base.depwarn("Use SIAMLazyGreen2P and compute_bubble_smoothed", :siam_get_bubble_improved, force=true)
-    G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
-    compute_bubble_smoothed(G0, basis_f, basis_b, Val(C); temperature=t)
-end
-
