@@ -121,6 +121,6 @@ begin
         ax.set_yticklabels([-5, 0, 5]; fontsize)
     end
     suptitle("Γ_↑↓↓↑ / U, t channel, ω=$w, U/Δ=$(U/Δ), t/U=$(t/U)\n(Analogous to Fig. 9.1 (upper panel) of E. Walter thesis)"; y=0.98, fontsize)
-    # savefig("siam_parquet_vertex_U_$(U/Δ).png")
+    # savefig("siam_parquet_Keldysh_vertex_U_$(U/Δ).png")
     display(fig); close(fig)
 end
