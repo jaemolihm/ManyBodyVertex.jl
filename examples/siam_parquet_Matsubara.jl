@@ -5,7 +5,7 @@ using Printf
 # Compute the vertex of SIAM by solving parquet equations by fixed point iteration.
 # Benchmark against P. Chalupa-Gantner et al, PRResearch 4, 023050 (2022)
 
-rcParams = PyPlot.PyDict(PyPlot.matplotlib."rcParams")
+rcParams = PyPlot.PyDict(PyPlot.matplotlib."rcParams");
 rcParams["font.size"] = 15
 rcParams["lines.linewidth"] = 3
 rcParams["lines.markersize"] = 8
@@ -77,13 +77,10 @@ begin
     w = 0
     vs = -15:14
     c = :A
-    x_k1 = zeros(ComplexF64, length(vs), length(vs))
-    x_k2 = zeros(ComplexF64, length(vs), length(vs))
-    x_k3 = zeros(ComplexF64, length(vs), length(vs))
+
     v1_ = vec(ones(length(vs))' .* vs)
     v2_ = vec(vs' .* ones(length(vs)))
     w_ = fill(w, length(v1_))
-
     function evaluate_vertex(Γ)
         Γ_dm = mfRG.su2_convert_spin_channel(c, Γ)
         x = Γ_dm[2](v1_, v2_, w_, Val(c))

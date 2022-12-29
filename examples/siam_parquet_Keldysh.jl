@@ -2,9 +2,15 @@ using mfRG
 using PyPlot
 
 # Compute the vertex of SIAM by solving parquet equations by fixed point iteration.
-# Obtain Fig. 9.1 of E. Walter thesis (2021)
+# Benchmark against Fig. 9.1 of E. Walter thesis (2021)
 
-# 2022.11.08: The script takes wall time ~ 4 mins to finish in fifi server (including compilation)
+rcParams = PyPlot.PyDict(PyPlot.matplotlib."rcParams");
+rcParams["font.size"] = 15
+rcParams["lines.linewidth"] = 3
+rcParams["lines.markersize"] = 8
+
+# 2022.11.08: The script (U=0.5*Δ) takes wall time ~ 4 mins to finish in fifi server
+#             (including compilation)
 # 2022.11.08: Wall time 2m 45s (1 thread, including compilation which takes ~50% of the time)
 
 begin
@@ -26,19 +32,27 @@ begin
     e = 0
     Δ = 10.0
     U = 0.5 * Δ
-    t = 0.005 * Δ
-    G0 = SIAMLazyGreen2P{:KF}(; e, Δ, t)
+    # U = 2.5 * Δ
+    temperature = 0.01 * U
+    G0 = SIAMLazyGreen2P{:KF}(; e, Δ, t=temperature)
+
+    # # Parameters to ensure ~1% error (U = 2.5 * Δ takes ~ 485 sec with 4 threads)
+    # vgrid_1p = get_nonequidistant_grid(10, 101) .* Δ;
+    # wgrid_k1 = get_nonequidistant_grid(20, 71; w_s=10) .* Δ;
+    # vgrid_k1 = get_nonequidistant_grid(20, 71; w_s=10) .* Δ;
+    # vgrid_k3 = get_nonequidistant_grid(20, 51; w_s=10) .* Δ;
 
     # Parameters to ensure ~5% error
     vgrid_1p = get_nonequidistant_grid(10, 101) .* Δ;
-    vgrid_k1 = get_nonequidistant_grid(10, 21) .* Δ;
+    vgrid_k1 = get_nonequidistant_grid(10, 31) .* Δ;
     wgrid_k1 = get_nonequidistant_grid(10, 31) .* Δ;
-    vgrid_k3 = get_nonequidistant_grid(10, 25) .* Δ;
+    vgrid_k3 = get_nonequidistant_grid(10, 21) .* Δ;
 
     # # Very coarse parameters for debugging
+    # vgrid_1p = get_nonequidistant_grid(10, 31) .* Δ;
     # vgrid_k1 = get_nonequidistant_grid(10, 5) .* Δ;
     # wgrid_k1 = get_nonequidistant_grid(10, 5) .* Δ;
-    # vgrid_k3 = get_nonequidistant_grid(10, 15) .* Δ;
+    # vgrid_k3 = get_nonequidistant_grid(10, 5) .* Δ;
 
     basis_v_bubble_tmp = LinearSplineAndTailBasis(2, 4, vgrid_k1)
     basis_w = LinearSplineAndTailBasis(1, 3, wgrid_k1)
@@ -48,79 +62,158 @@ begin
     basis_v_bubble, basis_w_bubble = basis_for_bubble(basis_v_bubble_tmp, basis_w)
 
     # Run parquet calculation
-    @time vertex, Σ, Π = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_w,
-        basis_v_aux, basis_1p; max_class=3, max_iter=10, reltol=1e-2, temperature=t,
-        smooth_bubble=true);
+    @time Γ, Σ, Π = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w, basis_w,
+        basis_v_aux, basis_1p; max_iter=30, reltol=1e-3, temperature, mixing_history=5);
 end;
 
 begin
+    # Plot self-energy as a function of energy
+    vs = range(-10, 10, length=101) .* Δ
+    ΣR = getindex.(Σ.(vs), 2, 1)
+    ΣA = getindex.(Σ.(vs), 1, 2)
+    ΣK = getindex.(Σ.(vs), 1, 1)
+    ΣK_FDT = (ΣA .- ΣR) .* tanh.(vs / temperature / 2)
+    plot(vs ./ Δ, real.(ΣR) ./ Δ, "-", label="Re ΣR")
+    plot(vs ./ Δ, imag.(ΣR) ./ Δ, "-", label="Re ΣR")
+    plot(vs ./ Δ, imag.(ΣK) ./ Δ, "-", label="Im ΣK")
+    plot(vs ./ Δ, imag.(ΣK_FDT) ./ Δ, "--", label="Im ΣK_FDT")
+    plot(vs ./ Δ, imag.(ΣK .- ΣK_FDT) ./ Δ .* 10, "--", label="Im (ΣK - ΣK_FDT) * 10")
+
+    xlim(extrema(vs) ./ Δ)
+    axhline(0, c="k", lw=1)
+    xlabel("\$\\nu / \\Delta \$")
+    ylabel("\$\\Sigma / \\Delta \$")
+    legend()
+
+    title("SIAM, KF, parquet approximation.\nU=$U, Δ=$Δ, T=$temperature")
+
+    # savefig("siam_parquet_Keldysh_self_energy_U_$(U/Δ).png", dpi=50)
+    display(gcf()); close(gcf())
+end
+
+
+begin
+    # Plot vertex, to be compared with Fig. 9.1 of E. Walter thesis (2021).
+
     # Evaluate vertex at a grid of frequencies
-    vv = range(-10, 10, length=101) .* Δ
+    vs = range(-10, 10, length=101) .* Δ
     w = 0.0
-    x_k1 = zeros(ComplexF64, length(vv), length(vv), 4, 4)
-    x_k2 = zeros(ComplexF64, length(vv), length(vv), 4, 4)
-    x_k3 = zeros(ComplexF64, length(vv), length(vv), 4, 4)
-    v1_ = vec(ones(length(vv))' .* vv)
-    v2_ = vec(vv' .* ones(length(vv)))
-    w_ = fill(w, length(v1_))
-    @time for Γ in mfRG.get_vertices(vertex)
-        Γ_dm = mfRG.su2_convert_spin_channel(:T, Γ)
-        x = Γ_dm[2](v1_, v2_, w_, Val(:T))
-        x = reshape(x, length(vv), length(vv), 4, 4)
-        if Γ[1].basis_f1 isa ConstantBasis && Γ[1].basis_f2 isa ConstantBasis
-            x_k1 .+= x
-        elseif Γ[1].basis_f1 isa ConstantBasis || Γ[1].basis_f2 isa ConstantBasis
-            x_k2 .+= x
-        else
-            x_k3 .+= x
-        end
-    end
-    x_k1 ./= U
-    x_k2 ./= U
-    x_k3 ./= U
-end;
+    c = :T
 
-begin
-    fig, plotaxes = subplots(3, 5, figsize=(12, 8))
-    fontsize = 16
+    v1_ = vec(ones(length(vs))' .* vs)
+    v2_ = vec(vs' .* ones(length(vs)))
+    w_ = fill(w, length(v1_))
+
+    function evaluate_vertex(Γ)
+        Γ_dm = mfRG.su2_convert_spin_channel(c, Γ)
+        x = Γ_dm[2](v1_, v2_, w_, Val(c))
+        reshape(x, length(vs), length(vs), 4, 4)
+    end
+    x_k1_A = evaluate_vertex(Γ.K1_A)
+    x_k2_A = evaluate_vertex(Γ.K2_A) .+ evaluate_vertex(Γ.K2p_A)
+    x_k3_A = evaluate_vertex(Γ.K3_A)
+    x_k1_P = evaluate_vertex(Γ.K1_P)
+    x_k2_P = evaluate_vertex(Γ.K2_P) .+ evaluate_vertex(Γ.K2p_P)
+    x_k3_P = evaluate_vertex(Γ.K3_P)
+    x_k1_T = evaluate_vertex(Γ.K1_T)
+    x_k2_T = evaluate_vertex(Γ.K2_T) .+ evaluate_vertex(Γ.K2p_T)
+    x_k3_T = evaluate_vertex(Γ.K3_T)
+
+    x_k1 = x_k1_A + x_k1_P + x_k1_T
+    x_k2 = x_k2_A + x_k2_P + x_k2_T
+    x_k3 = x_k3_A + x_k3_P + x_k3_T
+
+    fig, plotaxes = subplots(4, 5, figsize=(12, 12))
     fig.subplots_adjust(right=0.9, hspace=0.03, wspace=0.)
     cbar_axes = [
         fig.add_axes([0.91, x().y0 + x().height * 0.15, 0.015, x().height * 0.7]) for x in getproperty.(plotaxes[:, 5], :get_position)
     ]
 
-    for (i, x) in zip(1:3, [x_k1, x_k2, x_k3])
-        vmax = (U/Δ/π)^i * [0.5, 1.0, 0.7][i]
+    for (i, x) in enumerate([x_k1, x_k2, x_k3, x_k1+x_k2+x_k3])
+        if U / Δ == 0.5
+            vmax = [0.0625, 0.026, 0.00288, 0.06][i]
+        elseif U / Δ == 2.5
+            vmax = [0.7, 0.7, 0.43, 0.735][i]
+        end
         kwargs_plot = (; cmap="RdBu_r", vmin=-vmax, vmax=vmax, origin="lower",
-            extent=[extrema(vv)..., extrema(vv)...] ./ Δ, )
-        plotaxes[i, 1].imshow(real.(x[:, :, 3, 4]); kwargs_plot...)
-        plotaxes[i, 2].imshow(imag.(x[:, :, 3, 4]); kwargs_plot...)
-        plotaxes[i, 3].imshow(imag.(x[:, :, 1, 4]); kwargs_plot...)
-        plotaxes[i, 4].imshow(real.(x[:, :, 1, 3]); kwargs_plot...)
-        im = plotaxes[i, 5].imshow(imag.(x[:, :, 1, 1]); kwargs_plot...)
+            extent=[extrema(vs)..., extrema(vs)...] ./ Δ, )
+        im = plotaxes[i, 1].imshow(real.(x[:, :, 3, 4]) ./ U; kwargs_plot...)
+        im = plotaxes[i, 2].imshow(imag.(x[:, :, 3, 4]) ./ U; kwargs_plot...)
+        im = plotaxes[i, 3].imshow(imag.(x[:, :, 1, 4]) ./ U; kwargs_plot...)
+        im = plotaxes[i, 4].imshow(real.(x[:, :, 1, 3]) ./ U; kwargs_plot...)
+        im = plotaxes[i, 5].imshow(imag.(x[:, :, 1, 1]) ./ U; kwargs_plot...)
         cbar = fig.colorbar(im; cax=cbar_axes[i])
-        cbar.ax.tick_params(labelsize=fontsize)
-        plotaxes[i, 1].text(-0.5, 0.5, "\$K_$i\$"; fontsize, transform=plotaxes[i, 1].transAxes, ha="center", va="center")
+        cbar.ax.tick_params()
+        plotaxes[i, 1].text(-0.5, 0.5, i<=3 ? "\$K_$i\$" : "\$\\Gamma\$"; transform=plotaxes[i, 1].transAxes, ha="center", va="center")
     end
-    plotaxes[1, 1].set_title("Re Γ_1222"; fontsize)
-    plotaxes[1, 2].set_title("Im Γ_1222"; fontsize)
-    plotaxes[1, 3].set_title("Im Γ_1122"; fontsize)
-    plotaxes[1, 4].set_title("Re Γ_1112"; fontsize)
-    plotaxes[1, 5].set_title("Im Γ_1111"; fontsize)
+    plotaxes[1, 1].set_title("Re Γ_1222")
+    plotaxes[1, 2].set_title("Im Γ_1222")
+    plotaxes[1, 3].set_title("Im Γ_1122")
+    plotaxes[1, 4].set_title("Re Γ_1112")
+    plotaxes[1, 5].set_title("Im Γ_1111")
     for ax in plotaxes
         ax.set_xticklabels([])
         ax.set_yticklabels([])
     end
-    for ax in plotaxes[3, :]
-        ax.set_xlabel("\$\\nu / \\Delta\$"; fontsize)
+    for ax in plotaxes[end, :]
+        ax.set_xlabel("\$\\nu / \\Delta\$")
         ax.set_xticks([-5, 0, 5])
-        ax.set_xticklabels([-5, 0, 5]; fontsize)
+        ax.set_xticklabels([-5, 0, 5])
     end
     for ax in plotaxes[:, 1]
-        ax.set_ylabel("\$\\nu' / \\Delta\$"; fontsize)
+        ax.set_ylabel("\$\\nu' / \\Delta\$")
         ax.set_yticks([-5, 0, 5])
-        ax.set_yticklabels([-5, 0, 5]; fontsize)
+        ax.set_yticklabels([-5, 0, 5])
     end
-    suptitle("Γ_↑↓↓↑ / U, t channel, ω=$w, U/Δ=$(U/Δ), t/U=$(t/U)\n(Analogous to Fig. 9.1 (upper panel) of E. Walter thesis)"; y=0.98, fontsize)
-    # savefig("siam_parquet_Keldysh_vertex_U_$(U/Δ).png")
+    suptitle("SIAM, KF, parquet approximation. Full vertex Γ_↑↓↓↑ in t-channel representation.\n"
+        * "ω=$w, U=$U, Δ=$Δ, T=$temperature";)
+    # savefig("siam_parquet_Keldysh_vertex_U_$(U/Δ).png", dpi=50)
+    display(fig); close(fig)
+end
+
+begin
+    # Plot vertex, channel decomposed.
+
+    fig, plotaxes = subplots(9, 5, figsize=(10, 18))
+    fig.subplots_adjust(right=0.9, hspace=0.03, wspace=0.)
+    cbar_axes = [
+        fig.add_axes([0.91, x().y0 + x().height * 0.15, 0.015, x().height * 0.7]) for x in getproperty.(plotaxes[:, 5], :get_position)
+    ]
+
+    for (i, x) in enumerate([x_k1_A, x_k2_A, x_k3_A, x_k1_P, x_k2_P, x_k3_P, x_k1_T, x_k2_T, x_k3_T])
+        vmax = max(maximum(abs.(real.(x))), maximum(abs.(imag.(x)))) / U
+        kwargs_plot = (; cmap="RdBu_r", vmin=-vmax, vmax=vmax, origin="lower",
+            extent=[extrema(vs)..., extrema(vs)...] ./ Δ, )
+        im = plotaxes[i, 1].imshow(real.(x[:, :, 3, 4]) ./ U; kwargs_plot...)
+        im = plotaxes[i, 2].imshow(imag.(x[:, :, 3, 4]) ./ U; kwargs_plot...)
+        im = plotaxes[i, 3].imshow(imag.(x[:, :, 1, 4]) ./ U; kwargs_plot...)
+        im = plotaxes[i, 4].imshow(real.(x[:, :, 1, 3]) ./ U; kwargs_plot...)
+        im = plotaxes[i, 5].imshow(imag.(x[:, :, 1, 1]) ./ U; kwargs_plot...)
+        cbar = fig.colorbar(im; cax=cbar_axes[i])
+        cbar.ax.tick_params()
+        labeltext = "\$K_$(mod1(i,3))^$(["a","p","t"][cld(i,3)])\$"
+        plotaxes[i, 1].text(-0.5, 0.5, labeltext; transform=plotaxes[i, 1].transAxes, ha="center", va="center")
+    end
+    plotaxes[1, 1].set_title("Re Γ_1222")
+    plotaxes[1, 2].set_title("Im Γ_1222")
+    plotaxes[1, 3].set_title("Im Γ_1122")
+    plotaxes[1, 4].set_title("Re Γ_1112")
+    plotaxes[1, 5].set_title("Im Γ_1111")
+    for ax in plotaxes
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+    end
+    for ax in plotaxes[end, :]
+        ax.set_xlabel("\$\\nu / \\Delta\$")
+        ax.set_xticks([-5, 0, 5])
+        ax.set_xticklabels([-5, 0, 5])
+    end
+    for ax in plotaxes[:, 1]
+        ax.set_ylabel("\$\\nu' / \\Delta\$")
+        ax.set_yticks([-5, 0, 5])
+        ax.set_yticklabels([-5, 0, 5])
+    end
+    suptitle("SIAM, KF, parquet approximation. Full vertex Γ_↑↓↓↑ in t-channel representation.\n"
+        * "ω=$w, U=$U, Δ=$Δ, T=$temperature"; y=0.94)
     display(fig); close(fig)
 end
