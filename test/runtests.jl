@@ -18,5 +18,6 @@ using Test
     include("test_model_siam.jl")
 
     include("test_parquet.jl")
+    include("test_response.jl")
     include("test_analytic_continuation.jl")
 end

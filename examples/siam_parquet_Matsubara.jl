@@ -25,7 +25,7 @@ begin
     temperature = 0.1
     U = 1.0
     D = 10
-    G0 = SIAMLazyGreen2P{:MF}(; e, Δ, t=temperature, D)
+    G0 = SIAMLazyGreen2P{:MF}(; e, Δ, temperature, D)
 
     # Control parameter for the basis set size
     # nmax = 12  # runtime ~6 seconds, error below 1 %

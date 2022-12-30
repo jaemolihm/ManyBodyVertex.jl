@@ -34,7 +34,7 @@ begin
     U = 0.5 * Δ
     # U = 2.5 * Δ
     temperature = 0.01 * U
-    G0 = SIAMLazyGreen2P{:KF}(; e, Δ, t=temperature)
+    G0 = SIAMLazyGreen2P{:KF}(; e, Δ, temperature)
 
     # # Parameters to ensure ~1% error (U = 2.5 * Δ takes ~ 485 sec with 4 threads)
     # vgrid_1p = get_nonequidistant_grid(10, 101) .* Δ;

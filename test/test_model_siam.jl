@@ -8,21 +8,21 @@ using mfRG
     using mfRG: siam_get_green_function
     e = 0.5
     Δ = 1.0
-    t = 0.1
+    temperature = 0.1
     v = 10.0
-    @test siam_get_green_function(v, Val(:MF); e, Δ, t) isa Number
-    @test siam_get_green_function(v, Val(:KF); e, Δ, t) isa SMatrix{2,2}
+    @test siam_get_green_function(v, Val(:MF); e, Δ, temperature) isa Number
+    @test siam_get_green_function(v, Val(:KF); e, Δ, temperature) isa SMatrix{2,2}
     for F in (:MF, :KF)
-        @inferred siam_get_green_function(v, Val(F); e, Δ, t)
+        @inferred siam_get_green_function(v, Val(F); e, Δ, temperature)
     end
 
     # Test SIAMLazyGreen2P
     for F in (:MF, :KF)
         D = F === :MF ? 5.0 : Inf
-        G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
+        G0 = SIAMLazyGreen2P{F}(; e, Δ, temperature, D)
         @test G0 isa mfRG.AbstractFrequencyVertex{F, ComplexF64}
         v = rand()
-        @test all(G0(v) .≈ siam_get_green_function(v, Val(F); e, Δ, t, D))
+        @test all(G0(v) .≈ siam_get_green_function(v, Val(F); e, Δ, temperature, D))
         @inferred G0(v)
     end
 
@@ -30,8 +30,8 @@ using mfRG
     basis_f = LinearSplineAndTailBasis(2, 4, -3:0.6:3)
     basis_b = LinearSplineAndTailBasis(1, 3, -2:0.5:2)
     for F in (:MF, :KF), C in (:A, :P, :T)
-        G0 = SIAMLazyGreen2P{F}(; e, Δ, t)
-        @test compute_bubble(G0, G0, basis_f, basis_b, Val(C); temperature=t) isa Bubble{F, C, ComplexF64}
+        G0 = SIAMLazyGreen2P{F}(; e, Δ, temperature)
+        @test compute_bubble(G0, G0, basis_f, basis_b, Val(C); temperature) isa Bubble{F, C, ComplexF64}
     end
 
 end
@@ -41,13 +41,13 @@ end
     # accuracy even for a coarse basis_f.
     e = 0.5
     Δ = 1.5
-    t = 0.1
+    temperature = 0.1
     basis_f = LinearSplineAndTailBasis(2, 4, range(-10, 10, step=5.0))
     basis_b = LinearSplineAndTailBasis(1, 0, -3.:3:3)
 
-    G0 = SIAMLazyGreen2P{:KF}(; e, Δ, t)
+    G0 = SIAMLazyGreen2P{:KF}(; e, Δ, temperature)
     for c in (:A, :P, :T)
-        Π = compute_bubble_smoothed(G0, G0, basis_f, basis_b, Val(c); temperature=t)
+        Π = compute_bubble_smoothed(G0, G0, basis_f, basis_b, Val(c); temperature)
         for w in basis_b.grid
             Π_w = reshape(to_matrix(Π, w, ConstantBasis(), ConstantBasis()), 2, 2, 2, 2)
 
@@ -73,7 +73,7 @@ end
     # similar results. (The two results should be identical for infinitely dense basis_1p.)
     for F in (:KF, :MF)
         D = F == :KF ? Inf : 5.0
-        G0 = SIAMLazyGreen2P{F}(; e, Δ, t, D)
+        G0 = SIAMLazyGreen2P{F}(; e, Δ, temperature, D)
 
         # Compute Green2P object for G0
         if F === :KF
@@ -93,12 +93,12 @@ end
         G0_basis = Green2P{F}(basis_1p, 1, data)
 
         for C in (:A, :P, :T)
-            Π1 = compute_bubble(G0, G0, basis_f, basis_b, Val(C); temperature=t)
-            Π2 = compute_bubble(G0_basis, G0_basis, basis_f, basis_b, Val(C); temperature=t)
+            Π1 = compute_bubble(G0, G0, basis_f, basis_b, Val(C); temperature)
+            Π2 = compute_bubble(G0_basis, G0_basis, basis_f, basis_b, Val(C); temperature)
             @test norm(Π1.data - Π2.data) / norm(Π1.data) < 4e-3
 
-            Π1 = compute_bubble_smoothed(G0, G0, basis_f, basis_b, Val(C); temperature=t)
-            Π2 = compute_bubble_smoothed(G0_basis, G0_basis, basis_f, basis_b, Val(C); temperature=t)
+            Π1 = compute_bubble_smoothed(G0, G0, basis_f, basis_b, Val(C); temperature)
+            Π2 = compute_bubble_smoothed(G0_basis, G0_basis, basis_f, basis_b, Val(C); temperature)
             @test norm(Π1.data - Π2.data) / norm(Π1.data) < 4e-3
         end
     end
