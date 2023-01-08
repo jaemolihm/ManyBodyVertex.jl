@@ -74,7 +74,7 @@ begin
     ΣK = getindex.(Σ.(vs), 1, 1)
     ΣK_FDT = (ΣA .- ΣR) .* tanh.(vs / temperature / 2)
     plot(vs ./ Δ, real.(ΣR) ./ Δ, "-", label="Re ΣR")
-    plot(vs ./ Δ, imag.(ΣR) ./ Δ, "-", label="Re ΣR")
+    plot(vs ./ Δ, imag.(ΣR) ./ Δ, "-", label="Im ΣR")
     plot(vs ./ Δ, imag.(ΣK) ./ Δ, "-", label="Im ΣK")
     plot(vs ./ Δ, imag.(ΣK_FDT) ./ Δ, "--", label="Im ΣK_FDT")
     plot(vs ./ Δ, imag.(ΣK .- ΣK_FDT) ./ Δ .* 10, "--", label="Im (ΣK - ΣK_FDT) * 10")
