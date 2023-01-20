@@ -87,18 +87,57 @@ end
 Evaluate vertex at given frequencies in the channel parametrization.
 """
 function (Γ::Vertex4P{F, C_Γ})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ}
+    coeff_f1, coeff_f2, coeff_b = _get_vertex_coeff_buffers(Γ)
+    nind = get_nind(Γ)
+    Γ_vvw = zeros(eltype(Γ), nind^2, nind^2)
+
     v1234 = frequency_to_standard(Val(F), c_out, v1, v2, w)
-    v1_Γ, v2_Γ, w_Γ = frequency_to_channel(Val(F), Val(C_Γ), v1234)
+    vvw = frequency_to_channel(Val(F), Val(C_Γ), v1234)
+    _evaluate_vertex_with_buffer!(Γ_vvw, Γ, vvw..., coeff_f1, coeff_f2, coeff_b)
+    _permute_orbital_indices_matrix_4p(Val(C_Γ), c_out, Γ_vvw, nind)
+end
+
+"""
+Batched version of Vertex evaluation
+"""
+function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::AbstractVector,
+        c_out::Val=Val(C_Γ)) where {F, C_Γ}
+    coeff_f1, coeff_f2, coeff_b = _get_vertex_coeff_buffers(Γ)
 
     nind = get_nind(Γ)
-    coeff_f1 = Γ.basis_f1[v1_Γ, :]
-    coeff_f2 = Γ.basis_f2[v2_Γ, :]
-    coeff_b = Γ.basis_b[w_Γ, :]
+    nfreq = length(v1)
+    Γ_vvw = zeros(eltype(Γ), nfreq, nind^2, nind^2)
+    @views for ifreq in 1:nfreq
+        v1234 = frequency_to_standard(Val(F), c_out, v1[ifreq], v2[ifreq], w[ifreq])
+        vvw = frequency_to_channel(Val(F), Val(C_Γ), v1234)
+        _evaluate_vertex_with_buffer!(Γ_vvw[ifreq, :, :], Γ, vvw..., coeff_f1, coeff_f2, coeff_b)
+    end
+    _permute_orbital_indices_matrix_4p_keep_dim1(Val(C_Γ), c_out, Γ_vvw, nind)
+end
+
+function _get_vertex_coeff_buffers(Γ)
+    coeff_f1 = zeros(eltype(Γ.basis_f1), size(Γ.basis_f1, 2))
+    coeff_f2 = zeros(eltype(Γ.basis_f2), size(Γ.basis_f2, 2))
+    coeff_b = zeros(eltype(Γ.basis_b), size(Γ.basis_b, 2))
+    (; coeff_f1, coeff_f2, coeff_b)
+end
+
+function _evaluate_vertex_with_buffer!(Γ_vvw, Γ, v1, v2, w, coeff_f1, coeff_f2, coeff_b)
+    # Temporary buffer arrays are given as input
+    nind = get_nind(Γ)
+    @views coeff_f1 .= Γ.basis_f1[v1, :]
+    @views coeff_f2 .= Γ.basis_f2[v2, :]
+    @views coeff_b .= Γ.basis_b[w, :]
+
     # Compute the following einsum operation with a manually optimized implementation.
-    # Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2), ())
-    # @ein Γ_vvw[i, j] := Γ_array[v1, i, v2, j, w] * coeff_f1[v1] * coeff_f2[v2] * coeff_b[w]
+    # Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, nb_b(Γ)), ())
+    # @ein Γ_vvw[ifreq, i, j] := Γ_array[v1, i, v2, j, w]
+    #                       * Γ.basis_f1[vvw_Γ[ifreq][1], v1]
+    #                       * Γ.basis_f2[vvw_Γ[ifreq][2], v2]
+    #                       * Γ.basis_b[vvw_Γ[ifreq][3], w]
+
     # Use sparsity of coeffs to optimize.
-    Γ_vvw = zeros(eltype(Γ), nind^2, nind^2)
+    Γ_vvw .= 0
     @inbounds for ib in 1:nb_b(Γ)
         coeff_b[ib] == 0 && continue
         for j in 1:nind^2, iv2 in 1:nb_f2(Γ)
@@ -111,66 +150,7 @@ function (Γ::Vertex4P{F, C_Γ})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ
             end
         end
     end
-    _permute_orbital_indices_matrix_4p(Val(C_Γ), c_out, Γ_vvw, nind)
-end
-
-"""
-Batched version of Vertex evaluation
-"""
-function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::AbstractVector,
-        c_out::Val=Val(C_Γ)) where {F, C_Γ}
-    v1234 = frequency_to_standard.(Val(F), c_out, v1, v2, w)
-    vvw_Γ = frequency_to_channel.(Val(F), Val(C_Γ), v1234)
-    nfreq = length(vvw_Γ)
-    # Compute the following einsum operation with a manually optimized implementation.
-    # Γ_array = Base.ReshapedArray(Γ.data, (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, nb_b(Γ)), ())
-    # @ein Γ_vvw[ifreq, i, j] := Γ_array[v1, i, v2, j, w]
-    #                       * Γ.basis_f1[vvw_Γ[ifreq][1], v1]
-    #                       * Γ.basis_f2[vvw_Γ[ifreq][2], v2]
-    #                       * Γ.basis_b[vvw_Γ[ifreq][3], w]
-
-    # # Version 1: ~1.5 times faster but allocates ~50 times more.
-    # nind = get_nind(Γ)
-    # coeff_f1 = Γ.basis_f1[getindex.(vvw_Γ, 1), :]
-    # coeff_f2 = Γ.basis_f2[getindex.(vvw_Γ, 2), :]
-    # coeff_b = Γ.basis_b[getindex.(vvw_Γ, 3), :]
-
-    # Γ_array = zeros(eltype(Γ), (nb_f1(Γ), nind^2, nb_f2(Γ), nind^2, length(v1)))
-    # Γ_array_reshape = Base.ReshapedArray(Γ_array, (nb_f1(Γ) * nb_f2(Γ) * nind^4, length(v1)), ())
-    # Γ_data_reshape = Base.ReshapedArray(Γ.data, (prod(size(Γ.data)[1:2]), size(Γ.data, 3)), ())
-    # mul!(Γ_array_reshape, Γ_data_reshape, Transpose(coeff_b))
-    # Γ_vvw = zeros(eltype(Γ), length(v1), nind^2, nind^2)
-    # @views for inds in CartesianIndices(size(Γ_array)[1:4])
-    #     iv1, i, iv2, j = inds.I
-    #     @. Γ_vvw[:, i, j] += Γ_array[iv1, i, iv2, j, :] * coeff_f1[:, iv1] * coeff_f2[:, iv2]
-    # end
-
-    # Version 2: ~1.5 times slower but allocates little.
-    nind = get_nind(Γ)
-    coeff_f1 = zeros(eltype(Γ.basis_f1), size(Γ.basis_f1, 2))
-    coeff_f2 = zeros(eltype(Γ.basis_f2), size(Γ.basis_f2, 2))
-    coeff_b = zeros(eltype(Γ.basis_b), size(Γ.basis_b, 2))
-
-    Γ_vvw = zeros(eltype(Γ), nfreq, nind^2, nind^2)
-    @views for ifreq in 1:nfreq
-        coeff_f1 .= Γ.basis_f1[vvw_Γ[ifreq][1], :]
-        coeff_f2 .= Γ.basis_f2[vvw_Γ[ifreq][2], :]
-        coeff_b .= Γ.basis_b[vvw_Γ[ifreq][3], :]
-        # Use sparsity of coeffs to optimize.
-        @inbounds for ib in 1:nb_b(Γ)
-            coeff_b[ib] == 0 && continue
-            for j in 1:nind^2, iv2 in 1:nb_f2(Γ)
-                coeff_f2[iv2] == 0 && continue
-                jj = iv2 + (j - 1) * nb_f2(Γ)
-                for i in 1:nind^2, iv1 in 1:nb_f1(Γ)
-                    coeff_f1[iv1] == 0 && continue
-                    ii = iv1 + (i - 1) * nb_f1(Γ)
-                    Γ_vvw[ifreq, i, j] += Γ.data[ii, jj, ib] * coeff_f1[iv1] * coeff_f2[iv2] * coeff_b[ib]
-                end
-            end
-        end
-    end
-    _permute_orbital_indices_matrix_4p_keep_dim1(Val(C_Γ), c_out, Γ_vvw, nind)
+    Γ_vvw
 end
 
 
