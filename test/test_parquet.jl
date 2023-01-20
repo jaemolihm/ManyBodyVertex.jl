@@ -35,6 +35,23 @@ using Test
     @test Γ.basis_k3_b === (; freq=basis_w_k2)
     @test Γ.basis_k2_f === (; freq=basis_aux)
     @test Γ.basis_k3_f === (; freq=basis_aux)
+
+    # Test SBE decomposition
+    vs = vgrid_k2
+    ws = wgrid_k2
+    @time for ispin in 1:2
+        Γ_K123 = (Γ.K1_A[ispin], Γ.K2_A[ispin], Γ.K2p_A[ispin], Γ.K3_A[ispin])
+        ∇, M = mfRG.asymptotic_to_sbe(Γ.Γ0_A[ispin], Γ_K123...);
+        z1 = sum([V(v, vp, w) for v in vs, vp in vs, w in ws] for V in Γ_K123)
+        z2 = sum([V(v, vp, w) for v in vs, vp in vs, w in ws] for V in [∇, M])
+        @test z1 ≈ z2 rtol=1e-4
+
+        for C in (:A, :P, :T)
+            z1 = sum(to_matrix(V, 0., basis_aux, basis_aux, Val(C)) for V in Γ_K123)
+            z2 = sum(to_matrix(V, 0., basis_aux, basis_aux, Val(C)) for V in [∇, M])
+            @test z1 ≈ z2 rtol=2e-2
+        end
+    end
 end
 
 @testset "SIAM parquet w/o irr MF" begin
@@ -80,4 +97,21 @@ end
     # Test self-energy
     @test Σ_exact.data ≈ Σ.data rtol=1e-5
     @test Σ_exact.offset ≈ Σ.offset rtol=1e-5
+
+    # Test SBE decomposition
+    vs = -nmax:nmax
+    ws = -nmax:nmax
+    @time for ispin in 1:2
+        Γ_K123 = (Γ₀.K1_A[ispin], Γ₀.K2_A[ispin], Γ₀.K2p_A[ispin], Γ₀.K3_A[ispin])
+        ∇, M = mfRG.asymptotic_to_sbe(Γ₀.Γ0_A[ispin], Γ_K123...);
+        z1 = sum([V(v, vp, w) for v in vs, vp in vs, w in ws] for V in Γ_K123)
+        z2 = sum([V(v, vp, w) for v in vs, vp in vs, w in ws] for V in [∇, M])
+        @test z1 ≈ z2
+
+        for C in (:A, :P, :T)
+            z1 = sum(to_matrix(V, 1, basis_v_aux, basis_v_aux, Val(C)) for V in Γ_K123)
+            z2 = sum(to_matrix(V, 1, basis_v_aux, basis_v_aux, Val(C)) for V in [∇, M])
+            @test z1 ≈ z2
+        end
+    end
 end
