@@ -3,10 +3,11 @@ using TimerOutputs
 
 export get_nonequidistant_grid
 
-export nbasis
-export ConstantBasis, LinearSplineAndTailBasis, ShiftedSplineBasis
+export nbasis, get_formalism, get_nind
+export constant_basis, LinearSplineAndTailBasis, ShiftedSplineBasis
 export ImagConstantBasis, ImagGridAndTailBasis
 export get_fitting_points
+export concat_constant_basis
 export basis_integral
 export basis_for_bubble
 
@@ -44,6 +45,7 @@ include("acceleration.jl")
 
 include("basis/basis_functions.jl")
 include("basis/basis_functions_imaginary.jl")
+include("basis/concatenated_basis.jl")
 include("basis/basis_integral.jl")
 include("basis/basis_integral_imaginary.jl")
 include("basis/ShiftedSplineBasis.jl")
