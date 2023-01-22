@@ -4,7 +4,7 @@ function run_parquet_nonlocal(G0, U, basis_v_bubble, basis_w_bubble, rbasis,
         basis_k1_b, basis_k2_b, basis_k2_f, basis_1p=get_basis(G0);
         max_class=3, max_iter=5, reltol=1e-2, temperature=nothing,
         smooth_bubble=get_formalism(G0) === :MF ? false : true,
-        mixing_history=10, mixing_coeff=0.5, iterate_by_bse=false)
+        mixing_history=10, mixing_coeff=0.5)
 
     F = get_formalism(G0)
     T = eltype(G0)
@@ -32,7 +32,7 @@ function run_parquet_nonlocal(G0, U, basis_v_bubble, basis_w_bubble, rbasis,
 
     for i in 1:max_iter
         @info "== Iteration $i =="
-        @time Γ_new = iterate_parquet(Γ, ΠA, ΠP; iterate_by_bse)
+        @time Γ_new = iterate_parquet(Γ, ΠA, ΠP)
 
         err = get_difference_norm(Γ_new, Γ)
 
