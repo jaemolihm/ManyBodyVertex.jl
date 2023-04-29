@@ -1,8 +1,6 @@
 using Test
 using mfRG
 
-# TODO: Add test with finite D
-
 @testset "model SIAM" begin
     using StaticArrays
     using mfRG: siam_get_green_function
