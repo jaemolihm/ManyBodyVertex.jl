@@ -39,16 +39,18 @@ using Test
     # Test SBE decomposition
     vs = vgrid_k2
     ws = wgrid_k2
+    Γ_sbe = mfRG.asymptotic_to_sbe(Γ)
     @time for ispin in 1:2
         Γ_K123 = (Γ.K1_A[ispin], Γ.K2_A[ispin], Γ.K2p_A[ispin], Γ.K3_A[ispin])
-        ∇, M = mfRG.asymptotic_to_sbe(Γ.Γ0_A[ispin], Γ_K123...);
+        ∇, M = Γ_sbe.∇_A[ispin], Γ_sbe.M_A[ispin]
+
         z1 = sum([V(v, vp, w) for v in vs, vp in vs, w in ws] for V in Γ_K123)
         z2 = sum([V(v, vp, w) for v in vs, vp in vs, w in ws] for V in [∇, M])
         @test z1 ≈ z2 rtol=1e-4
 
         for C in (:A, :P, :T)
-            z1 = sum(to_matrix(V, 0., basis_aux, basis_aux, Val(C)) for V in Γ_K123)
-            z2 = sum(to_matrix(V, 0., basis_aux, basis_aux, Val(C)) for V in [∇, M])
+            z1 = sum(to_matrix(V, 0.5, basis_aux, basis_aux, Val(C)) for V in Γ_K123)
+            z2 = sum(to_matrix(V, 0.5, basis_aux, basis_aux, Val(C)) for V in [∇, M])
             @test z1 ≈ z2 rtol=2e-2
         end
     end
