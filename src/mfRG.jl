@@ -83,5 +83,6 @@ include("real_space/real_space_BSE.jl")
 include("real_space/parquet.jl")
 
 include("models/siam.jl")
+include("models/hubbard_atom.jl")
 include("models/hubbard.jl")
 end

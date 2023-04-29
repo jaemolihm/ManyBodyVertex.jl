@@ -16,6 +16,7 @@ using Test
 
     include("test_BSE.jl")
     include("test_model_siam.jl")
+    include("test_hubbard_atom.jl")
 
     include("test_parquet.jl")
     include("test_response.jl")
