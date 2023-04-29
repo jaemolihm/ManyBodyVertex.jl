@@ -23,5 +23,5 @@ using mfRG
     G0 = SIAMLazyGreen2P{:MF}(; e=0., Δ=0.0, temperature)
     G_Hubbard = solve_Dyson(G0, Σ_HA)
     vs = -10:9
-    @test getindex.(G_Hubbard.(vv), 1, 1) ≈ getindex.(G_HA.(vv), 1, 1) atol=1e-4
+    @test getindex.(G_Hubbard.(vs), 1, 1) ≈ getindex.(G_HA.(vs), 1, 1) atol=1e-4
 end

@@ -11,11 +11,15 @@ function _mapreduce_bubble_integrals(Γ1s, Π, Γ2s, basis_b)
     end
 end
 
-function iterate_parquet_asymptotic_single_channel(Π, U, γ, Irr;
+function iterate_parquet_single_channel_asymptotic(Π, U, γ, Irr;
                                         max_class=3, basis_k1_b, basis_k2_f, basis_k2_b)
 
     C = channel(Π[1])
-    K1_new = _mapreduce_bubble_integrals([U], Π, [U, γ.K1, γ.K2], basis_k1_b)
+    # K1_new = _mapreduce_bubble_integrals([U], Π, [U, γ.K1, γ.K2], basis_k1_b)
+    K1_new = (
+        _mapreduce_bubble_integrals([U], Π, [U, γ.K1, γ.K2], basis_k1_b)
+        .+ _mapreduce_bubble_integrals([U, γ.K1, γ.K2p], Π, [U], basis_k1_b)
+    ) ./ 2
 
     if max_class >= 2 && !isempty(Irr)
         ws = get_fitting_points(basis_k2_b.freq)
@@ -28,7 +32,11 @@ function iterate_parquet_asymptotic_single_channel(Π, U, γ, Irr;
     end
 
     if max_class >= 3 && !isempty(Irr)
-        K3_new = _mapreduce_bubble_integrals([Irr_mat], Π, [Irr_mat, γ.K2p, γ.K3], basis_k2_b)
+        # K3_new = _mapreduce_bubble_integrals([Irr_mat], Π, [Irr_mat, γ.K2p, γ.K3], basis_k2_b)
+        K3_new = (
+            _mapreduce_bubble_integrals([Irr_mat], Π, [Irr_mat, γ.K2p, γ.K3], basis_k2_b)
+            .+ _mapreduce_bubble_integrals([Irr_mat, γ.K2, γ.K3], Π, [Irr_mat], basis_k2_b)
+        ) ./ 2
     else
         K3_new = nothing
     end
