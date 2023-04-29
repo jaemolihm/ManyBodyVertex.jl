@@ -1,4 +1,5 @@
 # FIXME: non-SU2
+# FIXME: Exclude Λ from Anderson
 
 function _mapreduce_bubble_integrals(Γ1s, Π, Γ2s, basis_b)
     Γ1s_filtered = filter!(!isnothing, Γ1s)
@@ -35,22 +36,24 @@ function iterate_parquet_asymptotic_single_channel(Π, U, γ, Irr;
     (; K1=K1_new, K2=K2_new, K2p=K2p_new, K3=K3_new)
 end
 
-function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP)
-    single_channel_iterate_function = iterate_parquet_asymptotic_single_channel
+function iterate_parquet_single_channel(::Val{C}, Γ::AsymptoticVertex, Π) where {C}
+    U = Γ(C, :Γ0)
+    γ = get_reducible_vertices(C, Γ)
+    Irr = get_irreducible_vertices(C, Γ)
+    # Function barrier
+    iterate_parquet_single_channel_asymptotic(
+        Π, U, γ, Irr; Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_f, Γ.basis_k2_b
+    )
+end
 
+function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP)
     # BSE for channel A
     @info "Solving BSE for channel A"
-    K1_A, K2_A, K2p_A, K3_A = single_channel_iterate_function(
-        ΠA, Γ.Γ0_A, get_reducible_vertices(:A, Γ), get_irreducible_vertices(:A, Γ);
-        Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_f, Γ.basis_k2_b
-    )
+    K1_A, K2_A, K2p_A, K3_A = iterate_parquet_single_channel(Val(:A), Γ, ΠA)
 
     # BSE for channel P
     @info "Solving BSE for channel P"
-    K1_P, K2_P, K2p_P, K3_P = single_channel_iterate_function(
-        ΠP, Γ.Γ0_P, get_reducible_vertices(:P, Γ), get_irreducible_vertices(:P, Γ);
-        Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_f, Γ.basis_k2_b
-    )
+    K1_P, K2_P, K2p_P, K3_P = iterate_parquet_single_channel(Val(:P), Γ, ΠP)
 
     # Channel T: use crossing symmetry
     @info "Applying crossing symmetry for channel T"
@@ -66,7 +69,7 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP)
     if Γ.max_class >= 3
         Γs = (; Γs..., K3_A, K3_P, K3_T)
     end
-    typeof(Γ)(; Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_b, Γ.basis_k2_f, Γs...)
+    typeof(Γ)(; Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_b, Γ.basis_k2_f, Γ.Λ_A, Γ.Λ_P, Γ.Λ_T, Γs...)
 end
 
 function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature,

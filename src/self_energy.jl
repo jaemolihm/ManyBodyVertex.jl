@@ -84,13 +84,23 @@ function compute_self_energy_SU2(Γ, G, ΠA, ΠP, basis=get_basis(G); temperatur
     U_ΠA_U = vertex_bubble_integral.(Γ.Γ0_A, ΠA, Γ.Γ0_A, Ref(Γ.basis_k1_b)) .* (1/3)
     U_ΠA_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K1_A, Γ.K2_A], Γ.basis_k1_b)
     U_ΠA_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.K2p_A, Γ.K3_A], Γ.basis_k2_b)
+    if Γ.Λ_A !== nothing
+        U_ΠA_Λ = _mapreduce_bubble_integrals([Γ.Γ0_A], ΠA, [Γ.Λ_A], Γ.basis_k2_b) .* (1/3)
+    else
+        U_ΠA_Λ = nothing
+    end
 
     U_ΠP_U = vertex_bubble_integral.(Γ.Γ0_P, ΠP, Γ.Γ0_P, Ref(Γ.basis_k1_b)) .* (1/3)
     U_ΠP_K1K2 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K1_P, Γ.K2_P], Γ.basis_k1_b)
     U_ΠP_K2pK3 = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.K2p_P, Γ.K3_P], Γ.basis_k2_b)
+    if Γ.Λ_P !== nothing
+        U_ΠP_Λ = _mapreduce_bubble_integrals([Γ.Γ0_P], ΠP, [Γ.Λ_P], Γ.basis_k2_b) .* (1/3)
+    else
+        U_ΠP_Λ = nothing
+    end
 
     vertices_use = []
-    push!(vertices_use, U_ΠA_K1K2, U_ΠA_K2pK3, U_ΠP_K1K2, U_ΠP_K2pK3)
+    push!(vertices_use, U_ΠA_K1K2, U_ΠA_K2pK3, U_ΠP_K1K2, U_ΠP_K2pK3, U_ΠA_Λ, U_ΠP_Λ)
     if !exclude_UU
         push!(vertices_use, U_ΠA_U, U_ΠP_U)
     end

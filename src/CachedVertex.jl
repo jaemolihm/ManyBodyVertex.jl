@@ -14,6 +14,15 @@ struct CachedVertex4P{F, C, T, BF1, BF2, FT} <: AbstractVertex4P{F, C, T}
     end
 end
 
+data_fieldnames(::Type{<:CachedVertex4P}) = (:data,)
+function _check_basis_identity(A::CachedVertex4P, B::CachedVertex4P)
+    get_formalism(A) === get_formalism(B) || error("Different formalism")
+    channel(A) === channel(B) || error("Different channel")
+    A.ws ≈ B.ws || error("Different ws")
+    A.basis_f1 === B.basis_f1 || error("Different basis_f1")
+    A.basis_f2 === B.basis_f2 || error("Different basis_f2")
+end
+
 nb_f1(Γ::CachedVertex4P) = size(Γ.basis_f1, 2)
 nb_f2(Γ::CachedVertex4P) = size(Γ.basis_f2, 2)
 

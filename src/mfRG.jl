@@ -65,6 +65,7 @@ include("ScreenedBubble.jl")
 include("compute_bubble.jl")
 include("self_energy.jl")
 include("single_boson_exchange.jl")
+include("vertex_to_vector.jl")
 
 include("real_space/real_space_basis.jl")
 include("real_space/RealSpaceGreen.jl")
