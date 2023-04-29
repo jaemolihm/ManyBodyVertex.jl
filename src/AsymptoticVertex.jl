@@ -95,7 +95,7 @@ function get_irreducible_vertices(C, Γ::AsymptoticVertex)
         C2 === C && continue
         for class in (:K1, :K2, :K2p, :K3, :Λ)
             x = Γ(C2, class)
-            x !== nothing && append!(Γs, x)
+            x !== nothing && push!(Γs, x)
         end
     end
     su2_convert_spin_channel.(C, Γs)
