@@ -1,4 +1,3 @@
-
 """
     SBEReducibleVertex(U, W, Λb, Λ) => ∇
 Vertex in the single-boson exchange (SBE) decomposition.

@@ -70,7 +70,7 @@ struct SIAMLazyGreen2P{F, T} <: AbstractLazyGreen2P{F, T}
 end
 function SIAMLazyGreen2P{F}(::Type{T}=ComplexF64; e, Δ, t=nothing, temperature=t, D=Inf) where {F, T}
     if t !== nothing
-        Base.depwarn("Use keyword temperature insetad of t", :SIAMLazyGreen2P, force=true)
+        Base.depwarn("Use keyword temperature instead of t", :SIAMLazyGreen2P, force=true)
     end
     SIAMLazyGreen2P{F, T}(; e, Δ, temperature, D)
 end

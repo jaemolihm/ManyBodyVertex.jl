@@ -28,8 +28,8 @@ begin
     G0 = SIAMLazyGreen2P{:MF}(; e, Δ, temperature, D)
 
     # Control parameter for the basis set size
-    # nmax = 12  # runtime ~6 seconds, error below 1 %
-    nmax = 24  # runtime ~46 seconds, error below 0.03 %
+    nmax = 12  # runtime ~6 seconds, error below 1 %
+    # nmax = 24  # runtime ~46 seconds, error below 0.03 %
 
     # Set frequency basis functions
     basis_w_k1 = ImagGridAndTailBasis(:Boson, 1, 0, 4 * nmax)
