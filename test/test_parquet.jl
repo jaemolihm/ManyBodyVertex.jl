@@ -103,9 +103,10 @@ end
     # Test SBE decomposition
     vs = -nmax:nmax
     ws = -nmax:nmax
+    Γ₀_SBE = mfRG.asymptotic_to_sbe(Γ₀)
     @time for ispin in 1:2
         Γ_K123 = (Γ₀.K1_A[ispin], Γ₀.K2_A[ispin], Γ₀.K2p_A[ispin], Γ₀.K3_A[ispin])
-        ∇, M = mfRG.asymptotic_to_sbe(Γ₀.Γ0_A[ispin], Γ_K123...);
+        ∇, M = Γ₀_SBE.∇_A[ispin], Γ₀_SBE.M_A[ispin]
         z1 = sum([V(v, vp, w) for v in vs, vp in vs, w in ws] for V in Γ_K123)
         z2 = sum([V(v, vp, w) for v in vs, vp in vs, w in ws] for V in [∇, M])
         @test z1 ≈ z2
