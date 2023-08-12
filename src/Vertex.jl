@@ -219,9 +219,10 @@ Return a the 4-point KF vertex as a 11-dimensional array in the standard index o
 - Input `Γ.data`: `(a, i1, k1, i2, k2), (a', i3, k3, i4, k4), b`
 - Output: `a, a', i1, i2, i3, i4, k1, k2, k3, k4, b`
 """
-function keldyshview(Γ::Vertex4P{:KF, C}) where {C}
+function keldyshview(Γ::Vertex4P{F, C}) where {F, C}
     norb = Γ.norb
-    data_size = (nb_f1(Γ), norb, 2, norb, 2, nb_f2(Γ), norb, 2, norb, 2, nb_b(Γ))
+    nk = nkeldysh(F)
+    data_size = (nb_f1(Γ), norb, nk, norb, nk, nb_f2(Γ), norb, nk, norb, nk, nb_b(Γ))
     # ((v, ik1, ik2), (v', ik3, ik4), w) -> (v, v', i1, i2, i3, i4, k1, k2, k3, k4, w)
     perm = [1, 6, 2, 4, 7, 9, 3, 5, 8, 10, 11]
     # channel orbital/Keldysh order -> standard orbital/Keldysh order
