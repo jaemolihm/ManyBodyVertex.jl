@@ -22,7 +22,7 @@ Conversion between the two spin parametrizations are done using the
     su2_convert_spin_channel(C_out, Γ, C_in=channel(Γ[1]))
 Convert between the "dm" (for channel A and T) and "st" (for channel P) spin representations.
 """
-function su2_convert_spin_channel(C_out::Symbol, Γ, C_in=channel(Γ[1]))
+function su2_convert_spin_channel(C_out::Symbol, Γ, ::Val{C_in}=channel(Γ[1])) where {C_in}
     if C_in === C_out
         Γ
     elseif (C_in, C_out) === (:A, :P)
@@ -39,7 +39,7 @@ function su2_convert_spin_channel(C_out::Symbol, Γ, C_in=channel(Γ[1]))
 end
 
 function su2_apply_crossing(Γ)
-    channel(Γ[1]) === :A || error("su2_apply_crossing implemented only for A -> T")
+    channel(Γ[1]) === Val(:A) || error("su2_apply_crossing implemented only for A -> T")
     apply_crossing.(Γ)
 end
 su2_apply_crossing(::Nothing) = nothing

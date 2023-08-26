@@ -34,8 +34,18 @@ end
 real_space_channel(::RealSpaceBubble{F, RC}) where {F, RC} = RC
 
 function Base.similar(Π::RealSpaceBubble{F, RC}) where {F, RC}
-    typeof(Π)(; Π.rbasis, Π.basis_f, Π.basis_b, Π.norb, data_q=[similar.(x) for x in Π.data_q], Π.temperature)
+    typeof(Π)(; Π.rbasis, Π.basis_f, Π.basis_b, Π.norb, data_q=[zero.(x) for x in Π.data_q], Π.temperature)
 end
+Base.zero(Π::RealSpaceBubble) = similar(Π)
+
+function _check_basis_identity(A::RealSpaceBubble, B::RealSpaceBubble)
+    get_formalism(A) === get_formalism(B) || error("Different formalism")
+    channel(A) === channel(B) || error("Different channel")
+    for n in (:rbasis, :basis_f, :basis_b, :norb)
+        getproperty(A, n) === getproperty(B, n) || error("Different $n")
+    end
+end
+data_fieldnames(::Type{<:RealSpaceBubble}) = (:data_q,)
 
 function Base.:*(x::Number, Π::RealSpaceBubble)
     typeof(Π)(; Π.rbasis, Π.basis_f, Π.basis_b, Π.norb, data_q=[v .* x for v in Π.data_q], Π.temperature)

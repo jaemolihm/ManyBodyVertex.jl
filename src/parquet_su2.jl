@@ -14,7 +14,7 @@ end
 function iterate_parquet_single_channel_asymptotic(Π, U, γ, Irr;
                                         max_class=3, basis_k1_b, basis_k2_f, basis_k2_b)
 
-    C = channel(Π[1])
+    C = _val_to_sym(channel(Π[1]))
     # K1_new = _mapreduce_bubble_integrals([U], Π, [U, γ.K1, γ.K2], basis_k1_b)
     K1_new = (
         _mapreduce_bubble_integrals([U], Π, [U, γ.K1, γ.K2], basis_k1_b)

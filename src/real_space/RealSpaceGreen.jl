@@ -28,6 +28,19 @@ RealSpaceGreen2P{F}(basis, rbasis, norb=1) where {F} = RealSpaceGreen2P{F}(Compl
 get_basis(G::RealSpaceGreen2P) = (; freq=G.basis, r=G.rbasis)
 green_lazy_to_explicit(G::RealSpaceGreen2P, basis) = G
 
+function Base.similar(G::RealSpaceGreen2P{F}) where {F}
+    RealSpaceGreen2P{F}(G.basis, G.rbasis, G.norb, zero.(G.data))
+end
+Base.zero(G::RealSpaceGreen2P) = similar(G)
+
+function _check_basis_identity(A::RealSpaceGreen2P, B::RealSpaceGreen2P)
+    get_formalism(A) === get_formalism(B) || error("Different formalism")
+    A.rbasis === B.rbasis || error("Different rbasis")
+    A.basis === B.basis || error("Different basis")
+    A.norb === B.norb || error("Different norb")
+end
+data_fieldnames(::Type{<:RealSpaceGreen2P}) = (:data, :offset)
+
 """
     fft_Green2P!(G_R, G_q, rbasis::RealSpaceBasis2P, R_replicas, R_ndegen)
 Fourier transform xq -> R: ``G_R(R) = ∑_q exp(-2πi*q*R) * G_q(q) / nq / ndegen(R)``.

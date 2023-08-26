@@ -90,7 +90,7 @@ function compute_response_SU2(op1, op2, Γ, Π, basis_response=Γ.basis_k1_b)
     filter!(!Base.Fix1(all, isnothing), vertices)
     connected = mapreduce(.+, vertices) do Γ_
         # FIXME: different real space
-        Γ_cache = Tuple(cache_vertex_matrix(getindex.(Γ_, i), C, ws, Γ.basis_k2_f) for i in 1:2)
+        Γ_cache = Tuple(cache_vertex_matrix(getindex.(Γ_, i), C, ws, basis_response) for i in 1:2)
         tmp = vertex_bubble_integral.(Γ_cache, Π, op2, Ref(basis_response))
         -1 .* response_4p_to_2p.(vertex_bubble_integral.(op1, Π, tmp, Ref(basis_response)))
     end;

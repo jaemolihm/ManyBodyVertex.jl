@@ -1,5 +1,10 @@
 
-vertex_norm(x) = (; err=norm.(getproperty.(x, :data)), val=norm.(getproperty.(x, :data)))
+function vertex_norm(x::NTuple)
+    res = vertex_norm.(x)
+    (; err=getproperty.(res, :err), val=getproperty.(res, :val))
+end
+
+vertex_norm(x) = (; err=norm(getproperty(x, :data)), val=norm(getproperty(x, :data)))
 
 vertex_diff_norm(x1, x2) = (; err=norm.(getproperty.(x1, :data) .- getproperty.(x2, :data)), val=(norm(getproperty.(x1, :data)) .+ norm.(getproperty.(x2, :data))) ./ 2)
 vertex_diff_norm(x1, x2::Nothing) = vertex_norm(x1)

@@ -46,7 +46,7 @@ function siam_get_green_function(v, ::Val{F}; e, Δ, temperature, D=Inf) where {
     elseif F === :ZF
         error("SIAM with ZF not implemented")
     else
-        error("Wrong formalism $formalism")
+        error("Wrong formalism $F")
     end
 end
 
@@ -77,6 +77,6 @@ end
 
 function (G0::SIAMLazyGreen2P{F, T})(v) where {F, T}
     g = siam_get_green_function(v, Val(F); G0.e, G0.Δ, G0.temperature, G0.D)
-    F === :KF ? g : SMatrix{1, 1}(g)
+    (F === :ZF || F === :MF) ? SMatrix{1, 1}(g) : g
 end
 (G0::SIAMLazyGreen2P)(k, v) = G0(v)

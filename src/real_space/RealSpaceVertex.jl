@@ -58,8 +58,9 @@ function Base.getproperty(A::RealSpaceVertex, s::Symbol)
 end
 
 function Base.similar(A::RealSpaceVertex{F, RC, T}) where {F, RC, T}
-    RealSpaceVertex{RC}(A.rbasis, similar.(A.vertices_R))
+    RealSpaceVertex{RC}(A.rbasis, zero.(A.vertices_R))
 end
+Base.zero(A::RealSpaceVertex) = similar(A)
 
 function Base.:+(A::T, B::T) where {T <: RealSpaceVertex{F, RC}} where {F, RC}
     # A.rbasis == B.rbasis || error("Cannot add vertices with different rbasis")
@@ -123,10 +124,11 @@ function vector_to_vertex!(Γ::RealSpaceVertex, v, offset=0)
     offset
 end
 
-function vertex_norm(x::NTuple{2, <:RealSpaceVertex})
-    norms1 = vertex_norm(x[1].vertices_R)
-    norms2 = vertex_norm(x[2].vertices_R)
-    (; err=norm.((norms1.err, norms2.err)), val=norm.((norms1.val, norms2.val)))
+function vertex_norm(x::RealSpaceVertex)
+    res = vertex_norm.(x.vertices_R)
+    err = norm(getproperty.(res, :err))
+    val = norm(getproperty.(res, :val))
+    (; err, val)
 end
 
 function vertex_diff_norm(x1::NTuple{2, <:RealSpaceVertex}, x2::NTuple{2, <:RealSpaceVertex})

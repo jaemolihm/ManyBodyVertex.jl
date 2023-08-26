@@ -11,34 +11,40 @@ of `Π`. If `ΓL` or `ΓR` are in a different channel, `basis_aux` must be provi
 `CachedVertex` type that contains basis information.
 """
 function vertex_bubble_integral(
-        ΓL::AbstractVertex4P{F, CL},
-        Π::AbstractBubble{F, CB, T},
-        ΓR::AbstractVertex4P{F, CR},
+        ΓL::AbstractVertex4P{F},
+        Π::AbstractBubble{F},
+        ΓR::AbstractVertex4P{F},
         basis_w;
         basis_aux=nothing
-    ) where {F, T, CL, CB, CR}
+    ) where {F}
+ 
+    T = eltype(Π)
+    cL = channel(ΓL)
+    cB = channel(Π)
+    cR = channel(ΓR)
 
-    if (CL != CB || CR != CB) && basis_aux === nothing
+    if (cL != cB || cR != cB) && basis_aux === nothing
         error("For vertex and bubble in different channels, basis_aux must be set.")
     end
 
     ws = get_fitting_points(basis_w)
     nind2 = get_nind(Π)^2
-    basis_L1, basis_L2 = (CL == CB) ? (ΓL.basis_f1, ΓL.basis_f2) : (basis_aux, basis_aux)
-    basis_R1, basis_R2 = (CR == CB) ? (ΓR.basis_f1, ΓR.basis_f2) : (basis_aux, basis_aux)
+    basis_L1, basis_L2 = (cL == cB) ? (ΓL.basis_f1, ΓL.basis_f2) : (basis_aux, basis_aux)
+    basis_R1, basis_R2 = (cL == cB) ? (ΓR.basis_f1, ΓR.basis_f2) : (basis_aux, basis_aux)
 
     # Compute the bubble integral on a grid of w (bosonic frequency)
     Γ_mat = zeros(T, size(basis_L1, 2) * nind2, size(basis_R2, 2) * nind2, length(ws))
     cache_and_load_overlaps(Π, basis_L2, basis_R1)
     Threads.@threads for iw in eachindex(ws)
         w = ws[iw]
-        ΓL_mat = to_matrix(ΓL, w, basis_L1, basis_L2, Val(CB))
+        ΓL_mat = to_matrix(ΓL, w, basis_L1, basis_L2, cB)
         Π_mat = to_matrix(Π, w, basis_L2, basis_R1)
-        ΓR_mat = to_matrix(ΓR, w, basis_R1, basis_R2, Val(CB))
+        ΓR_mat = to_matrix(ΓR, w, basis_R1, basis_R2, cB)
         Γ_mat[:, :, iw] .= ΓL_mat * (Π_mat * ΓR_mat)
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
+    CB = _val_to_sym(cB)
     Γ = Vertex4P{F, CB}(T, basis_L1, basis_R2, basis_w, Π.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
@@ -72,8 +78,8 @@ Solve the BSE ``Γ = (I - Γ1 * Π)⁻¹ * Γ0 - Γ0``.
 
 If the channel of `Γ1` is different from that of `Π`, use `basis_aux` as the basis for `Γ1`.
 """
-function solve_BSE(Γ1, Π::AbstractBubble{F, C, T}, Γ0, basis_w; basis_aux=nothing) where {F, C, T}
-    if channel(Γ1) != C
+function solve_BSE(Γ1, Π::AbstractBubble{F, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
+    if channel(Γ1) != channel(Π)
         basis_aux === nothing && error("Vertex and bubble have different channels. basis_aux must be set.")
         basis_Γ1_1 = basis_aux
         basis_Γ1_2 = basis_aux
@@ -95,6 +101,7 @@ function solve_BSE(Γ1, Π::AbstractBubble{F, C, T}, Γ0, basis_w; basis_aux=not
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
+    C = _val_to_sym(channel(Π))
     Γ = Vertex4P{F, C}(T, basis_Γ1_1, Γ_1st.basis_f2, basis_w, Γ_1st.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
@@ -118,8 +125,8 @@ Solve the BSE ``Γ = Γ0 * (I - Π * Γ1)⁻¹ - Γ0``.
 
 If the channel of `Γ1` is different from that of `Π`, use `basis_aux` as the basis for `Γ1`.
 """
-function solve_BSE_left(Γ1, Π::AbstractBubble{F, C, T}, Γ0, basis_w; basis_aux=nothing) where {F, C, T}
-    if channel(Γ1) != C
+function solve_BSE_left(Γ1, Π::AbstractBubble{F, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
+    if channel(Γ1) != channel(Π)
         basis_aux === nothing && error("Vertex and bubble have different channels. basis_aux must be set.")
         basis_Γ1_1 = basis_aux
         basis_Γ1_2 = basis_aux
@@ -141,6 +148,7 @@ function solve_BSE_left(Γ1, Π::AbstractBubble{F, C, T}, Γ0, basis_w; basis_au
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
+    C = _val_to_sym(channel(Π))
     Γ = Vertex4P{F, C}(T, Γ_1st.basis_f1, basis_Γ1_2, basis_w, Γ_1st.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ

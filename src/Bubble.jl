@@ -11,7 +11,9 @@ channel(::Type{T}) where {T <: AbstractBubble{F, C}} where {F, C} = C
                 |
     -- bL2 -- ov_LR -- bR1 --
 """
-mutable struct Bubble{F, C, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, C, T}
+mutable struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, :X, T}
+    # Channel
+    channel::Union{Val{:A}, Val{:P}, Val{:T}}
     # Basis for fermionic frequencies
     basis_f::BF
     # Basis for bosonic frequency
@@ -29,10 +31,11 @@ mutable struct Bubble{F, C, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble
     function Bubble{F, C}(basis_f::BF, basis_b::BB, norb, data::DT; temperature=nothing,
         cache_basis_L=nothing, cache_basis_R=nothing, cache_overlap_LR=nothing) where {F, C, DT <: AbstractArray{T}, BF, BB} where {T}
         F === :MF && temperature === nothing && error("For MF, temperature must be set")
-        new{F, C, T, BF, BB, DT}(basis_f, basis_b, norb, data, temperature, cache_basis_L, cache_basis_R, cache_overlap_LR)
+        new{F, T, BF, BB, DT}(Val(C), basis_f, basis_b, norb, data, temperature, cache_basis_L, cache_basis_R, cache_overlap_LR)
     end
 end
 data_fieldnames(::Type{<:Bubble}) = (:data,)
+channel(Π::Bubble) = Π.channel
 
 Bubble{F, C}(basis_f, basis_b, norb=1; temperature=nothing) where {F, C} = Bubble{F, C}(ComplexF64, basis_f, basis_b, norb; temperature)
 
@@ -44,7 +47,8 @@ function Bubble{F, C}(::Type{T}, basis_f, basis_b, norb=1; temperature=nothing) 
     Bubble{F, C}(basis_f, basis_b, norb, data; temperature)
 end
 
-function Base.similar(Π::Bubble{F, C, T}, ::Type{ElType}=T) where {F, C, T, ElType}
+function Base.similar(Π::Bubble{F, T}, ::Type{ElType}=T) where {F, T, ElType}
+    C = _val_to_sym(channel(Π))
     Bubble{F, C}(Π.basis_f, Π.basis_b, Π.norb, similar(Π.data, ElType); Π.temperature)
 end
 
@@ -55,7 +59,8 @@ function _check_basis_identity(A::Bubble, B::Bubble)
     A.basis_b === B.basis_b || error("Different basis_b")
 end
 
-function Base.show(io::IO, Π::AbstractBubble{F, C}) where {F, C}
+function Base.show(io::IO, Π::AbstractBubble{F}) where {F}
+    C = _val_to_sym(channel(Π))
     print(io, Base.typename(typeof(Π)).wrapper, "{:$F, :$C}")
     print(io, "(nbasis_f=$(nb_f(Π)), nbasis_b=$(nb_b(Π)), ")
     print(io, "norb=$(Π.norb), data=$(Base.summary(Π.data)))")
@@ -104,7 +109,7 @@ Evaluate a 4-point bubble at given bosonic frequency `w` and return in the matri
 - Input `overlap`: `x, x', a`
 - Output: `(x, i, j), (x', i', j')`
 """
-function to_matrix(Π::Bubble{F, C, T}, w, overlap) where {F, C, T}
+function to_matrix(Π::Bubble{F, T}, w, overlap) where {F, T}
     @assert ndims(Π.data) == 4
     @assert size(overlap, 3) == nb_f(Π)
     nv_Γ1, nv_Γ2 = size(overlap)[1:2]

@@ -27,7 +27,9 @@ abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
 channel(::T) where {T <:AbstractVertex4P} = channel(T)
 channel(::Type{T}) where {T <: AbstractVertex4P{F, C}} where {F, C} = C
 
-struct Vertex4P{F, C, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{F, C, T}
+struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{F, :X, T}
+    # Channel
+    channel::Union{Val{:A}, Val{:P}, Val{:T}}
     # Basis for fermionic frequencies
     basis_f1::BF1
     basis_f2::BF2
@@ -39,10 +41,12 @@ struct Vertex4P{F, C, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex
     data::DT
     function Vertex4P{F, C}(basis_f1::BF1, basis_f2::BF2, basis_b::BB, norb, data::DT) where {F, C, DT <: AbstractArray{T}, BF1, BF2, BB} where {T}
         C ∈ (:A, :P, :T) || throw(ArgumentError("Wrong channel $C"))
-        new{F, C, T, BF1, BF2, BB, DT}(basis_f1, basis_f2, basis_b, norb, data)
+        new{F, T, BF1, BF2, BB, DT}(Val(C), basis_f1, basis_f2, basis_b, norb, data)
     end
 end
 data_fieldnames(::Type{<:Vertex4P}) = (:data,)
+
+channel(Γ::Vertex4P) = Γ.channel
 
 nb_f1(Γ::Vertex4P) = size(Γ.basis_f1, 2)
 nb_f2(Γ::Vertex4P) = size(Γ.basis_f2, 2)
@@ -62,7 +66,8 @@ function Vertex4P{F, C}(::Type{T}, basis_f1, basis_f2, basis_b, norb=1) where {F
     Vertex4P{F, C}(basis_f1, basis_f2, basis_b, norb, data)
 end
 
-function Base.similar(Γ::Vertex4P{F, C, T}, ::Type{ElType}=T) where {F, C, T, ElType}
+function Base.similar(Γ::Vertex4P{F, T}, ::Type{ElType}=T) where {F, T, ElType}
+    C = _val_to_sym(channel(Γ))
     Vertex4P{F, C}(Γ.basis_f1, Γ.basis_f2, Γ.basis_b, Γ.norb, similar(Γ.data, ElType))
 end
 Base.zero(Γ::Vertex4P) = (x = similar(Γ); x.data .= 0; x)
@@ -86,22 +91,24 @@ end
     (Γ::Vertex4P{F, C_Γ})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ}
 Evaluate vertex at given frequencies in the channel parametrization.
 """
-function (Γ::Vertex4P{F, C_Γ})(v1, v2, w, c_out::Val=Val(C_Γ)) where {F, C_Γ}
+function (Γ::Vertex4P{F})(v1, v2, w, c_out::Val=Γ.channel) where {F}
+    c_Γ = channel(Γ)
     coeff_f1, coeff_f2, coeff_b = _get_vertex_coeff_buffers(Γ)
     nind = get_nind(Γ)
     Γ_vvw = zeros(eltype(Γ), nind^2, nind^2)
 
     v1234 = frequency_to_standard(Val(F), c_out, v1, v2, w)
-    vvw = frequency_to_channel(Val(F), Val(C_Γ), v1234)
+    vvw = frequency_to_channel(Val(F), c_Γ, v1234)
     _evaluate_vertex_with_buffer!(Γ_vvw, Γ, vvw..., coeff_f1, coeff_f2, coeff_b)
-    _permute_orbital_indices_matrix_4p(Val(C_Γ), c_out, Γ_vvw, nind)
+    _permute_orbital_indices_matrix_4p(c_Γ, c_out, Γ_vvw, nind)
 end
 
 """
 Batched version of Vertex evaluation
 """
-function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::AbstractVector,
-        c_out::Val=Val(C_Γ)) where {F, C_Γ}
+function (Γ::Vertex4P{F})(v1::AbstractVector, v2::AbstractVector, w::AbstractVector,
+        c_out::Val=Γ.channel) where {F}
+    c_Γ = channel(Γ)
     coeff_f1, coeff_f2, coeff_b = _get_vertex_coeff_buffers(Γ)
 
     nind = get_nind(Γ)
@@ -109,10 +116,10 @@ function (Γ::Vertex4P{F, C_Γ})(v1::AbstractVector, v2::AbstractVector, w::Abst
     Γ_vvw = zeros(eltype(Γ), nfreq, nind^2, nind^2)
     @views for ifreq in 1:nfreq
         v1234 = frequency_to_standard(Val(F), c_out, v1[ifreq], v2[ifreq], w[ifreq])
-        vvw = frequency_to_channel(Val(F), Val(C_Γ), v1234)
+        vvw = frequency_to_channel(Val(F), c_Γ, v1234)
         _evaluate_vertex_with_buffer!(Γ_vvw[ifreq, :, :], Γ, vvw..., coeff_f1, coeff_f2, coeff_b)
     end
-    _permute_orbital_indices_matrix_4p_keep_dim1(Val(C_Γ), c_out, Γ_vvw, nind)
+    _permute_orbital_indices_matrix_4p_keep_dim1(c_Γ, c_out, Γ_vvw, nind)
 end
 
 function _get_vertex_coeff_buffers(Γ)
@@ -164,8 +171,9 @@ Evaluate a 4-point vertex at given bosonic frequency `w`, fermionic bases `basis
 - Input `Γ.data`: `(a, i, j), (a', i', j'), b`
 - Output: `(a, i, j), (a', i', j')`
 """
-function to_matrix(Γ::Vertex4P{F, C, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis_f2, c::Val=Val(C)) where {F, C, T}
-    if c !== Val(C) && (ntails(basis1) > 0 || ntails(basis2) > 0)
+function to_matrix(Γ::Vertex4P{F, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis_f2, c::Val=Γ.channel) where {F, T}
+    c_Γ = channel(Γ)
+    if c !== c_Γ && (ntails(basis1) > 0 || ntails(basis2) > 0)
         # If we map to a different channel, the tails lead to problems so we disable it.
         # There is a problem with the fitting process that it oversamples regions where
         # v1-v2 or v1+v2 is small. Also, there is a problem for the tail-tail part. For
@@ -173,7 +181,7 @@ function to_matrix(Γ::Vertex4P{F, C, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis
         error("to_matrix to different channel with tails do not work.")
     end
 
-    if c === Val(C) && basis1 === Γ.basis_f1 && basis2 === Γ.basis_f2
+    if c === c_Γ && basis1 === Γ.basis_f1 && basis2 === Γ.basis_f2
         # Same channel, same basis. Just need to contract the bosonic frequency basis.
         coeff_w = Γ.basis_b[w, :]
         @ein Γ_w[aij1, aij2] := Γ.data[aij1, aij2, b] * coeff_w[b]
@@ -197,12 +205,16 @@ function to_matrix(Γ::Vertex4P{F, C, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis
     end
 end
 
+_val_to_sym(::Val{C}) where {C} = C
+_val_to_sym(C::Symbol) = C
+
 """
     apply_crossing(Γ::Vertex4P{F, C}) where {F, C}
 Apply the crossing operation: swap indices 1 and 3. Works only for channel A and T.
 """
-function apply_crossing(Γ::Vertex4P{F, C}) where {F, C}
+function apply_crossing(Γ::Vertex4P{F}) where {F}
     # For channel P, we need to additionally change v1 -> -v1. This is not implemented.
+    C = _val_to_sym(channel(Γ))
     C === :P && error("Not implemented for channel P")
     C_out = channel_apply_crossing(C)
     # Multiply -1 to data to account the fermionic parity.
@@ -219,14 +231,15 @@ Return a the 4-point KF vertex as a 11-dimensional array in the standard index o
 - Input `Γ.data`: `(a, i1, k1, i2, k2), (a', i3, k3, i4, k4), b`
 - Output: `a, a', i1, i2, i3, i4, k1, k2, k3, k4, b`
 """
-function keldyshview(Γ::Vertex4P{F, C}) where {F, C}
+function keldyshview(Γ::Vertex4P{F}) where {F}
     norb = Γ.norb
     nk = nkeldysh(F)
+    c = channel(Γ)
     data_size = (nb_f1(Γ), norb, nk, norb, nk, nb_f2(Γ), norb, nk, norb, nk, nb_b(Γ))
     # ((v, ik1, ik2), (v', ik3, ik4), w) -> (v, v', i1, i2, i3, i4, k1, k2, k3, k4, w)
     perm = [1, 6, 2, 4, 7, 9, 3, 5, 8, 10, 11]
     # channel orbital/Keldysh order -> standard orbital/Keldysh order
-    permute!(perm, [1, 2, indices_to_standard(Val(C), 3:6)..., indices_to_standard(Val(C), 7:10)..., 11])
+    permute!(perm, [1, 2, indices_to_standard(c, 3:6)..., indices_to_standard(c, 7:10)..., 11])
     PermutedDimsArray(Base.ReshapedArray(Γ.data, data_size, ()), perm)
 end
 

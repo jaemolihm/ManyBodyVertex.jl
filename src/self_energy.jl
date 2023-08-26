@@ -26,7 +26,7 @@ function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
     Σ_v
 end
 
-function SU2_self_energy_coeff(C)
+function SU2_self_energy_coeff(::Val{C}) where {C}
     # For the A channel, the factor 2 accounts for the contribution of the T channel.
     # For the P channel, the factor 2 account for the factor of 1/2 in the bubble.
     if C === :A
@@ -51,13 +51,13 @@ function _compute_self_energy_SU2(Γs, G, basis; temperature=nothing)
         v = vs[iv]
         for Γ in Γs
             C = channel(Γ[1])
-            overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v, Val(C))
+            overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v, C)
             coeff = SU2_self_energy_coeff(C)
             Σ_data_iv[:, :, iv] .+= _compute_self_energy(Γ[1], G, v, overlap; temperature) .* coeff[1]
             Σ_data_iv[:, :, iv] .+= _compute_self_energy(Γ[2], G, v, overlap; temperature) .* coeff[2]
         end
     end
-    Green2P{F}(basis.freq, 1, fit_basis_coeff(Σ_data_iv, basis.freq, vs, 3))
+    Green2P{F}(basis.freq, 1, mfRG.fit_basis_coeff(Σ_data_iv, basis.freq, vs, 3))
 end
 
 """
@@ -126,15 +126,16 @@ so that the Hartree self-energy is zero if all orbitals are half filled.
 - `temperature`: temperature, used only for MF.
 """
 function self_energy_hartree(U, G, temperature)
-    channel(U) === :A || error("Channel of the bare vertex must be :A")
+    channel(U) === Val(:A) || error("Channel of the bare vertex must be :A")
     nind = get_nind(U)
     Uarr = reshape(U(0, 0, 0), nind, nind, nind, nind)
     n = compute_occupation_matrix(G, temperature) .- I(G.norb) / 2
+    F = get_formalism(G)
 
-    if get_formalism(G) === :MF
+    if F === :MF
         @ein Σ_H[a, d] := Uarr[a, b, c, d] * n[b, c]
         Σ_H = Σ_H::Matrix{eltype(G)} .* -1
-    elseif get_formalism(G) === :KF
+    elseif F === :KF
         # Multiply 2 which was divided in compute_occupation_matrix.
         n .*= 2
 
@@ -151,7 +152,8 @@ function self_energy_hartree(U, G, temperature)
         Σ_H_reshape[:, 1, :, 2] .= Σ_H_orbital
         Σ_H_reshape[:, 2, :, 1] .= Σ_H_orbital
     else
-        error("Wrong formalism $F. Must be :KF or :MF.")
+        Σ_H = zeros(eltype(G), nind, nind)
+        # error("Wrong formalism $F. Must be :KF or :MF.")
     end
     # Impose Hermiticity
     (Σ_H .+ Σ_H') ./ 2
