@@ -2,7 +2,7 @@ using OMEinsum
 
 function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
     F = get_formalism(Γ)
-    C = channel(Γ)
+    C = _val_to_sym(channel(Γ))
     nind = get_nind(G)
     nb_f1(Γ) == 1 || error("Γ.basis_f1 must be a constant basis")
     F === :MF && temperature === nothing && error("For MF, temperature must be provided")
