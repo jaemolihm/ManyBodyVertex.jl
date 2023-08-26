@@ -1,7 +1,7 @@
 function iterate_parquet_asymptotic_single_channel_without_fully_irreducible(
         Π₀, Π, U₀, γ₀, I₀, Δγ, ΔI; max_class=3, basis_k1_b, basis_k2_f, basis_k2_b)
 
-    C = channel(Π₀[1])
+    C = get_channel(Π₀[1])
     ΔΠ = Π .- Π₀
 
     ws_12 = unique!(vcat(get_fitting_points(basis_k1_b.freq), get_fitting_points(basis_k2_b.freq)))

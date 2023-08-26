@@ -1,13 +1,13 @@
 # TODO: Optimize by reducing allocation inside function call
 
 """
-    compute_bubble(G1, G2, basis_f, basis_b, ::Val{C}; temperature) where {C}
+    compute_bubble(G1, G2, basis_f, basis_b, C::Symbol; temperature)
 Compute the Bubble in channel `C` for the 2-point Green function `G`.
 """
-function compute_bubble(G1, G2, basis_f, basis_b, ::Val{C}; temperature) where {C}
+function compute_bubble(G1, G2, basis_f, basis_b, C::Symbol; temperature)
     F = get_formalism(G1)
     nind = get_nind(G1)
-    Π = Bubble{F, C}(basis_f, basis_b, G1.norb; temperature)
+    Π = Bubble{F}(C, basis_f, basis_b, G1.norb; temperature)
     vs = get_fitting_points(basis_f)
     ws = get_fitting_points(basis_b)
     Π_data = zeros(eltype(Π.data), length(vs), nind^4, length(ws))
@@ -16,16 +16,16 @@ function compute_bubble(G1, G2, basis_f, basis_b, ::Val{C}; temperature) where {
     G2_v = zeros(eltype(G2), nind, nind)
     for (iw, w) in enumerate(ws)
         for (iv, v) in enumerate(vs)
-            v1, v2 = _bubble_frequencies(Val(F), Val(C), v, w)
+            v1, v2 = _bubble_frequencies(Val(F), C, v, w)
             get_G!(G1_v, G1, v1)
             get_G!(G2_v, G2, v2)
             for (i, inds) in enumerate(Iterators.product(1:nind, 1:nind, 1:nind, 1:nind))
-                i11, i12, i21, i22 = _bubble_indices(Val(C), inds)
+                i11, i12, i21, i22 = _bubble_indices(C, inds)
                 Π_data[iv, i, iw] = G1_v[i11, i12] * G2_v[i21, i22]
             end
         end
     end
-    Π_data .*= _bubble_prefactor(Val(C))
+    Π_data .*= _bubble_prefactor(C)
     Π_data_tmp1 = fit_basis_coeff(Π_data, basis_f, vs, 1)
     Π_data_tmp2 = fit_basis_coeff(Π_data_tmp1, basis_b, ws, 3)
     Π.data .= reshape(Π_data_tmp2, size(Π.data))
@@ -34,7 +34,7 @@ end
 
 
 """
-    compute_bubble_smoothed(G1, G2, basis_f, basis_b, valC::Val{C}, temperature=nothing)
+    compute_bubble_smoothed(G1, G2, basis_f, basis_b, C::Symbol; temperature=nothing)
 Improved version of `compute_bubble`.
 
 The information Π should store: data on v1 & v2 grid. (for simple case: separable as G1 and
@@ -56,7 +56,7 @@ The basis for `w` of `Π` should be chosen such that it is as dense as the `v`-g
 (e.g. largest fitting grid point for `w` used in BSE) for larger `|w|`.
 """
 function compute_bubble_smoothed(G1::AbstractLazyGreen2P{F}, G2::AbstractLazyGreen2P{F},
-            basis_f, basis_b, valC::Val{C}; temperature=nothing) where {F, C}
+            basis_f, basis_b, C::Symbol; temperature=nothing) where {F}
     ntails(basis_b) > 0 && error("tails cannot be used for `basis_b` in compute_bubble_smoothed")
     nind = get_nind(G1)
     valF = Val(F)
@@ -76,7 +76,7 @@ function compute_bubble_smoothed(G1::AbstractLazyGreen2P{F}, G2::AbstractLazyGre
             isempty(interval_v) && continue
 
             function f(v)
-                v1, v2 = _bubble_frequencies(valF, valC, v, w)
+                v1, v2 = _bubble_frequencies(valF, C, v, w)
                 coeff_f = basis_f[v, i_f]
                 G1_v = vec(G1(v1))
                 G2_v = vec(G2(v2))
@@ -94,23 +94,23 @@ function compute_bubble_smoothed(G1::AbstractLazyGreen2P{F}, G2::AbstractLazyGre
 
             value = reshape(res[1], nind, nind, nind, nind)
             for (ik, ks) in enumerate(Iterators.product(1:nind, 1:nind, 1:nind, 1:nind))
-                k11, k12, k21, k22 = _bubble_indices(valC, ks)
+                k11, k12, k21, k22 = _bubble_indices(C, ks)
                 bubble_value_integral[i_f, ik] += value[k11, k12, k21, k22]
             end
         end
         Π_data[:, :, iw] .= qr(overlap_f, ColumnNorm()) \ bubble_value_integral
     end
 
-    Π = Bubble{F, C}(basis_f, basis_b; temperature)
+    Π = Bubble{F}(C, basis_f, basis_b; temperature)
     Π.data .= fit_basis_coeff(reshape(Π_data, :, nind^2, nind^2, length(ws)), basis_b, ws, 4)
-    Π.data .*= _bubble_prefactor(valC)
+    Π.data .*= _bubble_prefactor(C)
 
     Π
 end
 
 
 function compute_bubble_smoothed(G1::Green2P{F}, G2::Green2P{F}, basis_f, basis_b,
-            valC::Val{C}, overlap_bubble_cached=nothing; temperature=nothing) where {F, C}
+            C::Symbol, overlap_bubble_cached=nothing; temperature=nothing) where {F}
     # Same as above, but G is a Green2P, not a AbstractLazyGreen2P.
 
     ntails(basis_b) > 0 && error("tails cannot be used for `basis_b` in compute_bubble_smoothed")
@@ -128,13 +128,13 @@ function compute_bubble_smoothed(G1::Green2P{F}, G2::Green2P{F}, basis_f, basis_
         if overlap_bubble_cached !== nothing
             overlap_bubble = overlap_bubble_cached[iw]
         else
-            overlap_bubble = basis_integral_bubble(basis_f, G1.basis, G2.basis, w, valC)
+            overlap_bubble = basis_integral_bubble(basis_f, G1.basis, G2.basis, w, C)
         end
 
         bubble_value_integral = zeros(eltype(G1), nbasis(basis_f), nind^4)
         # for i_f in axes(basis_f, 2)
         #     @views for (ik, ks) in enumerate(Iterators.product(1:nind, 1:nind, 1:nind, 1:nind))
-        #         k11, k12, k21, k22 = _bubble_indices(valC, ks)
+        #         k11, k12, k21, k22 = _bubble_indices(C, ks)
         #         bubble_value_integral[i_f, ik] = dot(G1.data[k11, k12, :]',
         #                                              overlap_bubble[i_f, :, :],
         #                                              G2.data[k21, k22, :])
@@ -144,7 +144,7 @@ function compute_bubble_smoothed(G1::Green2P{F}, G2::Green2P{F}, basis_f, basis_
         for i2 in axes(G2.basis, 2), i1 in axes(G1.basis, 2), i_f in axes(basis_f, 2)
             overlap_bubble[i_f, i1, i2] == 0 && continue
             for (ik, ks) in enumerate(Iterators.product(1:nind, 1:nind, 1:nind, 1:nind))
-                k11, k12, k21, k22 = _bubble_indices(valC, ks)
+                k11, k12, k21, k22 = _bubble_indices(C, ks)
                 bubble_value_integral[i_f, ik] += (G1.data[k11, k12, i1]
                     * overlap_bubble[i_f, i1, i2] * G2.data[k21, k22, i2])
             end
@@ -153,9 +153,9 @@ function compute_bubble_smoothed(G1::Green2P{F}, G2::Green2P{F}, basis_f, basis_
         Π_data[:, :, iw] .= overlap_f \ bubble_value_integral
     end
 
-    Π = Bubble{F, C}(basis_f, basis_b; temperature)
+    Π = Bubble{F}(C, basis_f, basis_b; temperature)
     Π.data .= fit_basis_coeff(reshape(Π_data, :, nind^2, nind^2, length(ws)), basis_b, ws, 4)
-    Π.data .*= _bubble_prefactor(valC)
+    Π.data .*= _bubble_prefactor(C)
 
     Π
 end

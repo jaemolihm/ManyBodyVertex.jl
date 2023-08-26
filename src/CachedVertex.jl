@@ -3,25 +3,25 @@ Precompute and cache the result of `to_matrix`. The values can be accessed via t
 `to_matrix` function.
 """
 struct CachedVertex4P{F, T, BF1, BF2, FT} <: AbstractVertex4P{F, :X, T}
-    # Channel
-    channel::Union{Val{:A}, Val{:P}, Val{:T}}
+    channel::Symbol
     data::Array{T, 3}
     ws::Vector{FT}
     basis_f1::BF1
     basis_f2::BF2
     norb::Int
-    function CachedVertex4P{F, C}(data, ws, basis_f1::BF1, basis_f2::BF2, norb) where {F, C, BF1, BF2}
+    function CachedVertex4P{F}(channel, data, ws, basis_f1::BF1, basis_f2::BF2, norb) where {F, BF1, BF2}
+        channel ∈ (:A, :P, :T) || throw(ArgumentError("Wrong channel $channel"))
         T = eltype(eltype(data))
-        new{F, T, BF1, BF2, eltype(ws)}(Val(C), data, ws, basis_f1, basis_f2, norb)
+        new{F, T, BF1, BF2, eltype(ws)}(channel, data, ws, basis_f1, basis_f2, norb)
     end
 end
 
-channel(Γ::CachedVertex4P) = Γ.channel
+get_channel(Γ::CachedVertex4P) = Γ.channel
 
 data_fieldnames(::Type{<:CachedVertex4P}) = (:data,)
 function _check_basis_identity(A::CachedVertex4P, B::CachedVertex4P)
     get_formalism(A) === get_formalism(B) || error("Different formalism")
-    channel(A) === channel(B) || error("Different channel")
+    get_channel(A) === get_channel(B) || error("Different channel")
     A.ws ≈ B.ws || error("Different ws")
     A.basis_f1 === B.basis_f1 || error("Different basis_f1")
     A.basis_f2 === B.basis_f2 || error("Different basis_f2")
@@ -31,21 +31,21 @@ nb_f1(Γ::CachedVertex4P) = size(Γ.basis_f1, 2)
 nb_f2(Γ::CachedVertex4P) = size(Γ.basis_f2, 2)
 
 function Base.show(io::IO, Γ::CachedVertex4P{F}) where {F}
-    C = _val_to_sym(channel(Γ))
-    print(io, Base.typename(typeof(Γ)).wrapper, "{:$F, :$C}")
-    print(io, "(nbasis_f1=$(nb_f1(Γ)), nbasis_f2=$(nb_f2(Γ)), nw=$(length(Γ.ws)), ")
-    print(io, "norb=$(Γ.norb), data=$(Base.summary(Γ.data)))")
+    C = get_channel(Γ)
+    print(io, Base.typename(typeof(Γ)).wrapper, "{:$F}")
+    print(io, "(channel=$C, nbasis_f1=$(nb_f1(Γ)), nbasis_f2=$(nb_f2(Γ)), ")
+    print(io, "nw=$(length(Γ.ws)), norb=$(Γ.norb), data=$(Base.summary(Γ.data)))")
 end
 
 function Base.similar(Γ::CachedVertex4P{F, T}, ::Type{ElType}=T) where {F, T, ElType}
-    C = _val_to_sym(channel(Γ))
-    CachedVertex4P{F, C}(similar(Γ.data, ElType), Γ.ws, Γ.basis_f1, Γ.basis_f2, Γ.norb)
+    C = get_channel(Γ)
+    CachedVertex4P{F}(C, similar(Γ.data, ElType), Γ.ws, Γ.basis_f1, Γ.basis_f2, Γ.norb)
 end
 Base.zero(Γ::CachedVertex4P) = (Γ_new = similar(Γ); Γ_new.data .= 0; Γ_new)
 
-function to_matrix(Γ::CachedVertex4P{F, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis_f2, c::Val=Γ.channel) where {F, T}
-    cΓ = channel(Γ)
-    c === cΓ || error("Invalid channel for CachedVertex4P")
+function to_matrix(Γ::CachedVertex4P{F, T}, w, basis1=Γ.basis_f1, basis2=Γ.basis_f2, C::Symbol=get_channel(Γ)) where {F, T}
+    CΓ = get_channel(Γ)
+    C === CΓ || error("Invalid channel for CachedVertex4P")
     basis1 === Γ.basis_f1 || error("Invalid basis1 for CachedVertex4P")
     basis2 === Γ.basis_f2 || error("Invalid basis2 for CachedVertex4P")
     iw = findfirst(x -> x ≈ w, Γ.ws)
@@ -68,7 +68,7 @@ end
 
 function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux1=nothing, basis_aux2=basis_aux1)
     isempty(Γs) && return nothing
-    if any(channel.(Γs) .!= C) && basis_aux1 === nothing
+    if any(get_channel.(Γs) .!= C) && basis_aux1 === nothing
         error("For vertex with different channel than C=$C, basis_aux must be provided")
     end
     if basis_aux1 isa NamedTuple{(:freq,), Tuple{T}} where {T<:Basis}
@@ -80,14 +80,14 @@ function cache_vertex_matrix(Γs::AbstractVector, C, ws, basis_aux1=nothing, bas
     end
 
     Γ = first(Γs)
-    basis_f1, basis_f2 = channel(Γ) === Val(C) ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux1_, basis_aux2_)
+    basis_f1, basis_f2 = get_channel(Γ) === C ? (Γ.basis_f1, Γ.basis_f2) : (basis_aux1_, basis_aux2_)
     nind = get_nind(Γ)
     data = zeros(eltype(first(Γs)), nind^2 * nbasis(basis_f1), nind^2 * nbasis(basis_f2), length(ws))
     Base.Threads.@threads for iw in eachindex(ws)
         @views for Γ in Γs
-            data[:, :, iw] .+= to_matrix(Γ, ws[iw], basis_f1, basis_f2, Val(C))
+            data[:, :, iw] .+= to_matrix(Γ, ws[iw], basis_f1, basis_f2, C)
         end
     end
     F = get_formalism(Γ)
-    CachedVertex4P{F, C}(data, ws, basis_f1, basis_f2, Γ.norb)
+    CachedVertex4P{F}(C, data, ws, basis_f1, basis_f2, Γ.norb)
 end

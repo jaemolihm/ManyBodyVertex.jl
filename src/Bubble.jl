@@ -1,6 +1,4 @@
 abstract type AbstractBubble{F, C, T} <: AbstractFrequencyVertex{F, T} end
-channel(::T) where {T <:AbstractBubble} = channel(T)
-channel(::Type{T}) where {T <: AbstractBubble{F, C}} where {F, C} = C
 
 """
     Bubble{F}(basis_f, basis_b, norb, data)
@@ -13,7 +11,7 @@ channel(::Type{T}) where {T <: AbstractBubble{F, C}} where {F, C} = C
 """
 mutable struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, :X, T}
     # Channel
-    channel::Union{Val{:A}, Val{:P}, Val{:T}}
+    channel::Symbol
     # Basis for fermionic frequencies
     basis_f::BF
     # Basis for bosonic frequency
@@ -28,41 +26,42 @@ mutable struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F,
     cache_basis_L
     cache_basis_R
     cache_overlap_LR
-    function Bubble{F, C}(basis_f::BF, basis_b::BB, norb, data::DT; temperature=nothing,
-        cache_basis_L=nothing, cache_basis_R=nothing, cache_overlap_LR=nothing) where {F, C, DT <: AbstractArray{T}, BF, BB} where {T}
-        F === :MF && temperature === nothing && error("For MF, temperature must be set")
-        new{F, T, BF, BB, DT}(Val(C), basis_f, basis_b, norb, data, temperature, cache_basis_L, cache_basis_R, cache_overlap_LR)
+    function Bubble{F}(channel, basis_f::BF, basis_b::BB, norb, data::DT; temperature=nothing,
+        cache_basis_L=nothing, cache_basis_R=nothing, cache_overlap_LR=nothing) where {F, DT <: AbstractArray{T}, BF, BB} where {T}
+        channel ∈ (:A, :P, :T) || throw(ArgumentError("Wrong channel $channel"))
+        F === :MF && temperature === nothing && throw(ArgumentError("For MF, temperature must be set"))
+        new{F, T, BF, BB, DT}(channel, basis_f, basis_b, norb, data, temperature, cache_basis_L, cache_basis_R, cache_overlap_LR)
     end
 end
 data_fieldnames(::Type{<:Bubble}) = (:data,)
-channel(Π::Bubble) = Π.channel
+get_channel(Π::Bubble) = Π.channel
 
-Bubble{F, C}(basis_f, basis_b, norb=1; temperature=nothing) where {F, C} = Bubble{F, C}(ComplexF64, basis_f, basis_b, norb; temperature)
+Bubble{F}(C, basis_f, basis_b, norb=1; temperature=nothing) where {F} = Bubble{F}(C, ComplexF64, basis_f, basis_b, norb; temperature)
 
-function Bubble{F, C}(::Type{T}, basis_f, basis_b, norb=1; temperature=nothing) where {F, C, T}
+function Bubble{F}(C, ::Type{T}, basis_f, basis_b, norb=1; temperature=nothing) where {F, T}
     nb_f = size(basis_f, 2)
     nb_b = size(basis_b, 2)
     nk = nkeldysh(F)
     data = zeros(T, nb_f, (norb * nk)^2, (norb * nk)^2, nb_b)
-    Bubble{F, C}(basis_f, basis_b, norb, data; temperature)
+    Bubble{F}(C, basis_f, basis_b, norb, data; temperature)
 end
 
 function Base.similar(Π::Bubble{F, T}, ::Type{ElType}=T) where {F, T, ElType}
-    C = _val_to_sym(channel(Π))
-    Bubble{F, C}(Π.basis_f, Π.basis_b, Π.norb, similar(Π.data, ElType); Π.temperature)
+    C = get_channel(Π)
+    Bubble{F}(C, Π.basis_f, Π.basis_b, Π.norb, similar(Π.data, ElType); Π.temperature)
 end
 
 function _check_basis_identity(A::Bubble, B::Bubble)
     get_formalism(A) === get_formalism(B) || error("Different formalism")
-    channel(A) === channel(B) || error("Different channel")
+    get_channel(A) === get_channel(B) || error("Different channel")
     A.basis_f === B.basis_f || error("Different basis_f")
     A.basis_b === B.basis_b || error("Different basis_b")
 end
 
 function Base.show(io::IO, Π::AbstractBubble{F}) where {F}
-    C = _val_to_sym(channel(Π))
-    print(io, Base.typename(typeof(Π)).wrapper, "{:$F, :$C}")
-    print(io, "(nbasis_f=$(nb_f(Π)), nbasis_b=$(nb_b(Π)), ")
+    C = get_channel(Π)
+    print(io, Base.typename(typeof(Π)).wrapper, "{:$F}")
+    print(io, "(channel=$C, nbasis_f=$(nb_f(Π)), nbasis_b=$(nb_b(Π)), ")
     print(io, "norb=$(Π.norb), data=$(Base.summary(Π.data)))")
 end
 

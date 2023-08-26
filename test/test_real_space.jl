@@ -25,7 +25,7 @@ using Test
     k1234 .-= sum(k1234) / 4
     k_dot_R = dot(k1234, R1234)
     for C in (:A, :P, :T)
-        k, kp, q = frequency_to_channel(Val(:KF), Val(C), k1234)
+        k, kp, q = frequency_to_channel(Val(:KF), C, k1234)
         R, Rp, R_B = lattice_vectors_to_channel(Val(C), R1234)
         @test k * R - kp * Rp + q * (R_B + (R - Rp) / 2) ≈ -k_dot_R
     end

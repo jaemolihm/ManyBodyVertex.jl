@@ -19,33 +19,32 @@ function vertex_bubble_integral(
     ) where {F}
  
     T = eltype(Π)
-    cL = channel(ΓL)
-    cB = channel(Π)
-    cR = channel(ΓR)
+    CL = get_channel(ΓL)
+    CB = get_channel(Π)
+    CR = get_channel(ΓR)
 
-    if (cL != cB || cR != cB) && basis_aux === nothing
+    if (CL != CB || CR != CB) && basis_aux === nothing
         error("For vertex and bubble in different channels, basis_aux must be set.")
     end
 
     ws = get_fitting_points(basis_w)
     nind2 = get_nind(Π)^2
-    basis_L1, basis_L2 = (cL == cB) ? (ΓL.basis_f1, ΓL.basis_f2) : (basis_aux, basis_aux)
-    basis_R1, basis_R2 = (cL == cB) ? (ΓR.basis_f1, ΓR.basis_f2) : (basis_aux, basis_aux)
+    basis_L1, basis_L2 = (CL == CB) ? (ΓL.basis_f1, ΓL.basis_f2) : (basis_aux, basis_aux)
+    basis_R1, basis_R2 = (CR == CB) ? (ΓR.basis_f1, ΓR.basis_f2) : (basis_aux, basis_aux)
 
     # Compute the bubble integral on a grid of w (bosonic frequency)
     Γ_mat = zeros(T, size(basis_L1, 2) * nind2, size(basis_R2, 2) * nind2, length(ws))
     cache_and_load_overlaps(Π, basis_L2, basis_R1)
     Threads.@threads for iw in eachindex(ws)
         w = ws[iw]
-        ΓL_mat = to_matrix(ΓL, w, basis_L1, basis_L2, cB)
+        ΓL_mat = to_matrix(ΓL, w, basis_L1, basis_L2, CB)
         Π_mat = to_matrix(Π, w, basis_L2, basis_R1)
-        ΓR_mat = to_matrix(ΓR, w, basis_R1, basis_R2, cB)
+        ΓR_mat = to_matrix(ΓR, w, basis_R1, basis_R2, CB)
         Γ_mat[:, :, iw] .= ΓL_mat * (Π_mat * ΓR_mat)
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
-    CB = _val_to_sym(cB)
-    Γ = Vertex4P{F, CB}(T, basis_L1, basis_R2, basis_w, Π.norb)
+    Γ = Vertex4P{F}(CB, T, basis_L1, basis_R2, basis_w, Π.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
 end
@@ -67,7 +66,7 @@ Return the matrix represetntation of ``I - Γ * Π``
 """
 function compute_bse_matrix(Γ, Π, w, basis_L1, basis_L2, basis_R1)
     basis_L1 === basis_R1 || error("basis_L1 and basis_R1 must be identical")
-    Γ_mat = to_matrix(Γ, w, basis_L1, basis_L2, Val(channel(Π)))
+    Γ_mat = to_matrix(Γ, w, basis_L1, basis_L2, get_channel(Π))
     Π_mat = to_matrix(Π, w, basis_L2, basis_R1)
     I - (Γ_mat * Π_mat)
 end
@@ -78,8 +77,9 @@ Solve the BSE ``Γ = (I - Γ1 * Π)⁻¹ * Γ0 - Γ0``.
 
 If the channel of `Γ1` is different from that of `Π`, use `basis_aux` as the basis for `Γ1`.
 """
-function solve_BSE(Γ1, Π::AbstractBubble{F, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
-    if channel(Γ1) != channel(Π)
+function solve_BSE(Γ1, Π::AbstractBubble{F, :X, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
+    C = get_channel(Π)
+    if get_channel(Γ1) != get_channel(Π)
         basis_aux === nothing && error("Vertex and bubble have different channels. basis_aux must be set.")
         basis_Γ1_1 = basis_aux
         basis_Γ1_2 = basis_aux
@@ -101,8 +101,7 @@ function solve_BSE(Γ1, Π::AbstractBubble{F, T}, Γ0, basis_w; basis_aux=nothin
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
-    C = _val_to_sym(channel(Π))
-    Γ = Vertex4P{F, C}(T, basis_Γ1_1, Γ_1st.basis_f2, basis_w, Γ_1st.norb)
+    Γ = Vertex4P{F}(C, T, basis_Γ1_1, Γ_1st.basis_f2, basis_w, Γ_1st.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
 end
@@ -114,7 +113,7 @@ Return the matrix represetntation of ``I - Π * Γ``
 """
 function compute_bse_matrix_left(Γ, Π, w, basis_L2, basis_R1, basis_R2)
     basis_L2 === basis_R2 || error("basis_L2 and basis_R2 must be identical")
-    Γ_mat = to_matrix(Γ, w, basis_R1, basis_R2, Val(channel(Π)))
+    Γ_mat = to_matrix(Γ, w, basis_R1, basis_R2, get_channel(Π))
     Π_mat = to_matrix(Π, w, basis_L2, basis_R1)
     I - (Π_mat * Γ_mat)
 end
@@ -125,8 +124,9 @@ Solve the BSE ``Γ = Γ0 * (I - Π * Γ1)⁻¹ - Γ0``.
 
 If the channel of `Γ1` is different from that of `Π`, use `basis_aux` as the basis for `Γ1`.
 """
-function solve_BSE_left(Γ1, Π::AbstractBubble{F, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
-    if channel(Γ1) != channel(Π)
+function solve_BSE_left(Γ1, Π::AbstractBubble{F, :X, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
+    C = get_channel(Π)
+    if get_channel(Γ1) != C
         basis_aux === nothing && error("Vertex and bubble have different channels. basis_aux must be set.")
         basis_Γ1_1 = basis_aux
         basis_Γ1_2 = basis_aux
@@ -148,73 +148,7 @@ function solve_BSE_left(Γ1, Π::AbstractBubble{F, T}, Γ0, basis_w; basis_aux=n
     end
 
     # Fit the data on the w grid to the basis and store in Vertex4P object
-    C = _val_to_sym(channel(Π))
-    Γ = Vertex4P{F, C}(T, Γ_1st.basis_f1, basis_Γ1_2, basis_w, Γ_1st.norb)
+    Γ = Vertex4P{F}(C, T, Γ_1st.basis_f1, basis_Γ1_2, basis_w, Γ_1st.norb)
     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
     Γ
 end
-
-# abstract type AbstractBSEMap{F, C, T} <: LinearMaps.LinearMap{T} end
-
-# """
-#     BSEMap(Γ, Π, Γ_in) <: AbstractBSEMap{F, T} <: LinearMaps.LinearMap{T}
-# ``Γ_out = BSEMap(Γ, Π) * Γ_in = Γ_in - Γ * Π * Γ_in``.
-
-# Before using a BSEMap, one should call `set_bosonic_frequency!(bsemap, w)` with the bosonic
-# frequency to use.
-# """
-# mutable struct BSEMap{F, C, T, FT, VT <: Vertex4P{F, C, T}, BT <: Bubble{F, T}} <: AbstractBSEMap{F, C, T}
-#     Γ::VT
-#     Π::BT
-#     overlap::Array{FT, 3}
-#     ΓΠ_mat::Matrix{T}
-#     size_Γ_in::NTuple{2, Int}
-#     function BSEMap(Γ::VT, Π::BT, Γ_in) where {VT <: Vertex4P{F, C, T}, BT} where {F, C, T}
-#         size_Γ_in = size(Γ_in.data)[1:2]
-#         overlap = basis_integral(Γ.basis_f2, Γ_in.basis_f1, Π.basis_f)
-#         FT = eltype(overlap)
-#         ΓΠ_mat = zeros(T, size_Γ_in[1], size_Γ_in[1])
-#         new{F, C, T, FT, VT, BT}(Γ, Π, overlap, ΓΠ_mat, size_Γ_in)
-#     end
-# end
-# Base.size(bsemap::BSEMap{F}) where {F} = (prod(bsemap.size_Γ_in), prod(bsemap.size_Γ_in))
-
-# function set_bosonic_frequency!(bsemap::BSEMap, w)
-#     Π_mat = to_matrix(bsemap.Π, w, bsemap.overlap)
-#     Γ_mat = to_matrix(bsemap.Γ, w)
-#     mul!(bsemap.ΓΠ_mat, Γ_mat, Π_mat)
-# end
-
-# function LinearAlgebra.mul!(Γ_out_vec::AbstractVecOrMat, bsemap::BSEMap, Γ_in_vec::AbstractVector)
-#     # Calculate the Bubble integral. ΓΠ_mat is precomputed in set_bosonic_frequency!.
-#     # Inputs are vectors, reshape them into matrix form and them do matrix multiplication.
-#     Γ_in_mat = reshape(Γ_in_vec, bsemap.size_Γ_in)
-#     Γ_out_vec .= Γ_in_vec .- vec(bsemap.ΓΠ_mat * Γ_in_mat)
-#     Γ_out_vec
-# end
-
-# """
-#     solve_BSE(Γ1, Π, Γ0, basis_w)
-# Solve the BSE ``Γ = Γ1 * Π * Γ0 + Γ1 * Π * Γ``.
-# """
-# function solve_BSE(Γ1::AbstractVertex4P{F, C, T}, Π, Γ0, basis_w) where {F, C, T}
-#     # 1st-order solution: Γ1 * Π * Γ0
-#     Γ_1st = vertex_bubble_integral(Γ1, Π, Γ0, basis_w)
-
-#     # Solve the BSE on a grid of w (bosonic frequency)
-#     # BSE: Γ = Γ_1st + Γ1 * Π * Γ.
-#     ws = get_fitting_points(basis_w)
-#     Γ_mat = zeros(T, size(Γ_1st.data)[1:2]..., length(ws))
-#     bsemap = BSEMap(Γ1, Π, Γ_1st)
-#     @views for (iw, w) in enumerate(ws)
-#         set_bosonic_frequency!(bsemap, w)
-#         Γ_1st_w = to_matrix(Γ_1st, w)
-#         Γ_mat[:, :, iw] .= Γ_1st_w
-#         IterativeSolvers.gmres!(vec(Γ_mat[:, :, iw]), bsemap, vec(Γ_1st_w));
-#     end
-
-#     # Fit the data on the w grid to the basis and store in Vertex4P object
-#     Γ = Vertex4P{F, C}(T, Γ_1st.basis_f1, Γ_1st.basis_f2, basis_w, Γ_1st.norb)
-#     fit_bosonic_basis_coeff!(Γ, Γ_mat, ws)
-#     Γ
-# end

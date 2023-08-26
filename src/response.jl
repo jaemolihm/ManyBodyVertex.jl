@@ -16,10 +16,10 @@ spin symmetry.
 """
 function susceptibility_operator_SU2(::Val{F}, norb=1) where {F}
     basis = F === :MF ? ImagConstantBasis() : ConstantBasis()
-    op_L_d = Vertex4P{F, :A}(basis, basis, basis, norb)
-    op_L_m = Vertex4P{F, :A}(basis, basis, basis, norb)
-    op_R_d = Vertex4P{F, :A}(basis, basis, basis, norb)
-    op_R_m = Vertex4P{F, :A}(basis, basis, basis, norb)
+    op_L_d = Vertex4P{F}(:A, basis, basis, basis, norb)
+    op_L_m = Vertex4P{F}(:A, basis, basis, basis, norb)
+    op_R_d = Vertex4P{F}(:A, basis, basis, basis, norb)
+    op_R_m = Vertex4P{F}(:A, basis, basis, basis, norb)
     if F === :MF
         # TODO: Resolve orbital
         @views reshape(op_L_d.data[1, :, 1], norb, norb) .= I(norb)
@@ -82,7 +82,7 @@ end
 Compute linear response function ``X(q) = <op1(q) op2(-q)>``.
 """
 function compute_response_SU2(op1, op2, Γ, Π, basis_response=Γ.basis_k1_b)
-    C = channel(op1[1])
+    C = get_channel(op1[1])
     ws = get_fitting_points(basis_response.freq)
     disconnected = -1 .* response_4p_to_2p.(vertex_bubble_integral.(op1, Π, op2, Ref(basis_response)))
 

@@ -8,7 +8,9 @@ Bubble screened by a K1 vertex: ``Πscr = Π + Π * (Γ0 + K1) * Π``.
                 |                             |                 |
     -- bL2 -- ov_LR -- bR1 --     -- bL2 -- ov_L               ov_R -- bR1 --
 """
-mutable struct ScreenedBubble{F, C, T, BT <: AbstractBubble{F, C, T}, VT0, VT1} <: AbstractBubble{F, C, T}
+mutable struct ScreenedBubble{F, T, BT <: AbstractBubble{F, :X, T}, VT0, VT1} <: AbstractBubble{F, :X, T}
+    # Channel
+    channel::Symbol
     # Basis for fermionic frequencies
     Π::BT
     # Γ0 vertex for screening
@@ -21,14 +23,19 @@ mutable struct ScreenedBubble{F, C, T, BT <: AbstractBubble{F, C, T}, VT0, VT1} 
     cache_overlap_LR
     cache_overlap_L
     cache_overlap_R
-    function ScreenedBubble(Π::AbstractBubble{F, C, T}, Γ0::AbstractVertex4P{F}, K1::AbstractVertex4P{F, C, T}) where {F, C, T}
+    function ScreenedBubble(Π::AbstractBubble{F, :X, T}, Γ0::AbstractVertex4P{F}, K1::AbstractVertex4P{F, :X, T}) where {F, T}
+        C = get_channel(Π)
+        get_channel(Γ0) == C || throw(ArgumentError("channel does not match between Γ0 and Π"))
+        get_channel(K1) == C || throw(ArgumentError("channel does not match between K1 and Π"))
         Γ0.basis_f1 isa Union{ConstantBasis, ImagConstantBasis} || error("Γ0.basis_f1 is not a ConstantBasis")
         Γ0.basis_f2 isa Union{ConstantBasis, ImagConstantBasis} || error("Γ0.basis_f2 is not a ConstantBasis")
         K1.basis_f1 isa Union{ConstantBasis, ImagConstantBasis} || error("K1.basis_f1 is not a ConstantBasis")
         K1.basis_f2 isa Union{ConstantBasis, ImagConstantBasis} || error("K1.basis_f2 is not a ConstantBasis")
-        new{F, C, T, typeof(Π), typeof(Γ0), typeof(K1)}(Π, Γ0, K1, nothing, nothing, nothing, nothing, nothing)
+        new{F, T, typeof(Π), typeof(Γ0), typeof(K1)}(C, Π, Γ0, K1, nothing, nothing, nothing, nothing, nothing)
     end
 end
+
+get_channel(Π::ScreenedBubble) = Π.channel
 
 function Base.getproperty(a::ScreenedBubble, s::Symbol)
     if s === :basis_f || s === :basis_b || s === :norb || s === :data || s === :temperature

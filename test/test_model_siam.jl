@@ -29,7 +29,9 @@ using mfRG
     basis_b = LinearSplineAndTailBasis(1, 3, -2:0.5:2)
     for F in (:MF, :KF), C in (:A, :P, :T)
         G0 = SIAMLazyGreen2P{F}(; e, Δ, temperature)
-        @test compute_bubble(G0, G0, basis_f, basis_b, Val(C); temperature) isa Bubble{F, C, ComplexF64}
+        Π = compute_bubble(G0, G0, basis_f, basis_b, C; temperature)
+        @test Π isa Bubble{F, ComplexF64}
+        @test get_channel(Π) === C
     end
 
 end
@@ -44,8 +46,8 @@ end
     basis_b = LinearSplineAndTailBasis(1, 0, -3.:3:3)
 
     G0 = SIAMLazyGreen2P{:KF}(; e, Δ, temperature)
-    for c in (:A, :P, :T)
-        Π = compute_bubble_smoothed(G0, G0, basis_f, basis_b, Val(c); temperature)
+    for C in (:A, :P, :T)
+        Π = compute_bubble_smoothed(G0, G0, basis_f, basis_b, C; temperature)
         for w in basis_b.grid
             Π_w = reshape(to_matrix(Π, w, ConstantBasis(), ConstantBasis()), 2, 2, 2, 2)
 
@@ -55,10 +57,10 @@ end
 
             if w ≈ 0
                 # 1 / (2π * im) * ∫ dv Gᴿ(v) Gᴬ(v) = - im / 2Δ
-                if c === :A
+                if C === :A
                     @test abs(Π_w[1, 1, 2, 2] + im / 2 / Δ) < 1e-3
                     @test abs(Π_w[2, 2, 1, 1] + im / 2 / Δ) < 1e-3
-                elseif c === :T
+                elseif C === :T
                     # -1 due to the bubble prefactor of T channel
                     @test abs(Π_w[1, 1, 2, 2] - im / 2 / Δ) < 1e-3
                     @test abs(Π_w[2, 2, 1, 1] - im / 2 / Δ) < 1e-3
@@ -91,12 +93,12 @@ end
         G0_basis = Green2P{F}(basis_1p, 1, data)
 
         for C in (:A, :P, :T)
-            Π1 = compute_bubble(G0, G0, basis_f, basis_b, Val(C); temperature)
-            Π2 = compute_bubble(G0_basis, G0_basis, basis_f, basis_b, Val(C); temperature)
+            Π1 = compute_bubble(G0, G0, basis_f, basis_b, C; temperature)
+            Π2 = compute_bubble(G0_basis, G0_basis, basis_f, basis_b, C; temperature)
             @test norm(Π1.data - Π2.data) / norm(Π1.data) < 4e-3
 
-            Π1 = compute_bubble_smoothed(G0, G0, basis_f, basis_b, Val(C); temperature)
-            Π2 = compute_bubble_smoothed(G0_basis, G0_basis, basis_f, basis_b, Val(C); temperature)
+            Π1 = compute_bubble_smoothed(G0, G0, basis_f, basis_b, C; temperature)
+            Π2 = compute_bubble_smoothed(G0_basis, G0_basis, basis_f, basis_b, C; temperature)
             @test norm(Π1.data - Π2.data) / norm(Π1.data) < 4e-3
         end
     end

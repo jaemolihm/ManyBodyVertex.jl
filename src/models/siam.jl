@@ -1,13 +1,13 @@
 using StaticArrays
 
 """
-    get_bare_vertex(::Val{F}, ::Val{C}, U::Number)
+    get_bare_vertex(::Val{F}, C::Symbol, U::Number)
 Bare vertex of an 1-orbital model with interaction `U`, formalism `F`, and channel `C`.
 """
-function get_bare_vertex(::Val{F}, ::Val{C}, U::Number) where {F, C}
+function get_bare_vertex(::Val{F}, C::Symbol, U::Number) where {F}
     # TODO: For multiorbital case, need to antisymmetrize
     basis = F === :MF ? ImagConstantBasis() : ConstantBasis()
-    Γ0 = Vertex4P{F, C}(basis, basis, basis, 1)
+    Γ0 = Vertex4P{F}(C, basis, basis, basis, 1)
     if F === :KF
         Γ0_kv = keldyshview(Γ0)
         for ks in CartesianIndices((2, 2, 2, 2))

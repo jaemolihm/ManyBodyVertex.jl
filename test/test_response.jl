@@ -1,4 +1,6 @@
 @testset "SIAM parquet linear response" begin
+    using LinearAlgebra
+
     # Test linear response for parquet calculation
     Δ = 2.0
     temperature = 0.5
@@ -36,7 +38,7 @@
                 basis_v_aux, basis_1p; max_iter=15, reltol=1e-3, temperature, mixing_coeff=1.);
             G = solve_Dyson(G0, Σ)
             op_suscep_L, op_suscep_R = susceptibility_operator_SU2(Val(F))
-            chi = compute_response_SU2(op_suscep_L, op_suscep_R, Γ, Π.A)
+            chi = compute_response_SU2(op_suscep_L, op_suscep_R, Γ, Π.A, (; freq=basis_v_aux))
             n = compute_occupation(G, temperature)
             (; Γ, Σ, Π, G, chi, n)
         end

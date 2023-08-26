@@ -19,15 +19,15 @@ using mfRG
         end
 
         # Set static vertx
-        Γ0 = get_bare_vertex(Val(F), Val(C), U)
+        Γ0 = get_bare_vertex(Val(F), C, U)
 
         # Set bubble. Use random numbers for testing.
-        Π = Bubble{F, C}(basis2, basis_w; temperature)
+        Π = Bubble{F}(C, basis2, basis_w; temperature)
         Π.data .= rand(eltype(Π.data), size(Π.data)...)
 
         # Solve BSE by direct inversion
         overlap = basis_integral(basis1, basis1, basis2);
-        Γ_direct = Vertex4P{F, C}(basis1, basis1, basis_w)
+        Γ_direct = Vertex4P{F}(C, basis1, basis1, basis_w)
         for (iw, w) in enumerate(basis_w.grid)
             Γ0_mat = to_matrix(Γ0, w)
             Π_mat = to_matrix(Π, w, basis1, basis1)
@@ -84,12 +84,12 @@ end
         x_ref = vertex_bubble_integral(ΓL, Π, ΓR, basis_w; basis_aux)
 
         # Cache ΓL
-        ΓL_cache = cache_vertex_matrix(ΓL, channel(Π), ws, basis_aux);
+        ΓL_cache = cache_vertex_matrix(ΓL, get_channel(Π), ws, basis_aux);
         x = vertex_bubble_integral(ΓL_cache, Π, ΓR, basis_w; basis_aux);
         @test x.data ≈ x_ref.data
 
         # Cache ΓR
-        ΓR_cache = cache_vertex_matrix(ΓR, channel(Π), ws, basis_aux);
+        ΓR_cache = cache_vertex_matrix(ΓR, get_channel(Π), ws, basis_aux);
         x = vertex_bubble_integral(ΓL, Π, ΓR_cache, basis_w; basis_aux);
         @test x.data ≈ x_ref.data
 
@@ -107,10 +107,10 @@ end
     basis_aux = LinearSplineAndTailBasis(1, 0, -4:1.0:4)
 
     G0 = SIAMLazyGreen2P{:KF}(; e, Δ, temperature)
-    ΠA = compute_bubble(G0, G0, basis_f, basis_b, Val(:A); temperature)
-    ΠP = compute_bubble(G0, G0, basis_f, basis_b, Val(:P); temperature)
-    Γ0_A = get_bare_vertex(Val(:KF), Val(:A), U)
-    Γ0_P = get_bare_vertex(Val(:KF), Val(:P), U)
+    ΠA = compute_bubble(G0, G0, basis_f, basis_b, :A; temperature)
+    ΠP = compute_bubble(G0, G0, basis_f, basis_b, :P; temperature)
+    Γ0_A = get_bare_vertex(Val(:KF), :A, U)
+    Γ0_P = get_bare_vertex(Val(:KF), :P, U)
     Γ1_A = solve_BSE(Γ0_A, ΠA, Γ0_A, basis_b)
     Γ1_P = solve_BSE(Γ0_P, ΠP, Γ0_P, basis_b)
     Γ1_T = apply_crossing(Γ1_A)
@@ -128,7 +128,7 @@ end
            + vertex_bubble_integral(Γ1_T, ΠA, Γ1_P, basis_b; basis_aux))
 
     ws = get_fitting_points(basis_b)
-    ΓL_cache = cache_vertex_matrix([Γ1_P, Γ1_T], channel(ΠA), ws, basis_aux);
+    ΓL_cache = cache_vertex_matrix([Γ1_P, Γ1_T], get_channel(ΠA), ws, basis_aux);
     x = vertex_bubble_integral(ΓL_cache, ΠA, Γ1_P, basis_b; basis_aux)
     @test x.data ≈ x_ref.data
 end

@@ -11,15 +11,15 @@ using mfRG
     n2 = size(basis2, 2)
     n3 = size(basis3, 2)
 
-    @test_throws ArgumentError Vertex4P{:KF, :X}(basis1, basis1, basis2)
+    @test_throws ArgumentError Vertex4P{:KF}(:X, basis1, basis1, basis2)
 
-    Γ = Vertex4P{:KF, :A}(basis1, basis1, basis2)
+    Γ = Vertex4P{:KF}(:A, basis1, basis1, basis2)
     @test mfRG.nkeldysh(Γ) == 2
     @test size(Γ.data) == (n1 * 2^2, n1 * 2^2, n2)
     @test size(keldyshview(Γ)) == (n1, n1, 1, 1, 1, 1, 2, 2, 2, 2, n2)
     @test size(to_matrix(Γ, 0.3)) == (n1 * 2^2, n1 * 2^2)
 
-    Γ = Vertex4P{:ZF, :A}(basis1, basis1, basis2, 3)
+    Γ = Vertex4P{:ZF}(:A, basis1, basis1, basis2, 3)
     @test mfRG.nkeldysh(Γ) == 1
     @test size(Γ.data) == (n1 * 3^2, n1 * 3^2, n2)
     @test size(to_matrix(Γ, 0.3)) == (n1 * 3^2, n1 * 3^2)
@@ -37,7 +37,7 @@ using mfRG
 
     # Test fitting
     for basis2 in [LinearSplineAndTailBasis(0, -1, -3:0.5:1), LinearSplineAndTailBasis(2, 4, -2:0.5:2)]
-        Γ = Vertex4P{:ZF, :A}(basis1, basis1, basis2)
+        Γ = Vertex4P{:ZF}(:A, basis1, basis1, basis2)
         ws = get_fitting_points(basis2)
         Γ_data = reshape(1 ./ (ws.^2 .+ 1), 1, 1, length(ws))
         fit_bosonic_basis_coeff!(Γ, Γ_data, ws)
@@ -54,20 +54,20 @@ end
     # Test evaluation of vertex at different channels
     basis1 = ConstantBasis()
     basis2 = LinearSplineAndTailBasis(0, 1, [-2., 2.])
-    Γ = Vertex4P{:ZF, :A}(Float64, basis1, basis1, basis2)
+    Γ = Vertex4P{:ZF}(:A, Float64, basis1, basis1, basis2)
     vec(Γ.data) .= [1., 2., 3., 4., 5., 6.]
-    @test Γ(1., 1., 3., Val(:A))[1, 1] ≈ 1 + 2 * 2/3
-    @test Γ(1., 1., 3., Val(:P))[1, 1] ≈ 5.
-    @test Γ(1., 1., 3., Val(:T))[1, 1] ≈ 5.5
-    @test Γ(0., 1., 3., Val(:A)) == Γ(0., 1., 3.)
-    for c in (:A, :P, :T)
-        @inferred Γ(0., 1., 3., Val(c))
+    @test Γ(1., 1., 3., :A)[1, 1] ≈ 1 + 2 * 2/3
+    @test Γ(1., 1., 3., :P)[1, 1] ≈ 5.
+    @test Γ(1., 1., 3., :T)[1, 1] ≈ 5.5
+    @test Γ(0., 1., 3., :A) == Γ(0., 1., 3.)
+    for C in (:A, :P, :T)
+        @inferred Γ(0., 1., 3., C)
     end
 
     # Test apply_crossing
-    Γ_A = Vertex4P{:KF, :A}(Float64, basis1, basis2, basis2)
+    Γ_A = Vertex4P{:KF}(:A, Float64, basis1, basis2, basis2)
     Γ_A.data .= rand(size(Γ_A.data)...)
     Γ_T = apply_crossing(Γ_A)
-    @test Γ_T isa Vertex4P{:KF, :T}
+    @test Γ_T isa Vertex4P{:KF}
     @test Γ_A(0.2, 0.3, 0.4) ≈ .-Γ_T(0.2, 0.3, 0.4)
 end

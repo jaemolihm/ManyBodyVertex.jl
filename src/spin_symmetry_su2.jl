@@ -22,7 +22,7 @@ Conversion between the two spin parametrizations are done using the
     su2_convert_spin_channel(C_out, Γ, C_in=channel(Γ[1]))
 Convert between the "dm" (for channel A and T) and "st" (for channel P) spin representations.
 """
-function su2_convert_spin_channel(C_out::Symbol, Γ, ::Val{C_in}=channel(Γ[1])) where {C_in}
+function su2_convert_spin_channel(C_out::Symbol, Γ, C_in::Symbol=get_channel(Γ[1]))
     if C_in === C_out
         Γ
     elseif (C_in, C_out) === (:A, :P)
@@ -39,18 +39,18 @@ function su2_convert_spin_channel(C_out::Symbol, Γ, ::Val{C_in}=channel(Γ[1]))
 end
 
 function su2_apply_crossing(Γ)
-    channel(Γ[1]) === Val(:A) || error("su2_apply_crossing implemented only for A -> T")
+    get_channel(Γ[1]) === :A || error("su2_apply_crossing implemented only for A -> T")
     apply_crossing.(Γ)
 end
 su2_apply_crossing(::Nothing) = nothing
 
-function su2_bare_vertex(F::Val, C::Val, U::Number, args...)
+function su2_bare_vertex(F::Val, C::Symbol, U::Number, args...)
     # SU2 symmetric bare vertex: +1, -1, 0 for spin channels d, m, p.
-    if C === Val(:A)  # (d, m)
+    if C === :A  # (d, m)
         (get_bare_vertex(F, C, U, args...), get_bare_vertex(F, C, -U, args...))
-    elseif C === Val(:P)  # (s, t)
+    elseif C === :P  # (s, t)
         (get_bare_vertex(F, C, 2 * U, args...),get_bare_vertex(F, C, 0 * U, args...))
-    elseif C === Val(:T)  # (td, tm)
+    elseif C === :T  # (td, tm)
         (get_bare_vertex(F, C, -U, args...), get_bare_vertex(F, C, U, args...))
     else
         error("Wrong channel $C")

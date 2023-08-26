@@ -47,28 +47,34 @@ To convert between the standard and channel orderings, use the `frequency_to_sta
 const _RealFreq = Union{Val{:KF}, Val{:ZF}}
 const _ImagFreq = Union{Val{:MF}}
 
-indices_to_standard(::Val{:A}, i) = (i[1], i[2], i[3], i[4])
-indices_to_standard(::Val{:P}, i) = (i[1], i[3], i[2], i[4])
-indices_to_standard(::Val{:T}, i) = (i[3], i[2], i[1], i[4])
+@inline function indices_to_standard(C::Symbol, i)
+    C === :A && return (i[1], i[2], i[3], i[4])
+    C === :P && return (i[1], i[3], i[2], i[4])
+    C === :T && return (i[3], i[2], i[1], i[4])
+    throw(ArgumentError("Wrong channel $C"))
+end
 
-indices_to_channel(::Val{:A}, i) = (i[1], i[2], i[3], i[4])
-indices_to_channel(::Val{:P}, i) = (i[1], i[3], i[2], i[4])
-indices_to_channel(::Val{:T}, i) = (i[3], i[2], i[1], i[4])
+@inline function indices_to_channel(C::Symbol, i)
+    C === :A && return (i[1], i[2], i[3], i[4])
+    C === :P && return (i[1], i[3], i[2], i[4])
+    C === :T && return (i[3], i[2], i[1], i[4])
+    throw(ArgumentError("Wrong channel $C"))
+end
 
-_frequency_to_standard(::_RealFreq, v1, v2, w) = (v1-w/2, -v1-w/2,  v2+w/2, -v2+w/2)
+@inline _frequency_to_standard(::_RealFreq, v1, v2, w) = (v1-w/2, -v1-w/2,  v2+w/2, -v2+w/2)
 @inline function _frequency_to_standard(::_ImagFreq, v1, v2, w)
     (floor(Int, v1-w/2), ceil(Int, -v1-1-w/2), floor(Int, v2+w/2), ceil(Int, -v2-1+w/2))
 end
 
 # v1 + v2 + v3 + v4 = 0 is assumed to hold.
-_frequency_to_channel(::_RealFreq, v1, v2, v3, v4) = ((v1-v2)/2, (v3-v4)/2, v3+v4)
+@inline _frequency_to_channel(::_RealFreq, v1, v2, v3, v4) = ((v1-v2)/2, (v3-v4)/2, v3+v4)
 @inline function _frequency_to_channel(::_ImagFreq, v1, v2, v3, v4)
     (ceil(Int, (v1-v2-1)/2), ceil(Int, (v3-v4-1)/2), v3+v4+1)
 end
 
-frequency_to_standard(F::Val, C::Val, v1, v2, w) = indices_to_standard(C, _frequency_to_standard(F, v1, v2, w))
-frequency_to_channel(F::Val, C::Val, v1, v2, v3, v4) = _frequency_to_channel(F, indices_to_channel(C, (v1, v2, v3, v4))...)
-frequency_to_channel(F::Val, C::Val, v1234) = frequency_to_channel(F, C, v1234...)
+@inline frequency_to_standard(F::Val, C, v1, v2, w) = indices_to_standard(C, _frequency_to_standard(F, v1, v2, w))
+@inline frequency_to_channel(F::Val, C, v1, v2, v3, v4) = _frequency_to_channel(F, indices_to_channel(C, (v1, v2, v3, v4))...)
+@inline frequency_to_channel(F::Val, C, v1234) = frequency_to_channel(F, C, v1234...)
 
 """
     _permute_orbital_indices_matrix_4p(c_in, c_out, Γ_mat_in, nind)
@@ -111,37 +117,49 @@ For imaginary frequencies, we floor (ceil) to get the integer index for fermioni
 if the sign for the fermionic frequency is positive (negative), as done in the vertex.
 """
 
-_bubble_prefactor(::Val{:A}) = 1
-_bubble_prefactor(::Val{:P}) = 1/2
-_bubble_prefactor(::Val{:T}) = -1
+@inline function _bubble_prefactor(C::Symbol)
+    C === :A && return 1.0
+    C === :P && return 0.5
+    C === :T && return -1.0
+    throw(ArgumentError("Wrong channel $C"))
+end
 
-_bubble_frequencies(::_RealFreq, ::Val{:A}, v, w) = ( v+w/2, v-w/2)
-_bubble_frequencies(::_RealFreq, ::Val{:P}, v, w) = (-v-w/2, v-w/2)
-_bubble_frequencies(::_RealFreq, ::Val{:T}, v, w) = ( v+w/2, v-w/2)
-_bubble_frequencies(::_ImagFreq, ::Val{:A}, v, w) = (floor(Int,   v+w/2), floor(Int, v-w/2))
-_bubble_frequencies(::_ImagFreq, ::Val{:P}, v, w) = (ceil(Int, -v-1-w/2), floor(Int, v-w/2))
-_bubble_frequencies(::_ImagFreq, ::Val{:T}, v, w) = (floor(Int,   v+w/2), floor(Int, v-w/2))
+@inline function _bubble_frequencies(::_RealFreq, C::Symbol, v, w)
+    C === :A && return ( v+w/2, v-w/2)
+    C === :P && return (-v-w/2, v-w/2)
+    C === :T && return ( v+w/2, v-w/2)
+    throw(ArgumentError("Wrong channel $C"))
+end
+@inline function _bubble_frequencies(::_ImagFreq, C::Symbol, v, w)
+    C === :A && return (floor(Int,   v+w/2), floor(Int, v-w/2))
+    C === :P && return (ceil(Int, -v-1-w/2), floor(Int, v-w/2))
+    C === :T && return (floor(Int,   v+w/2), floor(Int, v-w/2))
+    throw(ArgumentError("Wrong channel $C"))
+end
 
-_bubble_frequencies_inv(::_RealFreq, ::Val{:A}, v1, v2) = ((v1 + v2) / 2,  v1 - v2)
-_bubble_frequencies_inv(::_RealFreq, ::Val{:P}, v1, v2) = ((v2 - v1) / 2, -v1 - v2)
-_bubble_frequencies_inv(::_RealFreq, ::Val{:T}, v1, v2) = ((v1 + v2) / 2,  v1 - v2)
-_bubble_frequencies_inv(::_ImagFreq, ::Val{:A}, v1, v2) = (fld(v1 + v2 + 1, 2), v1 - v2)
-_bubble_frequencies_inv(::_ImagFreq, ::Val{:P}, v1, v2) = (fld(v2 - v1, 2), -v1 - v2 - 1)
-_bubble_frequencies_inv(::_ImagFreq, ::Val{:T}, v1, v2) = (fld(v1 + v2 + 1, 2), v1 - v2)
+@inline function _bubble_frequencies_inv(::_RealFreq, C::Symbol, v1, v2)
+    C === :A && return ((v1 + v2) / 2,  v1 - v2)
+    C === :P && return ((v2 - v1) / 2, -v1 - v2)
+    C === :T && return ((v1 + v2) / 2,  v1 - v2)
+    throw(ArgumentError("Wrong channel $C"))
+end
+@inline function _bubble_frequencies_inv(::_ImagFreq, C::Symbol, v1, v2)
+    C === :A && return (fld(v1 + v2 + 1, 2), v1 - v2)
+    C === :P && return (fld(v2 - v1, 2), -v1 - v2 - 1)
+    C === :T && return (fld(v1 + v2 + 1, 2), v1 - v2)
+    throw(ArgumentError("Wrong channel $C"))
+end
 
-_bubble_indices(::Val{:A}, i) = (i[4], i[1], i[2], i[3])
-_bubble_indices(::Val{:P}, i) = (i[1], i[4], i[2], i[3])
-_bubble_indices(::Val{:T}, i) = (i[4], i[1], i[2], i[3])
+@inline function _bubble_indices(C::Symbol, i)
+    C === :A && return (i[4], i[1], i[2], i[3])
+    C === :P && return (i[1], i[4], i[2], i[3])
+    C === :T && return (i[4], i[1], i[2], i[3])
+    throw(ArgumentError("Wrong channel $C"))
+end
 
-
-function channel_apply_crossing(C)
-    if C === :A
-        C_out = :T
-    elseif C === :T
-        C_out = :A
-    elseif C === :P
-        C_out = :P
-    else
-        error("Wrong channel $C")
-    end
+@inline function channel_apply_crossing(C::Symbol)
+    C === :A && return :T
+    C === :T && return :A
+    C === :P && return :P
+    throw(ArgumentError("Wrong channel $C"))
 end

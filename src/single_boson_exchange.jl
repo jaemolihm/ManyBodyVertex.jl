@@ -3,17 +3,22 @@
 Vertex in the single-boson exchange (SBE) decomposition.
 We define ``∇(v1, v2, w) = Λb(v1, w) * W(w) * Λ(v2, w) - U``.
 """
-mutable struct SBEReducibleVertex{F, C, T, VT1, VT2, VT3, VT4} <: AbstractVertex4P{F, C, T}
+mutable struct SBEReducibleVertex{F, T, VT1, VT2, VT3, VT4} <: AbstractVertex4P{F, :X, T}
     # Number of orbitals
     norb::Int
     U::VT1
     W::VT2
     Λb::VT3
     Λ::VT4
-    function SBEReducibleVertex(U, W::AbstractVertex4P{F, C, T}, Λb, Λ) where {F, C, T}
-        new{F, C, T, typeof(U), typeof(W), typeof(Λb), typeof(Λ)}(U.norb, U, W, Λb, Λ)
+    function SBEReducibleVertex(U, W::AbstractVertex4P{F, :X, T}, Λb, Λ) where {F, T}
+        C = get_channel(W)
+        get_channel(Λb) === C || throw(ArgumentError("Channel of Λb does not match with W"))
+        get_channel(Λ) === C || throw(ArgumentError("Channel of Λ does not match with W"))
+        new{F, T, typeof(U), typeof(W), typeof(Λb), typeof(Λ)}(U.norb, U, W, Λb, Λ)
     end
 end
+
+get_channel(∇::SBEReducibleVertex) = ∇.W.channel
 
 function Base.getproperty(∇::SBEReducibleVertex, s::Symbol)
     if s === :basis_f1
@@ -27,31 +32,33 @@ end
 
 _vertex_names(::SBEReducibleVertex) = (:W, :Λb, :Λ)
 
-function Base.similar(∇::SBEReducibleVertex{F, C, T}) where {F, C, T}
+function Base.similar(∇::SBEReducibleVertex{F, T}) where {F, T}
     SBEReducibleVertex(similar(∇.U), similar(∇.W), similar(∇.Λb), similar(∇.Λ))
 end
 
 """
-    (∇::SBEReducibleVertex{F, C_∇})(v1, v2, w, c_out::Val=Val(C_∇)) where {F, C_∇}
+    (∇::SBEReducibleVertex{F})(v1, v2, w, C_out::Symbol=get_channel(∇)) where {F}
 Evaluate the SBE vertex at given frequencies in the channel parametrization.
 """
-function (∇::SBEReducibleVertex{F, C_∇})(v1, v2, w, c_out::Val=Val(C_∇)) where {F, C_∇}
-    v1234 = frequency_to_standard(Val(F), c_out, v1, v2, w)
-    vvw = frequency_to_channel(Val(F), Val(C_∇), v1234)
+function (∇::SBEReducibleVertex{F})(v1, v2, w, C_out::Symbol=get_channel(∇)) where {F}
+    C_∇ = get_channel(∇)
+    v1234 = frequency_to_standard(Val(F), C_out, v1, v2, w)
+    vvw = frequency_to_channel(Val(F), C_∇, v1234)
     U  = ∇.U(vvw...)
     W  = ∇.W(vvw...)
     Λb = ∇.Λb(vvw...)
     Λ  = ∇.Λ(vvw...)
     ∇_vvw = Λb * W * Λ .- U
-    _permute_orbital_indices_matrix_4p(Val(C_∇), c_out, ∇_vvw, get_nind(∇))
+    _permute_orbital_indices_matrix_4p(C_∇, C_out, ∇_vvw, get_nind(∇))
 end
 
-function (∇::SBEReducibleVertex{F, C_∇, T})(v1::AbstractVector, v2::AbstractVector, w::AbstractVector,
-        c_out::Val=Val(C_∇)) where {F, C_∇, T}
+function (∇::SBEReducibleVertex{F, T})(v1::AbstractVector, v2::AbstractVector, w::AbstractVector,
+        C_out::Symbol=get_channel(∇)) where {F, T}
     # Batched version of SBEReducibleVertex evaluation
+    C_∇ = get_channel(∇)
     nfreq = length(v1)
     nind = get_nind(∇)
-    U = ∇.U(0, 0, 0, c_out)
+    U = ∇.U(0, 0, 0, C_out)
 
     W = zeros(T, nind^2, nind^2)
     Λb = zeros(T, nind^2, nind^2)
@@ -64,19 +71,20 @@ function (∇::SBEReducibleVertex{F, C_∇, T})(v1::AbstractVector, v2::Abstract
 
     ∇_vvw = zeros(T, nfreq, nind^2, nind^2)
     @views for ifreq in 1:nfreq
-        v1234 = frequency_to_standard(Val(F), c_out, v1[ifreq], v2[ifreq], w[ifreq])
-        vvw = frequency_to_channel(Val(F), Val(C_∇), v1234)
+        v1234 = frequency_to_standard(Val(F), C_out, v1[ifreq], v2[ifreq], w[ifreq])
+        vvw = frequency_to_channel(Val(F), C_∇, v1234)
         _evaluate_vertex_with_buffer!(W, ∇.W, vvw..., W_buffer...)
         _evaluate_vertex_with_buffer!(Λb, ∇.Λb, vvw..., Λb_buffer...)
         _evaluate_vertex_with_buffer!(Λ, ∇.Λ, vvw..., Λ_buffer...)
         mul!(tmp2, mul!(tmp1, Λb, W), Λ)
         ∇_vvw[ifreq, :, :] .= tmp2 .- U
     end
-    _permute_orbital_indices_matrix_4p_keep_dim1(Val(C_∇), c_out, ∇_vvw, nind)
+    _permute_orbital_indices_matrix_4p_keep_dim1(C_∇, C_out, ∇_vvw, nind)
 end
 
-function to_matrix(∇::SBEReducibleVertex{F, C, T}, w, basis1=∇.basis_f1, basis2=∇.basis_f2, c::Val=Val(C)) where {F, C, T}
-    if c === Val(C) && basis1 === ∇.basis_f1 && basis2 === ∇.basis_f2
+function to_matrix(∇::SBEReducibleVertex{F, T}, w, basis1=∇.basis_f1, basis2=∇.basis_f2, C_out::Symbol=get_channel(∇)) where {F, T}
+    C_∇ = get_channel(∇)
+    if C_out === C_∇ && basis1 === ∇.basis_f1 && basis2 === ∇.basis_f2
         # Same channel, same basis. Just need to contract the bosonic frequency basis.
         to_matrix(∇.Λb, w) * to_matrix(∇.W, w) * to_matrix(∇.Λ, w)
     else
@@ -87,7 +95,7 @@ function to_matrix(∇::SBEReducibleVertex{F, C, T}, w, basis1=∇.basis_f1, bas
         v1_ = vec(ones(length(vs2))' .* vs1)
         v2_ = vec(vs2' .* ones(length(vs1)))
         w_ = fill(w, length(v1_))
-        ∇_w_data = reshape(∇(v1_, v2_, w_, c), (length(vs1), length(vs2), nind^2, nind^2))
+        ∇_w_data = reshape(∇(v1_, v2_, w_, C_out), (length(vs1), length(vs2), nind^2, nind^2))
 
         ∇_tmp1 = fit_basis_coeff(∇_w_data, basis1, vs1, 1)
         ∇_tmp2 = fit_basis_coeff(∇_tmp1, basis2, vs2, 2)
@@ -98,7 +106,8 @@ function to_matrix(∇::SBEReducibleVertex{F, C, T}, w, basis1=∇.basis_f1, bas
 end
 
 function su2_apply_crossing(∇::NTuple{2, SBEReducibleVertex})
-    channel(∇[1]) === :A || error("su2_apply_crossing implemented only for A -> T")
+    C = get_channel(∇[1])
+    C === :A || error("su2_apply_crossing implemented only for A -> T")
     U_new = apply_crossing.(getproperty.(∇, :U))
     W_new = apply_crossing.(getproperty.(∇, :W))
     @. SBEReducibleVertex(U_new, W_new, getproperty(∇, :Λb), getproperty(∇, :Λ))
@@ -111,9 +120,10 @@ Ref: Sec. 4.3 of M. Gievers et al, Eur. Phys. J. B. 95, 108 (2022)
 - ``Λb = 1 + K2 * W⁻¹``
 - ``Λ = 1 + W⁻¹ * K2p``
 """
-function asymptotic_to_sbe_single_boson(U, K1::AbstractVertex4P{F, C, T}, K2, K2p) where {F, C, T}
-    @assert channel(K2) == C
-    @assert channel(K2p) == C
+function asymptotic_to_sbe_single_boson(U, K1::AbstractVertex4P{F, :X, T}, K2, K2p) where {F, T}
+    C = get_channel(K1)
+    @assert get_channel(K2) == C
+    @assert get_channel(K2p) == C
 
     norb = K1.norb
     nind = get_nind(K1)
@@ -132,7 +142,7 @@ function asymptotic_to_sbe_single_boson(U, K1::AbstractVertex4P{F, C, T}, K2, K2
             Λb_data[iv, :, :, iw] .= K2(v, 0, w) * inv_W
         end
     end
-    Λb_minus_I = Vertex4P{F, C}(T, K2.basis_f1, basis_const, K2.basis_b, norb)
+    Λb_minus_I = Vertex4P{F}(C, T, K2.basis_f1, basis_const, K2.basis_b, norb)
     Λb_minus_I.data .= reshape(
         fit_basis_coeff(fit_basis_coeff(Λb_data, K2.basis_f1, vs, 1), K2.basis_b, ws, 4),
         size(Λb_minus_I.data)
@@ -149,7 +159,7 @@ function asymptotic_to_sbe_single_boson(U, K1::AbstractVertex4P{F, C, T}, K2, K2
             Λ_data[:, iv, :, iw] .= inv_W * K2p(0, v, w)
         end
     end
-    Λ_minus_I = Vertex4P{F, C}(T, basis_const, K2p.basis_f2, K2.basis_b, norb)
+    Λ_minus_I = Vertex4P{F}(C, T, basis_const, K2p.basis_f2, K2.basis_b, norb)
     Λ_minus_I.data .= reshape(
         fit_basis_coeff(fit_basis_coeff(Λ_data, K2p.basis_f2, vs, 2), K2p.basis_b, ws, 4),
         size(Λ_minus_I.data)
@@ -163,10 +173,11 @@ end
 Ref: Sec. 4.3 of M. Gievers et al, Eur. Phys. J. B. 95, 108 (2022)
 - ``M = K3 - K2 * W⁻¹ * K2p``
 """
-function asymptotic_to_sbe_multi_boson(U, K1::AbstractVertex4P{F, C, T}, K2, K2p, K3) where {F, C, T}
-    @assert channel(K2) == C
-    @assert channel(K2p) == C
-    @assert channel(K3) == C
+function asymptotic_to_sbe_multi_boson(U, K1::AbstractVertex4P{F, :X, T}, K2, K2p, K3) where {F, T}
+    C = get_channel(K1)
+    get_channel(K2) === C || throw(ArgumentError("Channel mismatch between K1 and K2"))
+    get_channel(K2p) === C || throw(ArgumentError("Channel mismatch between K1 and K2p"))
+    get_channel(K3) === C || throw(ArgumentError("Channel mismatch between K1 and K3"))
     nind = get_nind(K1)
     # M = K3 - K2 * (K1 + U)⁻¹ * K2p
     # M_subtract_data[v1, v2, w] = K2[v1, w] * W[w]⁻¹ * K2p[v2, w]
@@ -178,7 +189,7 @@ function asymptotic_to_sbe_multi_boson(U, K1::AbstractVertex4P{F, C, T}, K2, K2p
     K2_data = zeros(T, nind^2, nind^2, length(vs1))
     K2p_data = zeros(T, nind^2, nind^2, length(vs2))
     @views for (iw, w) in enumerate(ws)
-        inv_W = pinv(K1(0, 0, w) + U(0, 0, w, Val(C)), rtol=sqrt(eps(real(T))))
+        inv_W = pinv(K1(0, 0, w) + U(0, 0, w, C), rtol=sqrt(eps(real(T))))
         for (iv1, v1) in enumerate(vs1)
             K2_data[:, :, iv1] .= K2(v1, 0, w)
         end
@@ -196,20 +207,22 @@ function asymptotic_to_sbe_multi_boson(U, K1::AbstractVertex4P{F, C, T}, K2, K2p
     M
 end
 
-function sbe_vertex_W_add_U(W_minus_U::Vertex4P{F, C, T}, U) where {F, C, T}
+function sbe_vertex_W_add_U(W_minus_U::Vertex4P{F, T}, U) where {F, T}
+    C = get_channel(W_minus_U)
     basis_b = concat_constant_basis(W_minus_U.basis_b)
-    W = Vertex4P{F, C}(T, W_minus_U.basis_f1, W_minus_U.basis_f2, basis_b, W_minus_U.norb)
-    W.data[:, :, 1] .= U(0, 0, 0, Val(C))
+    W = Vertex4P{F}(C, T, W_minus_U.basis_f1, W_minus_U.basis_f2, basis_b, W_minus_U.norb)
+    W.data[:, :, 1] .= U(0, 0, 0, C)
     W.data[:, :, 2:end] .= W_minus_U.data
     W
 end
 
-function sbe_vertex_Λb_add_I(Λb_minus_I::Vertex4P{F, C, T}) where {F, C, T}
+function sbe_vertex_Λb_add_I(Λb_minus_I::Vertex4P{F, T}) where {F, T}
     # Concatenate bases of Λb_minus_I and basis_const, store Λb_minus_I and 1 in the corresponding blocks
+    C = get_channel(Λb_minus_I)
     basis_f1 = concat_constant_basis(Λb_minus_I.basis_f1)
     basis_f2 = Λb_minus_I.basis_f2
     basis_b  = concat_constant_basis(Λb_minus_I.basis_b)
-    Λb = Vertex4P{F, C}(T, basis_f1, basis_f2, basis_b, Λb_minus_I.norb)
+    Λb = Vertex4P{F}(C, T, basis_f1, basis_f2, basis_b, Λb_minus_I.norb)
 
     nind = get_nind(Λb)
     Λb_data_reshape = reshape(Λb.data, nb_f1(Λb), nind^2, 1, nind^2, nb_b(Λb))
@@ -220,12 +233,13 @@ function sbe_vertex_Λb_add_I(Λb_minus_I::Vertex4P{F, C, T}) where {F, C, T}
     Λb
 end
 
-function sbe_vertex_Λ_add_I(Λ_minus_I::Vertex4P{F, C, T}) where {F, C, T}
+function sbe_vertex_Λ_add_I(Λ_minus_I::Vertex4P{F, T}) where {F, T}
     # Concatenate bases of Λ_minus_I and basis_const, store Λ_minus_I and 1 in the corresponding blocks
+    C = get_channel(Λ_minus_I)
     basis_f1 = Λ_minus_I.basis_f1
     basis_f2 = concat_constant_basis(Λ_minus_I.basis_f2)
     basis_b  = concat_constant_basis(Λ_minus_I.basis_b)
-    Λ = Vertex4P{F, C}(T, basis_f1, basis_f2, basis_b, Λ_minus_I.norb)
+    Λ = Vertex4P{F}(C, T, basis_f1, basis_f2, basis_b, Λ_minus_I.norb)
 
     nind = get_nind(Λ)
     Λ_data_reshape = reshape(Λ.data, nb_f1(Λ), nind^2, nb_f2(Λ), nind^2, nb_b(Λ))
@@ -236,9 +250,10 @@ function sbe_vertex_Λ_add_I(Λ_minus_I::Vertex4P{F, C, T}) where {F, C, T}
     Λ
 end
 
-function sbe_3p_identity(U::AbstractVertex4P{F, C, T}) where {F, C, T}
+function sbe_3p_identity(U::AbstractVertex4P{F, :X, T}) where {F, T}
+    C = get_channel(U)
     basis_const = U.basis_f1
-    id  = Vertex4P{F, C}(T, basis_const, basis_const, basis_const, U.norb)
+    id  = Vertex4P{F}(C, T, basis_const, basis_const, basis_const, U.norb)
     nind = get_nind(id)
     reshape(id.data, nind^2, nind^2) .= I(nind^2)
     id
@@ -302,13 +317,8 @@ function get_irreducible_vertices(C, Γ::SBEVertexX5X)
 end
 
 function get_reducible_vertices(C, Γ::SBEVertexX5X)
-    if C === :A
-        (; ∇=Γ.∇_A, M=Γ.M_A)
-    elseif C === :P
-        (; ∇=Γ.∇_P, M=Γ.M_P)
-    elseif C === :T
-        (; ∇=Γ.∇_T, M=Γ.M_T)
-    else
-        error("Wrong channel $C")
-    end
+    C === :A && return (; ∇=Γ.∇_A, M=Γ.M_A)
+    C === :P && return (; ∇=Γ.∇_P, M=Γ.M_P)
+    C === :T && return (; ∇=Γ.∇_T, M=Γ.M_T)
+    throw(ArgumentError("Wrong channel $C"))
 end

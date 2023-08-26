@@ -49,8 +49,8 @@ using Test
         @test z1 ≈ z2 rtol=1e-4
 
         for C in (:A, :P, :T)
-            z1 = sum(to_matrix(V, 0.5, basis_aux, basis_aux, Val(C)) for V in Γ_K123)
-            z2 = sum(to_matrix(V, 0.5, basis_aux, basis_aux, Val(C)) for V in [∇, M])
+            z1 = sum(to_matrix(V, 0.5, basis_aux, basis_aux, C) for V in Γ_K123)
+            z2 = sum(to_matrix(V, 0.5, basis_aux, basis_aux, C) for V in [∇, M])
             @test z1 ≈ z2 rtol=2e-2
         end
     end
@@ -112,8 +112,8 @@ end
         @test z1 ≈ z2
 
         for C in (:A, :P, :T)
-            z1 = sum(to_matrix(V, 1, basis_v_aux, basis_v_aux, Val(C)) for V in Γ_K123)
-            z2 = sum(to_matrix(V, 1, basis_v_aux, basis_v_aux, Val(C)) for V in [∇, M])
+            z1 = sum(to_matrix(V, 1, basis_v_aux, basis_v_aux, C) for V in Γ_K123)
+            z2 = sum(to_matrix(V, 1, basis_v_aux, basis_v_aux, C) for V in [∇, M])
             @test z1 ≈ z2
         end
     end

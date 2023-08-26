@@ -44,7 +44,7 @@ function iterate_parquet_single_channel_asymptotic(Π, U, γ, Irr;
     (; K1=K1_new, K2=K2_new, K2p=K2p_new, K3=K3_new)
 end
 
-function iterate_parquet_single_channel(::Val{C}, Γ::AsymptoticVertex, Π) where {C}
+function iterate_parquet_single_channel(C, Γ::AsymptoticVertex, Π)
     U = Γ(C, :Γ0)
     γ = get_reducible_vertices(C, Γ)
     Irr = get_irreducible_vertices(C, Γ)
@@ -57,11 +57,11 @@ end
 function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP)
     # BSE for channel A
     @info "Solving BSE for channel A"
-    K1_A, K2_A, K2p_A, K3_A = iterate_parquet_single_channel(Val(:A), Γ, ΠA)
+    K1_A, K2_A, K2p_A, K3_A = iterate_parquet_single_channel(:A, Γ, ΠA)
 
     # BSE for channel P
     @info "Solving BSE for channel P"
-    K1_P, K2_P, K2p_P, K3_P = iterate_parquet_single_channel(Val(:P), Γ, ΠP)
+    K1_P, K2_P, K2p_P, K3_P = iterate_parquet_single_channel(:P, Γ, ΠP)
 
     # Channel T: use crossing symmetry
     @info "Applying crossing symmetry for channel T"
@@ -83,8 +83,8 @@ end
 function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature,
         smooth_bubble=get_formalism(G) === :MF ? false : true)
     bubble_function = smooth_bubble ? compute_bubble_smoothed : compute_bubble
-    @time ΠA_ = bubble_function(G, G, basis_v_bubble, basis_w_bubble, Val(:A); temperature)
-    @time ΠP_ = bubble_function(G, G, basis_v_bubble, basis_w_bubble, Val(:P); temperature)
+    @time ΠA_ = bubble_function(G, G, basis_v_bubble, basis_w_bubble, :A; temperature)
+    @time ΠP_ = bubble_function(G, G, basis_v_bubble, basis_w_bubble, :P; temperature)
     ΠA = (ΠA_, ΠA_)
     ΠP = (ΠP_ * -1, ΠP_)
     (; ΠA, ΠP)
@@ -97,8 +97,8 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2
     F = get_formalism(G0)
     T = eltype(G0)
 
-    Γ0_A = su2_bare_vertex(Val(F), Val(:A), U)
-    Γ0_P = su2_bare_vertex(Val(F), Val(:P), U)
+    Γ0_A = su2_bare_vertex(Val(F), :A, U)
+    Γ0_P = su2_bare_vertex(Val(F), :P, U)
     Γ0_T = su2_apply_crossing(Γ0_A)
 
     # 1st iteration

@@ -21,7 +21,10 @@ struct RealSpaceVertex{F, RC, T, VT <: AbstractFrequencyVertex{F, T}, RBT} <: Ab
         new{F, RC, T, VT, RBT}(rbasis, vertices_R)
     end
 end
-channel(::RealSpaceVertex{F, RC, T, VT}) where {F, RC, T, VT} = channel(VT)
+function channel(Γ::RealSpaceVertex{F, RC, T, VT}) where {F, RC, T, VT}
+    # TODO: Add channel field to RealSpaceVertex
+    get_channel(first(Γ.vertices_R))
+end
 real_space_channel(::RealSpaceVertex{F, RC}) where {F, RC} = RC
 
 get_fermionic_basis_1(Γ::RealSpaceVertex) = (; freq=Γ.basis_f1, r=Γ.rbasis)
@@ -86,7 +89,7 @@ end
 """
 function to_real_space(A::RealSpaceVertex, i1234, R1234)
     C = real_space_channel(A)
-    i1, i2, i3, i4 = indices_to_channel(Val(C), i1234)
+    i1, i2, i3, i4 = indices_to_channel(C, i1234)
     R, Rp, R_B = lattice_vectors_to_channel(Val(C), R1234)
     bL = (i1, i2, R)
     bR = (i4, i3, Rp)
@@ -99,7 +102,7 @@ function real_space_convert_channel(A::RealSpaceVertex, rbasis_out, ::Val{RC_out
     for (ibR, bR) in enumerate(rbasis_out.bonds_R), (ibL, bL) in enumerate(rbasis_out.bonds_L)
         i1, i2, R = bL
         i4, i3, Rp = bR
-        i1234 = indices_to_standard(Val(RC_out), (i1, i2, i3, i4))
+        i1234 = indices_to_standard(RC_out, (i1, i2, i3, i4))
 
         R_B_replicas = rbasis_out.R_B_replicas[ibL, ibR]
         for (iR_B, R_B) in enumerate(R_B_replicas)
@@ -201,7 +204,7 @@ function get_bare_vertex(::Val{F}, ::Val{C}, U::Number, rbasis::RealSpaceBasis{D
     ibR === nothing && error("onsite bond not found in bonds_R")
     iR_B = findfirst(x -> x == R0, rbasis.R_B_replicas[ibL, ibR])
     iR_B === nothing && error("onsite R_B not found")
-    Γ0 = get_bare_vertex(Val(F), Val(C), U)
+    Γ0 = get_bare_vertex(Val(F), C, U)
     @assert rbasis.R_B_ndegen[ibL, ibR][iR_B] == 1
     RealSpaceVertex{C}(rbasis, dictionary(((ibL, ibR, iR_B) => Γ0,)))
 end

@@ -3,7 +3,7 @@ using TimerOutputs
 
 export get_nonequidistant_grid
 
-export nbasis, get_formalism, get_nind
+export nbasis, get_formalism, get_nind, get_channel
 export ConstantBasis, LinearSplineAndTailBasis, ShiftedSplineBasis
 export ImagConstantBasis, ImagGridAndTailBasis
 export get_fitting_points

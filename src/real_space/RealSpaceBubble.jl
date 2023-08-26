@@ -25,11 +25,14 @@ function RealSpaceBubble{RC}(rbasis::RBT, bubbles_q) where {RC, RBT}
     data_q = [[y.data for y in x] for x in bubbles_q]
     DT = eltype(eltype(data_q))
     F = get_formalism(Π_)
-    C = channel(Π_)
+    C = get_channel(Π_)
     T = eltype(Π_)
     RealSpaceBubble{F, RC, C, T, typeof(basis_f), typeof(basis_b), DT, RBT}(;
         rbasis, basis_f, basis_b, norb, data_q, temperature)
 end
+
+# FIXME: add C to field of RealSpaceBubble
+get_channel(::RealSpaceBubble{F, RC, C}) where {F, RC, C} = C
 
 real_space_channel(::RealSpaceBubble{F, RC}) where {F, RC} = RC
 
@@ -71,8 +74,8 @@ TODO: Interpolation (linear / Fourier)
     iq === nothing && error("q point interpolation not implemented for RealSpaceBubble")
 
     F = get_formalism(A)
-    C = channel(A)
-    Bubble{F, C}(A.basis_f, A.basis_b, A.norb, A.data_q[ibL, ibR][iq]; A.temperature,
+    C = get_channel(A)
+    Bubble{F}(C, A.basis_f, A.basis_b, A.norb, A.data_q[ibL, ibR][iq]; A.temperature,
                  A.cache_basis_L, A.cache_basis_R, A.cache_overlap_LR)
 end
 
@@ -88,28 +91,28 @@ function compute_bubble_nonlocal(G1, G2, basis_f, basis_b, ::Val{C}, q, nk; temp
     for ky in range(0, 1; length=nk+1)[1:end-1]
         for kx in range(0, 1; length=nk+1)[1:end-1]
             k = SVector(kx, ky)
-            k1, k2 = _bubble_frequencies(Val(:ZF), Val(C), k, q)
+            k1, k2 = _bubble_frequencies(Val(:ZF), C, k, q)
             # TODO: Cleanup
             G1_ = G1 isa AbstractLazyGreen2P ? G1 : interpolate_to_q(G1, k1, 1, 1)
             G2_ = G2 isa AbstractLazyGreen2P ? G2 : interpolate_to_q(G2, k2, 1, 1)
             for (iw, w) in enumerate(ws)
                 for (iv, v) in enumerate(vs)
-                    v1, v2 = _bubble_frequencies(Val(F), Val(C), v, w)
+                    v1, v2 = _bubble_frequencies(Val(F), C, v, w)
                     G1_v = G1 isa AbstractLazyGreen2P ? G1(k1, v1) : G1_(v1)
                     G2_v = G2 isa AbstractLazyGreen2P ? G2(k2, v2) : G2_(v2)
                     for (i, inds) in enumerate(Iterators.product(1:nind, 1:nind, 1:nind, 1:nind))
-                        i11, i12, i21, i22 = _bubble_indices(Val(C), inds)
+                        i11, i12, i21, i22 = _bubble_indices(C, inds)
                         Π_data[iv, i, iw] += G1_v[i11, i12] * G2_v[i21, i22]
                     end
                 end
             end
         end
     end
-    Π_data .*= _bubble_prefactor(Val(C)) / nk^2
+    Π_data .*= _bubble_prefactor(C) / nk^2
     Π_data_tmp1 = fit_basis_coeff(Π_data, basis_f, vs, 1)
     Π_data_tmp2 = fit_basis_coeff(Π_data_tmp1, basis_b, ws, 3)
 
-    Π = Bubble{F, C}(basis_f, basis_b, G1.norb; temperature)
+    Π = Bubble{F}(C, basis_f, basis_b, G1.norb; temperature)
     Π.data .= reshape(Π_data_tmp2, size(Π.data))
     Π
 end
@@ -138,20 +141,20 @@ end
 """
 function compute_bubble(G1::RealSpaceGreen2P{F}, G2::RealSpaceGreen2P{F}, basis_f, basis_b,
             ::Val{C}, rbasis; temperature=nothing, smooth_bubble=false) where {F, C}
-    Πs = [[Bubble{F, C}(eltype(G1), basis_f, basis_b, G1.norb; temperature) for _ in rbasis.qpts]
+    Πs = [[Bubble{F}(C, eltype(G1), basis_f, basis_b, G1.norb; temperature) for _ in rbasis.qpts]
         for _ in eachindex(rbasis.bonds_L), _ in eachindex(rbasis.bonds_R)]
 
     # Precompute overlap_bubble
     if smooth_bubble
         ws = get_fitting_points(basis_b)
-        overlap_bubble_cached = [basis_integral_bubble(basis_f, G1.basis, G2.basis, w, Val(C))
+        overlap_bubble_cached = [basis_integral_bubble(basis_f, G1.basis, G2.basis, w, C)
                                  for w in ws]
     end
 
     for ibR in eachindex(rbasis.bonds_R), ibL in eachindex(rbasis.bonds_L)
         bL = rbasis.bonds_L[ibL]
         bR = rbasis.bonds_R[ibR]
-        iatm11, iatm12, iatm21, iatm22 = _bubble_indices(Val(C), (bL[2], bL[1], bR[1], bR[2]))
+        iatm11, iatm12, iatm21, iatm22 = _bubble_indices(C, (bL[2], bL[1], bR[1], bR[2]))
 
         Rs = G1.rbasis.R_replicas[iatm11, iatm12]
         Π_R_datas = [zeros(eltype(G1), size(first(Πs[ibL, ibR]).data)) for _ in eachindex(Rs)]
@@ -166,10 +169,10 @@ function compute_bubble(G1::RealSpaceGreen2P{F}, G2::RealSpaceGreen2P{F}, basis_
             G2_R === nothing && continue
 
             Π_R_datas[iR] .= if smooth_bubble
-                compute_bubble_smoothed(G1_R, G2_R, basis_f, basis_b, Val(C),
+                compute_bubble_smoothed(G1_R, G2_R, basis_f, basis_b, C,
                     overlap_bubble_cached; temperature).data
             else
-                compute_bubble(G1_R, G2_R, basis_f, basis_b, Val(C); temperature).data
+                compute_bubble(G1_R, G2_R, basis_f, basis_b, C; temperature).data
             end
         end
 

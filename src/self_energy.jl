@@ -2,12 +2,12 @@ using OMEinsum
 
 function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
     F = get_formalism(Γ)
-    C = _val_to_sym(channel(Γ))
+    C = get_channel(Γ)
     nind = get_nind(G)
     nb_f1(Γ) == 1 || error("Γ.basis_f1 must be a constant basis")
     F === :MF && temperature === nothing && error("For MF, temperature must be provided")
     if overlap === nothing
-        overlap = basis_integral_self_energy(Γ.basis_f2, Γ.basis_b, G.basis, v, Val(C))
+        overlap = basis_integral_self_energy(Γ.basis_f2, Γ.basis_b, G.basis, v, C)
     end
     # (ab, icd, j) -> (a, b, c, d, ij)
     Γ_data = reshape(permutedims(reshape(Γ.data, (nind^2, nb_f2(Γ), nind^2, nb_b(Γ))), (1, 3, 2, 4)), nind^4, :)
@@ -26,7 +26,7 @@ function _compute_self_energy(Γ, G, v, overlap=nothing; temperature=nothing)
     Σ_v
 end
 
-function SU2_self_energy_coeff(::Val{C}) where {C}
+function SU2_self_energy_coeff(C::Symbol)
     # For the A channel, the factor 2 accounts for the contribution of the T channel.
     # For the P channel, the factor 2 account for the factor of 1/2 in the bubble.
     if C === :A
@@ -50,7 +50,7 @@ function _compute_self_energy_SU2(Γs, G, basis; temperature=nothing)
     Base.Threads.@threads for iv in eachindex(vs)
         v = vs[iv]
         for Γ in Γs
-            C = channel(Γ[1])
+            C = get_channel(Γ[1])
             overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v, C)
             coeff = SU2_self_energy_coeff(C)
             Σ_data_iv[:, :, iv] .+= _compute_self_energy(Γ[1], G, v, overlap; temperature) .* coeff[1]
@@ -126,7 +126,7 @@ so that the Hartree self-energy is zero if all orbitals are half filled.
 - `temperature`: temperature, used only for MF.
 """
 function self_energy_hartree(U, G, temperature)
-    channel(U) === Val(:A) || error("Channel of the bare vertex must be :A")
+    get_channel(U) === :A || error("Channel of the bare vertex must be :A")
     nind = get_nind(U)
     Uarr = reshape(U(0, 0, 0), nind, nind, nind, nind)
     n = compute_occupation_matrix(G, temperature) .- I(G.norb) / 2

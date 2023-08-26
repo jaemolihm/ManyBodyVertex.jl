@@ -1,6 +1,6 @@
 
 """
-    basis_integral_bubble(b1, b2, b3, w, ::Val{C})
+    basis_integral_bubble(b1, b2, b3, w, C::Symbol)
 Basis integral for calculating bubbles.
 ```
           1  ->- ±(v+w/2) ->- 4
@@ -20,7 +20,9 @@ Basis integral for calculating bubbles.
 - A, T channal: ``overlap = ∫dw b1(v) * b2(v + w/2) * b3(v - w/2)``
 - P channal: ``overlap = ∫dw b1(v) * b2(-v - w/2) * b3(v - w/2)``
 """
-function basis_integral_bubble(b1::AbstractImagBasis, b2, b3, w, ::Val{C}) where {C}
+function basis_integral_bubble(b1::AbstractImagBasis, b2, b3, w, C::Symbol)
+    @assert C ∈ (:A, :P, :T)
+
     bases = (b1, b2, b3)
     sizes = nbasis.(bases)
     overlap = zeros(eltype(bases[1]), sizes)
@@ -49,7 +51,7 @@ function basis_integral_bubble(b1::AbstractImagBasis, b2, b3, w, ::Val{C}) where
         isempty(interval) && continue
 
         function f(v)
-            v1, v2 = _bubble_frequencies(Val(:MF), Val(C), v, w)
+            v1, v2 = _bubble_frequencies(Val(:MF), C, v, w)
             b1[v, i1] * b2[v1, i2] * b3[v2, i3]
         end
         l, r = endpoints(interval)
@@ -60,7 +62,9 @@ function basis_integral_bubble(b1::AbstractImagBasis, b2, b3, w, ::Val{C}) where
 end
 
 
-function basis_integral_bubble(b1::AbstractRealFreqBasis, b2, b3, w, ::Val{C}) where {C}
+function basis_integral_bubble(b1::AbstractRealFreqBasis, b2, b3, w, C::Symbol)
+    @assert C ∈ (:A, :P, :T)
+
     bases = (b1, b2, b3)
     sizes = nbasis.(bases)
     overlap = zeros(eltype(bases[1]), sizes)
@@ -82,7 +86,7 @@ function basis_integral_bubble(b1::AbstractRealFreqBasis, b2, b3, w, ::Val{C}) w
         isempty(interval) && continue
 
         function f(v)
-            v1, v2 = _bubble_frequencies(Val(:KF), Val(C), v, w)
+            v1, v2 = _bubble_frequencies(Val(:KF), C, v, w)
             b1[v, i1] * b2[v1, i2] * b3[v2, i3]
         end
         l, r = endpoints(interval)
