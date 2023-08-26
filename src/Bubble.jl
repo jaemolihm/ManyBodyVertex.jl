@@ -1,4 +1,4 @@
-abstract type AbstractBubble{F, C, T} <: AbstractFrequencyVertex{F, T} end
+abstract type AbstractBubble{F, T} <: AbstractFrequencyVertex{F, T} end
 
 """
     Bubble{F}(basis_f, basis_b, norb, data)
@@ -9,7 +9,7 @@ abstract type AbstractBubble{F, C, T} <: AbstractFrequencyVertex{F, T} end
                 |
     -- bL2 -- ov_LR -- bR1 --
 """
-mutable struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, :X, T}
+mutable struct Bubble{F, T, BF, BB, DT <: AbstractArray{T}} <: AbstractBubble{F, T}
     # Channel
     channel::Symbol
     # Basis for fermionic frequencies

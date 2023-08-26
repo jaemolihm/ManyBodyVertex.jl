@@ -21,10 +21,10 @@ function _compute_self_energy_SU2(Γs, G::RealSpaceGreen2P{F}, basis; temperatur
 end
 
 function _compute_self_energy_SU2_single_vertex!(Σ_data_iv_iR, Γ, G::RealSpaceGreen2P, vs, rbasis, temperature)
-    C = channel(Γ[1])
+    C = get_channel(Γ[1])
     Threads.@threads for iv in eachindex(vs)
         v = vs[iv]
-        overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v, Val(C))
+        overlap = basis_integral_self_energy(Γ[1].basis_f2, Γ[1].basis_b, G.basis, v, C)
         coeff = SU2_self_energy_coeff(C)
         for bR in Γ[1].rbasis.bonds_R, bL in Γ[1].rbasis.bonds_L
             iatm1, iatm2 = bL[1], bR[1]
@@ -51,7 +51,7 @@ function _compute_self_energy_SU2_single_vertex!(Σ_data_iv_iR, Γ, G::RealSpace
 end
 
 function self_energy_hartree(U, G::RealSpaceGreen2P, temperature)
-    channel(U) === :A || error("Channel of the bare vertex must be :A")
+    get_channel(U) === :A || error("Channel of the bare vertex must be :A")
     nind = get_nind(G)
     Σ_H_data = [zeros(eltype(G), nind, nind, length(Rs)) for Rs in G.rbasis.R_replicas]
     for bR in U.rbasis.bonds_R, bL in U.rbasis.bonds_L

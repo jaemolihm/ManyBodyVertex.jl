@@ -4,32 +4,37 @@
     and `rbasis.qgrid` is the bosonic momentum grid to use for the output vertex.
 """
 function vertex_bubble_integral(
-        ΓL::RealSpaceVertex{F, RC},
-        Π::RealSpaceBubble{F, RC, CB},
-        ΓR::RealSpaceVertex{F, RC},
+        ΓL::RealSpaceVertex{F},
+        Π::RealSpaceBubble{F},
+        ΓR::RealSpaceVertex{F},
         basis_b;
         basis_aux=nothing
-    ) where {F, RC, CB}
+    ) where {F}
+
+    RC = real_space_channel(Π)
+    RC === real_space_channel(ΓL) || throw(ArgumentError("Real-space channel mismatch between Π and ΓL"))
+    RC === real_space_channel(ΓR) || throw(ArgumentError("Real-space channel mismatch between Π and ΓR"))
 
     basis_w = basis_b.freq
     qgrid = basis_b.r.qgrid
+    CB = get_channel(Π)
 
     rbasis = RealSpaceBasis(ΓL.rbasis.lattice, ΓL.rbasis.positions, ΓL.rbasis.bonds_L,
                                ΓR.rbasis.bonds_R, qgrid)
 
-    basis_f1 = channel(ΓL) == CB ? ΓL.basis_f1 : basis_aux.freq
-    basis_f2 = channel(ΓR) == CB ? ΓR.basis_f2 : basis_aux.freq
+    basis_f1 = get_channel(ΓL) == CB ? ΓL.basis_f1 : basis_aux.freq
+    basis_f2 = get_channel(ΓR) == CB ? ΓR.basis_f2 : basis_aux.freq
     norb = ΓL.norb
     nq = length(rbasis.qpts)
 
-    Γ_iq = Vertex4P{F, CB}(eltype(Π), basis_f1, basis_f2, basis_w, norb)
-    Γ = RealSpaceVertex{CB}(rbasis, typeof(Γ_iq))
+    Γ_iq = Vertex4P{F}(CB, eltype(Π), basis_f1, basis_f2, basis_w, norb)
+    Γ = RealSpaceVertex(RC, rbasis, typeof(Γ_iq))
 
     # TODO: Precompute interpolate_to_q?
     # TODO: Use block matrix type?
 
-    basis_Π_L = channel(ΓL) == CB ? ΓL.basis_f2 : basis_aux.freq
-    basis_Π_R = channel(ΓR) == CB ? ΓR.basis_f1 : basis_aux.freq
+    basis_Π_L = get_channel(ΓL) == CB ? ΓL.basis_f2 : basis_aux.freq
+    basis_Π_R = get_channel(ΓR) == CB ? ΓR.basis_f1 : basis_aux.freq
     @timeit timer "overlap" cache_and_load_overlaps(Π, basis_Π_L, basis_Π_R)
 
     # TODO: Threads

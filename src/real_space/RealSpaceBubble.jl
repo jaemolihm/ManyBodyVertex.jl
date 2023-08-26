@@ -1,7 +1,10 @@
 """
-    RealSpaceBubble{RC}(rbasis::RBT, bubbles_q)
+    RealSpaceBubble(RC, rbasis::RBT, bubbles_q)
 """
-Base.@kwdef mutable struct RealSpaceBubble{F, RC, C, T, BF, BB, DT <: AbstractArray{T}, RBT} <: AbstractBubble{F, C, T}
+Base.@kwdef mutable struct RealSpaceBubble{F, T, BF, BB, DT <: AbstractArray{T}, RBT} <: AbstractBubble{F, T}
+    # Frequency and real-space channels
+    channel::Symbol
+    real_space_channel::Symbol
     rbasis::RBT
     # Basis for fermionic frequencies
     basis_f::BF
@@ -19,31 +22,31 @@ Base.@kwdef mutable struct RealSpaceBubble{F, RC, C, T, BF, BB, DT <: AbstractAr
     cache_overlap_LR = nothing
 end
 
-function RealSpaceBubble{RC}(rbasis::RBT, bubbles_q) where {RC, RBT}
+function RealSpaceBubble(real_space_channel::Symbol, rbasis::RBT, bubbles_q) where {RBT}
     Π_ = first(first(bubbles_q))
     (; basis_f, basis_b, norb, temperature) = Π_
     data_q = [[y.data for y in x] for x in bubbles_q]
     DT = eltype(eltype(data_q))
     F = get_formalism(Π_)
-    C = get_channel(Π_)
     T = eltype(Π_)
-    RealSpaceBubble{F, RC, C, T, typeof(basis_f), typeof(basis_b), DT, RBT}(;
-        rbasis, basis_f, basis_b, norb, data_q, temperature)
+    channel = get_channel(Π_)
+    RealSpaceBubble{F, T, typeof(basis_f), typeof(basis_b), DT, RBT}(;
+        channel, real_space_channel, rbasis, basis_f, basis_b, norb, data_q, temperature)
 end
 
-# FIXME: add C to field of RealSpaceBubble
-get_channel(::RealSpaceBubble{F, RC, C}) where {F, RC, C} = C
+get_channel(Π::RealSpaceBubble) = Π.channel
+real_space_channel(Π::RealSpaceBubble) = Π.real_space_channel
 
-real_space_channel(::RealSpaceBubble{F, RC}) where {F, RC} = RC
-
-function Base.similar(Π::RealSpaceBubble{F, RC}) where {F, RC}
-    typeof(Π)(; Π.rbasis, Π.basis_f, Π.basis_b, Π.norb, data_q=[zero.(x) for x in Π.data_q], Π.temperature)
+function Base.similar(Π::RealSpaceBubble{F}) where {F}
+    typeof(Π)(; Π.channel, Π.real_space_channel, Π.rbasis, Π.basis_f, Π.basis_b, Π.norb,
+        data_q=[zero.(x) for x in Π.data_q], Π.temperature)
 end
 Base.zero(Π::RealSpaceBubble) = similar(Π)
 
 function _check_basis_identity(A::RealSpaceBubble, B::RealSpaceBubble)
     get_formalism(A) === get_formalism(B) || error("Different formalism")
-    channel(A) === channel(B) || error("Different channel")
+    get_channel(A) === get_channel(B) || error("Different frequency channel")
+    real_space_channel(A) === real_space_channel(B) || error("Different real-space channel")
     for n in (:rbasis, :basis_f, :basis_b, :norb)
         getproperty(A, n) === getproperty(B, n) || error("Different $n")
     end
@@ -51,12 +54,14 @@ end
 data_fieldnames(::Type{<:RealSpaceBubble}) = (:data_q,)
 
 function Base.:*(x::Number, Π::RealSpaceBubble)
-    typeof(Π)(; Π.rbasis, Π.basis_f, Π.basis_b, Π.norb, data_q=[v .* x for v in Π.data_q], Π.temperature)
+    typeof(Π)(; Π.channel, Π.real_space_channel, Π.rbasis, Π.basis_f, Π.basis_b, Π.norb,
+        data_q=[v .* x for v in Π.data_q], Π.temperature)
 end
 
 function Base.show(io::IO, A::RealSpaceBubble{F, RC}) where {F, RC}
+    C = get_channel(A)
     print(io, Base.typename(typeof(A)).wrapper, "{:$F, :$RC}, ")
-    print(io, "$(Base.dims2string(size(A.data_q))) array of Vectors of bubbles.\n")
+    print(io, "$(Base.dims2string(size(A.data_q))) array of Vectors of bubbles in channel $C.\n")
     print(io, "- Bubble data size: $(size(first(first(A.data_q))))\n")
     print(io, "- Total number of bubbles: $(sum(length, A.data_q))")
 end
@@ -79,7 +84,7 @@ TODO: Interpolation (linear / Fourier)
                  A.cache_basis_L, A.cache_basis_R, A.cache_overlap_LR)
 end
 
-function compute_bubble_nonlocal(G1, G2, basis_f, basis_b, ::Val{C}, q, nk; temperature=nothing) where {C}
+function compute_bubble_nonlocal(G1, G2, basis_f, basis_b, C::Symbol, q, nk; temperature=nothing)
     F = get_formalism(G1)
     nind = get_nind(G1)
 
@@ -130,7 +135,7 @@ end
 
 """
     compute_bubble_nonlocal_real_space(G1::RealSpaceGreen2P{F}, G2::RealSpaceGreen2P{F},
-            basis_f, basis_b, ::Val{C}, rbasis; temperature=nothing, smooth_bubble=false)
+            basis_f, basis_b, C::Symbol, rbasis; temperature=nothing, smooth_bubble=false)
 (k1, k2) = ( k + q/2, k - q/2) : channel A, T
          = (-k - q/2, k - q/2) : channel P
 
@@ -140,7 +145,8 @@ end
      = ∑_{R} exp(i*q*R) * G(-R) * G(-R) : channel P
 """
 function compute_bubble(G1::RealSpaceGreen2P{F}, G2::RealSpaceGreen2P{F}, basis_f, basis_b,
-            ::Val{C}, rbasis; temperature=nothing, smooth_bubble=false) where {F, C}
+            C::Symbol, rbasis; temperature=nothing, smooth_bubble=false) where {F}
+    RC = C
     Πs = [[Bubble{F}(C, eltype(G1), basis_f, basis_b, G1.norb; temperature) for _ in rbasis.qpts]
         for _ in eachindex(rbasis.bonds_L), _ in eachindex(rbasis.bonds_R)]
 
@@ -186,5 +192,5 @@ function compute_bubble(G1::RealSpaceGreen2P{F}, G2::RealSpaceGreen2P{F}, basis_
             end
         end
     end
-    RealSpaceBubble{C}(rbasis, Πs)
+    RealSpaceBubble(RC, rbasis, Πs)
 end

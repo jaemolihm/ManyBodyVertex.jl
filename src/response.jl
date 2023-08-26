@@ -69,10 +69,10 @@ function susceptibility_operator_SU2(::Val{F}, rbasis::RealSpaceBasis{Dim}, norb
     iR_B === nothing && error("onsite R_B not found")
 
     op_loc_L, op_loc_R = susceptibility_operator_SU2(Val(F), norb)
-    op_L = (RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => op_loc_L[1],))),
-            RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => op_loc_L[2],))))
-    op_R = (RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => op_loc_R[1],))),
-            RealSpaceVertex{:A}(rbasis, dictionary(((ibL, ibR, iR_B) => op_loc_R[2],))))
+    op_L = (RealSpaceVertex(:A, rbasis, dictionary(((ibL, ibR, iR_B) => op_loc_L[1],))),
+            RealSpaceVertex(:A, rbasis, dictionary(((ibL, ibR, iR_B) => op_loc_L[2],))))
+    op_R = (RealSpaceVertex(:A, rbasis, dictionary(((ibL, ibR, iR_B) => op_loc_R[1],))),
+            RealSpaceVertex(:A, rbasis, dictionary(((ibL, ibR, iR_B) => op_loc_R[2],))))
     op_L, op_R
 end
 
@@ -121,8 +121,8 @@ function response_4p_to_2p(X::Vertex4P{F}) where {F}
     end
 end
 
-function response_4p_to_2p(X::RealSpaceVertex{F, RC}) where {F, RC}
-    RealSpaceVertex{RC}(X.rbasis, response_4p_to_2p.(X.vertices_R))
+function response_4p_to_2p(X::RealSpaceVertex{F}) where {F}
+    RealSpaceVertex(X.real_space_channel, X.rbasis, response_4p_to_2p.(X.vertices_R))
 end
 
 

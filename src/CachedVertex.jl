@@ -2,7 +2,7 @@
 Precompute and cache the result of `to_matrix`. The values can be accessed via the
 `to_matrix` function.
 """
-struct CachedVertex4P{F, T, BF1, BF2, FT} <: AbstractVertex4P{F, :X, T}
+struct CachedVertex4P{F, T, BF1, BF2, FT} <: AbstractVertex4P{F, T}
     channel::Symbol
     data::Array{T, 3}
     ws::Vector{FT}

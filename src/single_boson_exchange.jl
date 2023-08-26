@@ -3,14 +3,14 @@
 Vertex in the single-boson exchange (SBE) decomposition.
 We define ``∇(v1, v2, w) = Λb(v1, w) * W(w) * Λ(v2, w) - U``.
 """
-mutable struct SBEReducibleVertex{F, T, VT1, VT2, VT3, VT4} <: AbstractVertex4P{F, :X, T}
+mutable struct SBEReducibleVertex{F, T, VT1, VT2, VT3, VT4} <: AbstractVertex4P{F, T}
     # Number of orbitals
     norb::Int
     U::VT1
     W::VT2
     Λb::VT3
     Λ::VT4
-    function SBEReducibleVertex(U, W::AbstractVertex4P{F, :X, T}, Λb, Λ) where {F, T}
+    function SBEReducibleVertex(U, W::AbstractVertex4P{F, T}, Λb, Λ) where {F, T}
         C = get_channel(W)
         get_channel(Λb) === C || throw(ArgumentError("Channel of Λb does not match with W"))
         get_channel(Λ) === C || throw(ArgumentError("Channel of Λ does not match with W"))
@@ -120,7 +120,7 @@ Ref: Sec. 4.3 of M. Gievers et al, Eur. Phys. J. B. 95, 108 (2022)
 - ``Λb = 1 + K2 * W⁻¹``
 - ``Λ = 1 + W⁻¹ * K2p``
 """
-function asymptotic_to_sbe_single_boson(U, K1::AbstractVertex4P{F, :X, T}, K2, K2p) where {F, T}
+function asymptotic_to_sbe_single_boson(U, K1::AbstractVertex4P{F, T}, K2, K2p) where {F, T}
     C = get_channel(K1)
     @assert get_channel(K2) == C
     @assert get_channel(K2p) == C
@@ -173,7 +173,7 @@ end
 Ref: Sec. 4.3 of M. Gievers et al, Eur. Phys. J. B. 95, 108 (2022)
 - ``M = K3 - K2 * W⁻¹ * K2p``
 """
-function asymptotic_to_sbe_multi_boson(U, K1::AbstractVertex4P{F, :X, T}, K2, K2p, K3) where {F, T}
+function asymptotic_to_sbe_multi_boson(U, K1::AbstractVertex4P{F, T}, K2, K2p, K3) where {F, T}
     C = get_channel(K1)
     get_channel(K2) === C || throw(ArgumentError("Channel mismatch between K1 and K2"))
     get_channel(K2p) === C || throw(ArgumentError("Channel mismatch between K1 and K2p"))
@@ -250,7 +250,7 @@ function sbe_vertex_Λ_add_I(Λ_minus_I::Vertex4P{F, T}) where {F, T}
     Λ
 end
 
-function sbe_3p_identity(U::AbstractVertex4P{F, :X, T}) where {F, T}
+function sbe_3p_identity(U::AbstractVertex4P{F, T}) where {F, T}
     C = get_channel(U)
     basis_const = U.basis_f1
     id  = Vertex4P{F}(C, T, basis_const, basis_const, basis_const, U.norb)
@@ -313,7 +313,7 @@ function get_irreducible_vertices(C, Γ::SBEVertexX5X)
     # FIXME: Currently SU2 is assumed.
     # FIXME: SU2 spin conversion is done in iterate_parquet_single_channel_sbe
     # su2_convert_spin_channel.(C, filter!(x -> channel(x[1]) != C, get_vertices(Γ)))
-    filter!(x -> channel(x[1]) != C, get_vertices(Γ))
+    filter!(x -> get_channel(x[1]) != C, get_vertices(Γ))
 end
 
 function get_reducible_vertices(C, Γ::SBEVertexX5X)

@@ -28,10 +28,10 @@ using Test
     b0 = (1, 1, SVector(0, 0))
 
     for C in (:A, :P, :T)
-        Π = compute_bubble(G, G, basis_v, basis_w, Val(C), rbasis; temperature);
+        Π = compute_bubble(G, G, basis_v, basis_w, C, rbasis; temperature);
 
         for xq in rbasis.qpts
-            Πq_ref = mfRG.compute_bubble_nonlocal(G, G, basis_v, basis_w, Val(C), xq, 2 * nk_1p; temperature)
+            Πq_ref = mfRG.compute_bubble_nonlocal(G, G, basis_v, basis_w, C, xq, 2 * nk_1p; temperature)
             @test interpolate_to_q(Π, xq, b0, b0).data ≈ Πq_ref.data
         end
     end

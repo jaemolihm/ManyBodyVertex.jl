@@ -1,7 +1,7 @@
 using Dictionaries
 
 """
-    RealSpaceVertex{RC}(rbasis, vertices_R)
+    RealSpaceVertex(real_space_channel, rbasis, vertices_R)
 
 `RC` is the channel used for real-space (and momentum) parametrization. Note that it may not
 be equal to the channel used for the frequency parametrization of the vertices. The former
@@ -11,32 +11,41 @@ can be accessed via `real_space_channel`, and the latter via `channel`.
 - `rbasis`: Real-space basis for the vertex.
 - `vertices_R`: Dictionary of vertices in the real space basis with keys `[ibL, ibR, iR_B]`.
 """
-struct RealSpaceVertex{F, RC, T, VT <: AbstractFrequencyVertex{F, T}, RBT} <: AbstractFrequencyVertex{F, T}
+struct RealSpaceVertex{F, T, VT <: AbstractFrequencyVertex{F, T}, RBT} <: AbstractFrequencyVertex{F, T}
+    # Frequency and real-space channels
+    channel::Symbol
+    real_space_channel::Symbol
     rbasis::RBT
     vertices_R::Dictionary{NTuple{3, Int}, VT}
-    function RealSpaceVertex{RC}(rbasis::RBT, vertices_R::Dictionary) where {RC, RBT}
+    function RealSpaceVertex(real_space_channel::Symbol, rbasis::RBT, vertices_R::Dictionary; channel=nothing) where {RBT}
+        if channel === nothing
+            if ~isempty(vertices_R) && eltype(vertices_R) <: AbstractVertex4P
+                channel = get_channel(first(vertices_R))
+            else
+                channel = real_space_channel
+            end
+        end
         VT = eltype(vertices_R)
         F = get_formalism(VT)
         T = eltype(VT)
-        new{F, RC, T, VT, RBT}(rbasis, vertices_R)
+        new{F, T, VT, RBT}(channel, real_space_channel, rbasis, vertices_R)
     end
 end
-function channel(Γ::RealSpaceVertex{F, RC, T, VT}) where {F, RC, T, VT}
-    # TODO: Add channel field to RealSpaceVertex
-    get_channel(first(Γ.vertices_R))
-end
-real_space_channel(::RealSpaceVertex{F, RC}) where {F, RC} = RC
+get_channel(Γ::RealSpaceVertex) = Γ.channel
+real_space_channel(Γ::RealSpaceVertex) = Γ.real_space_channel
 
 get_fermionic_basis_1(Γ::RealSpaceVertex) = (; freq=Γ.basis_f1, r=Γ.rbasis)
 get_bosonic_basis(Γ::RealSpaceVertex) = (; freq=Γ.basis_b, r=Γ.rbasis)
 
-function RealSpaceVertex{RC}(rbasis, ::Type{VT}) where {RC, VT}
-    RealSpaceVertex{RC}(rbasis, Dictionary{NTuple{3, Int}, VT}())
+function RealSpaceVertex(RC, rbasis, ::Type{VT}; channel=nothing) where {VT}
+    RealSpaceVertex(RC, rbasis, Dictionary{NTuple{3, Int}, VT}(); channel)
 end
 
-function Base.show(io::IO, A::RealSpaceVertex{F, RC}) where {F, RC}
-    print(io, Base.typename(typeof(A)).wrapper, "{:$F, :$RC}, ")
-    println(io, "contains $(length(A.vertices_R)) vertices.")
+function Base.show(io::IO, A::RealSpaceVertex{F}) where {F}
+    C = get_channel(A)
+    RC = real_space_channel(A)
+    print(io, Base.typename(typeof(A)).wrapper, "{:$F} in real-space channel $RC")
+    println(io, "contains $(length(A.vertices_R)) vertices in frequency channel $C.")
     println(io, "  rbasis: $(A.rbasis)")
     length(A.vertices_R) > 0 && println(io, "  Vertex: $(first(A.vertices_R))")
 end
@@ -60,27 +69,27 @@ function Base.getproperty(A::RealSpaceVertex, s::Symbol)
     end
 end
 
-function Base.similar(A::RealSpaceVertex{F, RC, T}) where {F, RC, T}
-    RealSpaceVertex{RC}(A.rbasis, zero.(A.vertices_R))
+function Base.similar(A::RealSpaceVertex{F, T}) where {F, T}
+    RealSpaceVertex(real_space_channel(A), A.rbasis, zero.(A.vertices_R))
 end
 Base.zero(A::RealSpaceVertex) = similar(A)
 
-function Base.:+(A::T, B::T) where {T <: RealSpaceVertex{F, RC}} where {F, RC}
-    # A.rbasis == B.rbasis || error("Cannot add vertices with different rbasis")
-    RealSpaceVertex{RC}(A.rbasis, A.vertices_R .+ B.vertices_R)
+function Base.:+(A::T, B::T) where {T <: RealSpaceVertex{F}} where {F}
+    real_space_channel(A) === real_space_channel(B) || error("Different real-space channel")
+    RealSpaceVertex(real_space_channel(A), A.rbasis, A.vertices_R .+ B.vertices_R)
 end
 
 function Base.:-(A::T, B::T) where {T <: RealSpaceVertex{F, RC}} where {F, RC}
-    # A.rbasis == B.rbasis || error("Cannot add vertices with different rbasis")
-    RealSpaceVertex{RC}(A.rbasis, A.vertices_R .- B.vertices_R)
+    real_space_channel(A) === real_space_channel(B) || error("Different real-space channel")
+    RealSpaceVertex(real_space_channel(A), A.rbasis, A.vertices_R .- B.vertices_R)
 end
 
 function Base.:*(x::Number, A::RealSpaceVertex)
-    RealSpaceVertex{real_space_channel(A)}(A.rbasis, .*(A.vertices_R, x))
+    RealSpaceVertex(real_space_channel(A), A.rbasis, .*(A.vertices_R, x))
 end
 
 function Base.:/(A::RealSpaceVertex, x::Number)
-    RealSpaceVertex{real_space_channel(A)}(A.rbasis, ./(A.vertices_R, x))
+    RealSpaceVertex(real_space_channel(A), A.rbasis, ./(A.vertices_R, x))
 end
 
 """
@@ -90,14 +99,14 @@ end
 function to_real_space(A::RealSpaceVertex, i1234, R1234)
     C = real_space_channel(A)
     i1, i2, i3, i4 = indices_to_channel(C, i1234)
-    R, Rp, R_B = lattice_vectors_to_channel(Val(C), R1234)
+    R, Rp, R_B = lattice_vectors_to_channel(C, R1234)
     bL = (i1, i2, R)
     bR = (i4, i3, Rp)
     A[bL, bR, R_B]
 end
 
-function real_space_convert_channel(A::RealSpaceVertex, rbasis_out, ::Val{RC_out}) where {RC_out}
-    A_out = RealSpaceVertex{RC_out}(rbasis_out, eltype(A.vertices_R))
+function real_space_convert_channel(A::RealSpaceVertex, rbasis_out, RC_out::Symbol)
+    A_out = RealSpaceVertex(RC_out, rbasis_out, eltype(A.vertices_R); channel=get_channel(A))
 
     for (ibR, bR) in enumerate(rbasis_out.bonds_R), (ibL, bL) in enumerate(rbasis_out.bonds_L)
         i1, i2, R = bL
@@ -106,7 +115,7 @@ function real_space_convert_channel(A::RealSpaceVertex, rbasis_out, ::Val{RC_out
 
         R_B_replicas = rbasis_out.R_B_replicas[ibL, ibR]
         for (iR_B, R_B) in enumerate(R_B_replicas)
-            R1234 = lattice_vectors_to_standard(Val(RC_out), R, Rp, R_B)
+            R1234 = lattice_vectors_to_standard(RC_out, R, Rp, R_B)
             A_R = to_real_space(A, i1234, R1234)
             A_R !== nothing && insert!(A_out.vertices_R, (ibL, ibR, iR_B), A_R)
         end
@@ -163,22 +172,22 @@ and `bR`.
     A_q
 end
 
-function apply_crossing(Γ::RealSpaceVertex{F, RC}) where {F, RC}
-    RC_out = channel_apply_crossing(RC)
-    RealSpaceVertex{RC_out}(Γ.rbasis, apply_crossing.(Γ.vertices_R))
+function apply_crossing(Γ::RealSpaceVertex{F}) where {F}
+    RC_out = channel_apply_crossing(real_space_channel(Γ))
+    RealSpaceVertex(RC_out, Γ.rbasis, apply_crossing.(Γ.vertices_R))
 end
 
 @timeit timer "cache_Γ" function cache_vertex_matrix(Γs::AbstractVector{<:RealSpaceVertex},
-        C, ws, basis_aux1=nothing, basis_aux2=basis_aux1)
+        C::Symbol, ws, basis_aux1=nothing, basis_aux2=basis_aux1)
 
     isempty(Γs) && return nothing
-    if any(channel.(Γs) .!= C) && basis_aux1 === nothing
+    if any(get_channel.(Γs) .!= C) && basis_aux1 === nothing
         error("For vertex with different channel than C=$C, basis_aux must be provided")
     end
-    rbasis = channel(first(Γs)) === C ? first(Γs).rbasis : basis_aux1.r
+    rbasis = get_channel(first(Γs)) === C ? first(Γs).rbasis : basis_aux1.r
 
     # 1. Convert the real-space channel of Γs to C
-    Γs_in_real_space_C = real_space_convert_channel.(Γs, Ref(rbasis), Val(C))
+    Γs_in_real_space_C = real_space_convert_channel.(Γs, Ref(rbasis), C)
 
     # 2. For each real-space index, apply cache_vertex_matrix
     vertices_R_pairs = map(get_indices(rbasis)) do (ibL, ibR, iR_B)
@@ -192,11 +201,12 @@ end
     end
     vertices_R = dictionary(filter!(x -> !isnothing(x[2]), vertices_R_pairs))
 
-    RealSpaceVertex{C}(rbasis, vertices_R)
+    RealSpaceVertex(C, rbasis, vertices_R)
 end
 
 
-function get_bare_vertex(::Val{F}, ::Val{C}, U::Number, rbasis::RealSpaceBasis{Dim}) where {F, C, Dim}
+function get_bare_vertex(::Val{F}, C::Symbol, U::Number, rbasis::RealSpaceBasis{Dim}) where {F, Dim}
+    RC = C
     R0 = zero(SVector{Dim, Int})
     ibL = findfirst(x -> x == (1, 1, R0), rbasis.bonds_L)
     ibL === nothing && error("onsite bond not found in bonds_L")
@@ -206,5 +216,5 @@ function get_bare_vertex(::Val{F}, ::Val{C}, U::Number, rbasis::RealSpaceBasis{D
     iR_B === nothing && error("onsite R_B not found")
     Γ0 = get_bare_vertex(Val(F), C, U)
     @assert rbasis.R_B_ndegen[ibL, ibR][iR_B] == 1
-    RealSpaceVertex{C}(rbasis, dictionary(((ibL, ibR, iR_B) => Γ0,)))
+    RealSpaceVertex(RC, rbasis, dictionary(((ibL, ibR, iR_B) => Γ0,)))
 end

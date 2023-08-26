@@ -145,10 +145,10 @@ begin
 
     xdata = Dict(c => zeros(ComplexF64, length(vv), length(vv)) for c in (:A, :P, :T))
     for Γ_ in mfRG.get_vertices(Γ)
-        c = mfRG.channel(Γ_[1])
+        C = get_channel(Γ_[1])
         Γ_dm = mfRG.su2_convert_spin_channel(:A, Γ_)
         Γ_dm_q = mfRG.interpolate_to_q(Γ_dm[2], qplotlist[c], b0, b0)
-        xdata[c] .+= reshape(Γ_dm_q(v1_, v2_, w_, Val(c)), length(vv), length(vv))
+        xdata[C] .+= reshape(Γ_dm_q(v1_, v2_, w_, C), length(vv), length(vv))
     end
 
     fig, plotaxes = subplots(1, 3, figsize=(12, 4))

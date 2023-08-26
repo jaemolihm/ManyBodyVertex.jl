@@ -77,7 +77,7 @@ Solve the BSE ``Γ = (I - Γ1 * Π)⁻¹ * Γ0 - Γ0``.
 
 If the channel of `Γ1` is different from that of `Π`, use `basis_aux` as the basis for `Γ1`.
 """
-function solve_BSE(Γ1, Π::AbstractBubble{F, :X, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
+function solve_BSE(Γ1, Π::AbstractBubble{F, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
     C = get_channel(Π)
     if get_channel(Γ1) != get_channel(Π)
         basis_aux === nothing && error("Vertex and bubble have different channels. basis_aux must be set.")
@@ -124,7 +124,7 @@ Solve the BSE ``Γ = Γ0 * (I - Π * Γ1)⁻¹ - Γ0``.
 
 If the channel of `Γ1` is different from that of `Π`, use `basis_aux` as the basis for `Γ1`.
 """
-function solve_BSE_left(Γ1, Π::AbstractBubble{F, :X, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
+function solve_BSE_left(Γ1, Π::AbstractBubble{F, T}, Γ0, basis_w; basis_aux=nothing) where {F, T}
     C = get_channel(Π)
     if get_channel(Γ1) != C
         basis_aux === nothing && error("Vertex and bubble have different channels. basis_aux must be set.")

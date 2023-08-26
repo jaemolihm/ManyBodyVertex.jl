@@ -45,7 +45,7 @@ end
 center_position(iatm::Integer, positions) = positions[iatm]
 
 
-function lattice_vectors_to_standard(::Val{C}, R, Rp, R_B) where {C}
+function lattice_vectors_to_standard(C::Symbol, R, Rp, R_B)
     # Uniform translation of (R1, R2, R3, R4) is meaningless. We arbitraily choose R4 to
     # be zero. All operations should only use the differences between these vectors.
     R4 = zero(R)
@@ -55,7 +55,7 @@ function lattice_vectors_to_standard(::Val{C}, R, Rp, R_B) where {C}
     indices_to_standard(C, (R1, R2, R3, R4))
 end
 
-function lattice_vectors_to_channel(::Val{C}, R1234) where {C}
+function lattice_vectors_to_channel(C::Symbol, R1234)
     R1, R2, R3, R4 = indices_to_channel(C, R1234)
     R = R2 - R1
     Rp = R3 - R4

@@ -74,7 +74,7 @@ end
 
 
 @testset "vertex caching" begin
-    using mfRG: channel, get_bare_vertex, ScreenedBubble, cache_vertex_matrix
+    using mfRG: get_bare_vertex, ScreenedBubble, cache_vertex_matrix
 
     function test_cached(ΓL, Π, ΓR, basis_w, basis_aux)
         # Test vertex_bubble_integral with cached vertex matrix.

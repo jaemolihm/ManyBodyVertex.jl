@@ -23,9 +23,9 @@ pairs. We use `Γ(1,2,3,4) → Γ(12, 34)` (which is valid only when we consider
 channel).
 """
 
-abstract type AbstractVertex4P{F, C, T} <: AbstractFrequencyVertex{F, T} end
+abstract type AbstractVertex4P{F, T} <: AbstractFrequencyVertex{F, T} end
 
-struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{F, :X, T}
+struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{F, T}
     # Channel
     channel::Symbol
     # Basis for fermionic frequencies
@@ -44,7 +44,6 @@ struct Vertex4P{F, T, BF1, BF2, BB, DT <: AbstractArray{T}} <: AbstractVertex4P{
 end
 data_fieldnames(::Type{<:Vertex4P}) = (:data,)
 
-Base.@deprecate channel(x) get_channel(x)
 get_channel(Γ::Vertex4P) = Γ.channel
 
 nb_f1(Γ::Vertex4P) = size(Γ.basis_f1, 2)
