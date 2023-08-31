@@ -24,8 +24,8 @@ function iterate_parquet_single_channel_asymptotic(Π, U, γ, Irr;
     if max_class >= 2 && !isempty(Irr)
         ws = get_fitting_points(basis_k2_b.freq)
         Irr_mat = Tuple(cache_vertex_matrix(getindex.(Irr, i), C, ws, basis_k2_f) for i in 1:2);
-        K2_new = _mapreduce_bubble_integrals([Irr_mat], Π, [U, γ.K1, γ.K2], basis_k2_b)
-        K2p_new = _mapreduce_bubble_integrals([U, γ.K1, γ.K2p], Π, [Irr_mat], basis_k2_b)
+        K2_new = _mapreduce_bubble_integrals([γ.K2, γ.K3, Irr_mat], Π, [U], basis_k2_b)
+        K2p_new = _mapreduce_bubble_integrals([U], Π, [γ.K2p, γ.K3, Irr_mat], basis_k2_b)
     else
         K2_new = nothing
         K2p_new = nothing
