@@ -92,10 +92,14 @@ function get_irreducible_vertices(C, Γ::AsymptoticVertex)
     # FIXME: Currently SU2 is assumed.
     Γs = []
     for C2 in (:A, :P, :T)
-        C2 === C && continue
-        for class in (:K1, :K2, :K2p, :K3, :Λ)
-            x = Γ(C2, class)
+        if C2 === C
+            x = Γ(C2, :Λ)
             x !== nothing && push!(Γs, x)
+        else
+            for class in (:K1, :K2, :K2p, :K3)
+                x = Γ(C2, class)
+                x !== nothing && push!(Γs, x)
+            end
         end
     end
     su2_convert_spin_channel.(C, Γs)

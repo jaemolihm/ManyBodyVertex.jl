@@ -77,7 +77,10 @@ function iterate_parquet(Γ::AsymptoticVertex, ΠA, ΠP)
     if Γ.max_class >= 3
         Γs = (; Γs..., K3_A, K3_P, K3_T)
     end
-    typeof(Γ)(; Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_b, Γ.basis_k2_f, Γ.Λ_A, Γ.Λ_P, Γ.Λ_T, Γs...)
+    Λ_A = isnothing(Γ.Λ_A) ? nothing : copy.(Γ.Λ_A)
+    Λ_P = isnothing(Γ.Λ_P) ? nothing : copy.(Γ.Λ_P)
+    Λ_T = isnothing(Γ.Λ_T) ? nothing : copy.(Γ.Λ_T)
+    typeof(Γ)(; Γ.max_class, Γ.basis_k1_b, Γ.basis_k2_b, Γ.basis_k2_f, Λ_A, Λ_P, Λ_T, Γs...)
 end
 
 function setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature,

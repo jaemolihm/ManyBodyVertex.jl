@@ -39,7 +39,7 @@ function su2_convert_spin_channel(C_out::Symbol, Γ, C_in::Symbol=get_channel(Γ
 end
 
 function su2_apply_crossing(Γ)
-    get_channel(Γ[1]) === :A || error("su2_apply_crossing implemented only for A -> T")
+    get_channel(Γ[1]) ∈ (:A, :T) || error("su2_apply_crossing implemented only for A <-> T")
     apply_crossing.(Γ)
 end
 su2_apply_crossing(::Nothing) = nothing
