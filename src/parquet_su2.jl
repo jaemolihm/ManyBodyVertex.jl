@@ -96,7 +96,8 @@ end
 function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2_b, basis_k2_f, basis_1p=G0.basis;
         max_class=3, max_iter=5, reltol=1e-2, temperature=nothing,
         smooth_bubble=get_formalism(G0) === :MF ? false : true,
-        mixing_history=10, mixing_coeff=0.5)
+        mixing_history=10, mixing_coeff=0.5,
+        Γ_init=nothing, Σ_init=nothing)
     F = get_formalism(G0)
     T = eltype(G0)
 
@@ -105,17 +106,28 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2
     Γ0_T = su2_apply_crossing(Γ0_A)
 
     # 1st iteration
-    ΠA, ΠP = setup_bubble_SU2(G0, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
-    Γ = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, basis_k1_b=(; freq=basis_k1_b), basis_k2_b=(; freq=basis_k2_b), basis_k2_f=(; freq=basis_k2_f))
+    if Γ_init === nothing
+        Γ = AsymptoticVertex{F, T}(; max_class, Γ0_A, Γ0_P, Γ0_T, basis_k1_b=(; freq=basis_k1_b), basis_k2_b=(; freq=basis_k2_b), basis_k2_f=(; freq=basis_k2_f))
+    else
+        Γ = Γ_init
+    end
 
-    # Initialize self-energy and Green function. Here Σ = 0, G = G0.
-    Σ = Green2P{F}(basis_1p, G0.norb)
-    G = solve_Dyson(G0, Σ)
+    # Initialize self-energy and Green function.
+    if Σ_init === nothing
+        Σ = Green2P{F}(basis_1p, G0.norb)  # Σ = 0
+        G = green_to_basis(G0, basis_1p)  # G = G0
+        ΠA, ΠP = setup_bubble_SU2(G0, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
+    else
+        Σ = green_to_basis(Σ_init, basis_1p)
+        G = solve_Dyson(G0, Σ)
+        ΠA, ΠP = setup_bubble_SU2(G, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble)
+    end
 
     acceleration = AndersonAcceleration(; m=mixing_history)
 
     for i in 1:max_iter
         @info "== Iteration $i =="
+        GC.gc()
         @time Γ_new = iterate_parquet(Γ, ΠA, ΠP)
 
         err = get_difference_norm(Γ_new, Γ)
@@ -128,7 +140,9 @@ function run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_k1_b, basis_k2
         else
             Γ_vec = vertex_to_vector(Γ)
             Γ_diff_vec = vertex_to_vector(Γ_new) .- Γ_vec
+            GC.gc()
             Γ = vector_to_vertex(acceleration(Γ_vec, mixing_coeff, Γ_diff_vec), Γ)
+            GC.gc()
         end
 
         @info "Updating self-energy and the bubble"
