@@ -74,7 +74,7 @@ end
     D₀ = 10
     G0₀ = SIAMLazyGreen2P{:MF}(; e=e₀, Δ=Δ₀, temperature, D=D₀)
     @time Γ₀, Σ₀ = run_parquet(G0₀, U, basis_v_bubble, basis_w_bubble, basis_w_k1, basis_w,
-                        basis_v_aux, basis_1p; max_iter=20, reltol=1e-2, temperature)
+                        basis_v_aux, basis_1p; max_iter=20, reltol=1e-3, temperature)
     G₀ = solve_Dyson(G0₀, Σ₀)
     Π₀ = mfRG.setup_bubble_SU2(G₀, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble=false)
 
@@ -84,11 +84,11 @@ end
     D = 20
     G0 = SIAMLazyGreen2P{:MF}(; e, Δ, temperature, D)
     @time Γ_exact, Σ_exact = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w_k1, basis_w,
-                        basis_v_aux, basis_1p; max_iter=20, reltol=1e-2, temperature)
+                        basis_v_aux, basis_1p; max_iter=20, reltol=1e-3, temperature)
 
     # Run parquet without the fully irreducible vertex
     @time ΔΓ, Σ = run_parquet_without_irreducible(G0, Π₀, Γ₀, basis_1p;
-                        max_iter=20, reltol=1e-2, temperature);
+                        max_iter=15, reltol=1e-3, temperature);
 
     # Test vertex
     x = vertex_to_vector(Γ_exact)
