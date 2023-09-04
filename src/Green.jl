@@ -6,11 +6,11 @@ using OMEinsum
 # Type for lazy Green function object
 abstract type AbstractLazyGreen2P{F, T} <: AbstractFrequencyVertex{F, T} end
 
-"""
-    green_lazy_to_explicit(G::AbstractLazyGreen2P{F}, basis) where {F} => Green2P{F}
-Convert a lazily-defined Green function to an explicitly-defined Green function on `basis`.
-"""
-function green_lazy_to_explicit(G::AbstractLazyGreen2P{F}, basis::Basis) where {F}
+function green_to_basis(G::AbstractLazyGreen2P, basis::NamedTuple{(:freq,)})
+    green_to_basis(G, basis.freq)
+end
+function green_to_basis(G, basis)
+    F = get_formalism(G)
     nind = get_nind(G)
     vs = get_fitting_points(basis)
     G_data = zeros(eltype(G), nind, nind, length(vs))
@@ -18,6 +18,14 @@ function green_lazy_to_explicit(G::AbstractLazyGreen2P{F}, basis::Basis) where {
         G_data[:, :, iv] .= G(v)
     end
     Green2P{F}(basis, G.norb, fit_basis_coeff(G_data, basis, vs, 3))
+end
+
+"""
+    green_lazy_to_explicit(G::AbstractLazyGreen2P{F}, basis) where {F} => Green2P{F}
+Convert a lazily-defined Green function to an explicitly-defined Green function on `basis`.
+"""
+function green_lazy_to_explicit(G::AbstractLazyGreen2P{F}, basis::Basis) where {F}
+    green_to_basis(G, basis)
 end
 function green_lazy_to_explicit(G::AbstractLazyGreen2P, basis::NamedTuple{(:freq,)})
     green_lazy_to_explicit(G, basis.freq)
