@@ -34,7 +34,9 @@ function get_difference_norm(Γ1::T, Γ2::T) where {T <: Union{AsymptoticVertex,
                 relerr = max(relerr, err[i] / val[i])
             end
         end
-        @info n, maximum(filter!(!isnan, collect(err ./ val)))
+        if !isempty(filter!(!isnan, collect(err ./ val)))
+            @info n, maximum(filter!(!isnan, collect(err ./ val)))
+        end
     end
     (; abserr, relerr)
 end
