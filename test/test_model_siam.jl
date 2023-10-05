@@ -1,9 +1,9 @@
 using Test
-using mfRG
+using ManyBodyVertex
 
 @testset "model SIAM" begin
     using StaticArrays
-    using mfRG: siam_get_green_function
+    using ManyBodyVertex: siam_get_green_function
     e = 0.5
     Δ = 1.0
     temperature = 0.1
@@ -18,7 +18,7 @@ using mfRG
     for F in (:MF, :KF)
         D = F === :MF ? 5.0 : Inf
         G0 = SIAMLazyGreen2P{F}(; e, Δ, temperature, D)
-        @test G0 isa mfRG.AbstractFrequencyVertex{F, ComplexF64}
+        @test G0 isa ManyBodyVertex.AbstractFrequencyVertex{F, ComplexF64}
         v = rand()
         @test all(G0(v) .≈ siam_get_green_function(v, Val(F); e, Δ, temperature, D))
         @inferred G0(v)
@@ -85,11 +85,11 @@ end
             basis_b = ImagGridAndTailBasis(:Boson, 1, 0, 3)
             basis_1p = ImagGridAndTailBasis(:Fermion, 1, 3, 32)
         end
-        nind = mfRG.get_nind(G0)
+        nind = ManyBodyVertex.get_nind(G0)
         vs = get_fitting_points(basis_1p)
         green_data_tmp = G0.(vs)
         green_data = reshape(reduce(hcat, green_data_tmp), nind, nind, length(vs))
-        data = mfRG.fit_basis_coeff(green_data, basis_1p, vs, 3)
+        data = ManyBodyVertex.fit_basis_coeff(green_data, basis_1p, vs, 3)
         G0_basis = Green2P{F}(basis_1p, 1, data)
 
         for C in (:A, :P, :T)

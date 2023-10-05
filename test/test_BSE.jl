@@ -1,5 +1,5 @@
 using Test
-using mfRG
+using ManyBodyVertex
 
 @testset "BSE static" begin
     using LinearAlgebra
@@ -34,7 +34,7 @@ using mfRG
 
             # Direct solution: Γ = inv(I - Γ0 * Π) * Γ0
             Γ_mat = (I - Γ0_mat * Π_mat) \ Γ0_mat
-            Γ_direct.data[:, :, iw + mfRG.ntails(basis_w)] .= Γ_mat
+            Γ_direct.data[:, :, iw + ManyBodyVertex.ntails(basis_w)] .= Γ_mat
         end
 
         # Solve BSE by an iterative solver
@@ -48,7 +48,7 @@ using mfRG
         # Check that the BSE is satisfied. Check only the interpolated part, the tail part can
         # be different. The reason is that in solve_BSE the BSE is solved at each w and then
         # fitted, while in vertex_bubble_integral they are fitted after a single multiplication.
-        inds_interp = mfRG.ntails(basis_w)+1:size(basis_w, 2)
+        inds_interp = ManyBodyVertex.ntails(basis_w)+1:size(basis_w, 2)
 
         # Test Γ = Γ0 Π Γ0 + Γ0 Π Γ
         Γ0_Π_Γ0 = vertex_bubble_integral(Γ0, Π, Γ0, basis_w)
@@ -62,7 +62,7 @@ using mfRG
         @test norm((Γ_test2.data .- Γ.data)[:, :, inds_interp]) < 1e-10
 
         # Test Γ = Γ0 Πscr Γ0
-        Πscr = mfRG.ScreenedBubble(Π, Γ0, Γ)
+        Πscr = ManyBodyVertex.ScreenedBubble(Π, Γ0, Γ)
         Γ_test3 = vertex_bubble_integral(Γ0, Πscr, Γ0, basis_w)
         @test norm((Γ_test3.data .- Γ.data)[:, :, inds_interp]) < 1e-10
 
@@ -74,7 +74,7 @@ end
 
 
 @testset "vertex caching" begin
-    using mfRG: get_bare_vertex, ScreenedBubble, cache_vertex_matrix
+    using ManyBodyVertex: get_bare_vertex, ScreenedBubble, cache_vertex_matrix
 
     function test_cached(ΓL, Π, ΓR, basis_w, basis_aux)
         # Test vertex_bubble_integral with cached vertex matrix.

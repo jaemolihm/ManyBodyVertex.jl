@@ -1,4 +1,4 @@
-using mfRG
+using ManyBodyVertex
 using Test
 
 @testset "analytic continuation" begin
@@ -8,11 +8,11 @@ using Test
     temperature = 0.5
     G0 = SIAMLazyGreen2P{:MF}(; e, Δ, temperature)
     basis_MF = ImagGridAndTailBasis(:Fermion, 1, 3, 20)
-    G_MF = mfRG.green_lazy_to_explicit(G0, basis_MF)
+    G_MF = ManyBodyVertex.green_lazy_to_explicit(G0, basis_MF)
 
     G0 = SIAMLazyGreen2P{:KF}(; e, Δ, temperature)
     basis_KF = LinearSplineAndTailBasis(1, 3, get_nonequidistant_grid(6, 151))
-    G_KF = mfRG.green_lazy_to_explicit(G0, basis_KF)
+    G_KF = ManyBodyVertex.green_lazy_to_explicit(G0, basis_KF)
 
     vs = -12:11
     G_MF_ac = analytic_continuation_KF_to_MF(G_KF, basis_MF, temperature, :Green)

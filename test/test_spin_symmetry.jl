@@ -1,8 +1,8 @@
-using mfRG
+using ManyBodyVertex
 using Test
 
 @testset "Vertex SU2" begin
-    using mfRG: su2_convert_spin_channel, su2_bare_vertex, su2_apply_crossing
+    using ManyBodyVertex: su2_convert_spin_channel, su2_bare_vertex, su2_apply_crossing
     basis1 = LinearSplineAndTailBasis(0, 2, [-1., 1.])
     basis2 = LinearSplineAndTailBasis(0, 1, [-2., 2.])
     Γ_A = [Vertex4P{:KF}(:A, Float64, basis1, basis2, basis2), Vertex4P{:KF}(:A, Float64, basis1, basis2, basis2)]

@@ -1,10 +1,10 @@
-using mfRG
+using ManyBodyVertex
 using Test
 
 @testset "real space channels" begin
     using LinearAlgebra
     using StaticArrays
-    using mfRG: lattice_vectors_to_standard, lattice_vectors_to_channel, frequency_to_channel
+    using ManyBodyVertex: lattice_vectors_to_standard, lattice_vectors_to_channel, frequency_to_channel
     R = SVector{3}(rand(-5:5, 3))
     Rp = SVector{3}(rand(-5:5, 3))
     R_B = SVector{3}(rand(-5:5, 3))

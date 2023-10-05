@@ -1,4 +1,4 @@
-using mfRG
+using ManyBodyVertex
 using Test
 
 @testset "nonequidistant grid" begin

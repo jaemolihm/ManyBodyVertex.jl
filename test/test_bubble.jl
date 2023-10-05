@@ -1,5 +1,5 @@
 using Test
-using mfRG
+using ManyBodyVertex
 
 @testset "Bubble" begin
     basis1 = ConstantBasis()

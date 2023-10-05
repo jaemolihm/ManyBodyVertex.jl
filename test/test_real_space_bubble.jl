@@ -1,4 +1,4 @@
-using mfRG
+using ManyBodyVertex
 using Test
 
 @testset "compute_bubble_nonlocal" begin
@@ -24,14 +24,14 @@ using Test
     rbasis = RealSpaceBasis(lattice, positions, bonds_L, bonds_R, qgrid)
     rbasis_1p = RealSpaceBasis2P(lattice, positions, (nk_1p, nk_1p))
 
-    G = mfRG.green_lazy_to_explicit(G0, (; freq=basis_1p, r=rbasis_1p));
+    G = ManyBodyVertex.green_lazy_to_explicit(G0, (; freq=basis_1p, r=rbasis_1p));
     b0 = (1, 1, SVector(0, 0))
 
     for C in (:A, :P, :T)
         Π = compute_bubble(G, G, basis_v, basis_w, C, rbasis; temperature);
 
         for xq in rbasis.qpts
-            Πq_ref = mfRG.compute_bubble_nonlocal(G, G, basis_v, basis_w, C, xq, 2 * nk_1p; temperature)
+            Πq_ref = ManyBodyVertex.compute_bubble_nonlocal(G, G, basis_v, basis_w, C, xq, 2 * nk_1p; temperature)
             @test interpolate_to_q(Π, xq, b0, b0).data ≈ Πq_ref.data
         end
     end

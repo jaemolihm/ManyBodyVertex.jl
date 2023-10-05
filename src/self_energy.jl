@@ -57,7 +57,7 @@ function _compute_self_energy_SU2(Γs, G, basis; temperature=nothing)
             Σ_data_iv[:, :, iv] .+= _compute_self_energy(Γ[2], G, v, overlap; temperature) .* coeff[2]
         end
     end
-    Green2P{F}(basis.freq, 1, mfRG.fit_basis_coeff(Σ_data_iv, basis.freq, vs, 3))
+    Green2P{F}(basis.freq, 1, fit_basis_coeff(Σ_data_iv, basis.freq, vs, 3))
 end
 
 """

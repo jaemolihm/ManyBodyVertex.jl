@@ -1,5 +1,5 @@
 using Test
-using mfRG
+using ManyBodyVertex
 
 @testset "Vertex4P" begin
     using LinearAlgebra
@@ -14,13 +14,13 @@ using mfRG
     @test_throws ArgumentError Vertex4P{:KF}(:X, basis1, basis1, basis2)
 
     Γ = Vertex4P{:KF}(:A, basis1, basis1, basis2)
-    @test mfRG.nkeldysh(Γ) == 2
+    @test ManyBodyVertex.nkeldysh(Γ) == 2
     @test size(Γ.data) == (n1 * 2^2, n1 * 2^2, n2)
     @test size(keldyshview(Γ)) == (n1, n1, 1, 1, 1, 1, 2, 2, 2, 2, n2)
     @test size(to_matrix(Γ, 0.3)) == (n1 * 2^2, n1 * 2^2)
 
     Γ = Vertex4P{:ZF}(:A, basis1, basis1, basis2, 3)
-    @test mfRG.nkeldysh(Γ) == 1
+    @test ManyBodyVertex.nkeldysh(Γ) == 1
     @test size(Γ.data) == (n1 * 3^2, n1 * 3^2, n2)
     @test size(to_matrix(Γ, 0.3)) == (n1 * 3^2, n1 * 3^2)
 
@@ -43,7 +43,7 @@ using mfRG
         fit_bosonic_basis_coeff!(Γ, Γ_data, ws)
         y = Γ.basis_b[ws, :] * Γ.data[1, 1, :]
         @test norm(y - Γ_data[1, 1, :]) / norm(Γ_data) < 1e-3
-        if basis2 isa LinearSplineAndTailBasis && mfRG.ntails(basis2) == 0
+        if basis2 isa LinearSplineAndTailBasis && ManyBodyVertex.ntails(basis2) == 0
             # If there is no tail, fitting must be exact (interpolative)
             @test y ≈ Γ_data[1, 1, :]
         end

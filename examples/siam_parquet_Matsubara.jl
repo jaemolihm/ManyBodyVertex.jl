@@ -1,4 +1,4 @@
-using mfRG
+using ManyBodyVertex
 using PyPlot
 using Printf
 
@@ -82,7 +82,7 @@ begin
     v2_ = vec(vs' .* ones(length(vs)))
     w_ = fill(w, length(v1_))
     function evaluate_vertex(Γ)
-        Γ_dm = mfRG.su2_convert_spin_channel(c, Γ)
+        Γ_dm = ManyBodyVertex.su2_convert_spin_channel(c, Γ)
         x = Γ_dm[2](v1_, v2_, w_, Val(c))
         reshape(x, length(vs), length(vs))
     end

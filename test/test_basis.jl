@@ -1,5 +1,5 @@
 using Test
-using mfRG
+using ManyBodyVertex
 
 @testset "basis functions" begin
     basis = LinearSplineAndTailBasis(2, 3, [-4., 0., 5.])
@@ -30,7 +30,7 @@ using mfRG
 
     # Construction without tails
     basis = LinearSplineAndTailBasis(5, 1, [-4., 0., 5.])
-    @test mfRG.ntails(basis) == 0
+    @test ManyBodyVertex.ntails(basis) == 0
     @test nbasis(basis) == 3
 
     # Test basis_integral
@@ -48,7 +48,7 @@ using mfRG
 end
 
 @testset "Imaginary basis" begin
-    using mfRG: InfRange
+    using ManyBodyVertex: InfRange
 
     # Test InfRange
     @test 3 ∈ InfRange()
@@ -107,7 +107,7 @@ end
 
     # Construction without tails
     basis = ImagGridAndTailBasis(:Fermion, 5, 1, 3)
-    @test mfRG.ntails(basis) == 0
+    @test ManyBodyVertex.ntails(basis) == 0
     @test nbasis(basis) == 6
 
     # Test basis_integral
@@ -126,7 +126,7 @@ end
 end
 
 @testset "integrate imag" begin
-    using mfRG: integrate_imag
+    using ManyBodyVertex: integrate_imag
     # zeta(n) = 1/1^n + 1/2^n + 1/3^n + ...
     # Test calculation of zeta(n) has absolute error less than 2e-14
     zeta = [0, π^2/6, 1.202056903159594285, π^4/90, 1.036927755143369926, π^6/945]
@@ -134,22 +134,22 @@ end
     for n in 2:5
         f(x) = (1/x)^n
         y = zeta[n]
-        @test mfRG.integrate_imag(f, 1, typemax(Int))[1] ≈ y atol=atol
-        @test mfRG.integrate_imag(f, typemin(Int), -1)[1] ≈ (-1)^n * y atol=atol
+        @test ManyBodyVertex.integrate_imag(f, 1, typemax(Int))[1] ≈ y atol=atol
+        @test ManyBodyVertex.integrate_imag(f, typemin(Int), -1)[1] ≈ (-1)^n * y atol=atol
 
         n0 = 30
         y = zeta[n] - sum(f, 1:n0-1)
-        @test mfRG.integrate_imag(f, n0, typemax(Int))[1] ≈ y atol=atol
-        @test mfRG.integrate_imag(f, typemin(Int), -n0)[1] ≈ (-1)^n * y atol=atol
+        @test ManyBodyVertex.integrate_imag(f, n0, typemax(Int))[1] ≈ y atol=atol
+        @test ManyBodyVertex.integrate_imag(f, typemin(Int), -n0)[1] ≈ (-1)^n * y atol=atol
 
         y = sum(f, 1:n0)
-        @test mfRG.integrate_imag(f, 1, n0)[1] ≈ y atol=atol
-        @test mfRG.integrate_imag(f, -n0, -1)[1] ≈ (-1)^n * y atol=atol
+        @test ManyBodyVertex.integrate_imag(f, 1, n0)[1] ≈ y atol=atol
+        @test ManyBodyVertex.integrate_imag(f, -n0, -1)[1] ≈ (-1)^n * y atol=atol
     end
 end
 
 @testset "basis_for_bubble" begin
-    using mfRG: ntails
+    using ManyBodyVertex: ntails
     basis_v = LinearSplineAndTailBasis(2, 3, -4.:1:4.)
     basis_w = LinearSplineAndTailBasis(1, 3, [-3., 3.])
     basis_v_bubble, basis_w_bubble = basis_for_bubble(basis_v, basis_w)

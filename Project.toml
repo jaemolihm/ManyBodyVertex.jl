@@ -1,5 +1,5 @@
-name = "mfRG"
-uuid = "b4e83365-0810-4a8c-bf3e-44294fc5608d"
+name = "ManyBodyVertex"
+uuid = "d227f451-c03e-4d79-819f-c046a508bc9a"
 authors = ["Jae-Mo Lihm <jaemolim96@gmail.com> and contributors"]
 version = "0.1.0"
 
@@ -10,6 +10,7 @@ DomainSets = "5b8099bc-c8ec-5219-889f-1d9e522a28bf"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 Infinities = "e1ba4f0e-776d-440f-acd9-e1d2e9742647"
 IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OMEinsum = "ebe7aa44-baf0-506c-a96f-8464559b3922"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"

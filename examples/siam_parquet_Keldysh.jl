@@ -1,4 +1,4 @@
-using mfRG
+using ManyBodyVertex
 using PyPlot
 
 # Compute the vertex of SIAM by solving parquet equations by fixed point iteration.
@@ -105,7 +105,7 @@ begin
     w_ = fill(w, length(v1_))
 
     function evaluate_vertex(Γ)
-        Γ_dm = mfRG.su2_convert_spin_channel(c, Γ)
+        Γ_dm = ManyBodyVertex.su2_convert_spin_channel(c, Γ)
         x = Γ_dm[2](v1_, v2_, w_, Val(c))
         reshape(x, length(vs), length(vs), 4, 4)
     end

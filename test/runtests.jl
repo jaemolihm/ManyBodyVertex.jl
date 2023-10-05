@@ -1,7 +1,7 @@
-using mfRG
+using ManyBodyVertex
 using Test
 
-@testset "mfRG.jl" begin
+@testset "ManyBodyVertex.jl" begin
     include("test_nonequidistant_grid.jl")
     include("test_basis.jl")
     include("test_basis_shiftedspline.jl")

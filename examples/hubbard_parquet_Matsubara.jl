@@ -1,9 +1,9 @@
-# using mfRG
+# using ManyBodyVertex
 # using Test
 # using PyPlot
 # using Printf
 # using JLD2
-using mfRG
+using ManyBodyVertex
 using PyPlot
 using StaticArrays
 using Printf
@@ -43,7 +43,7 @@ begin
     μ = 0.
     U = 2.0
     temperature = 0.2
-    G0 = mfRG.HubbardLazyGreen2P{:MF}(; temperature, t, μ)
+    G0 = ManyBodyVertex.HubbardLazyGreen2P{:MF}(; temperature, t, μ)
 
     lattice = SMatrix{2, 2}([1. 0; 0 1])
     positions = [SVector(0., 0.)]
@@ -52,13 +52,18 @@ begin
     qgrid_1p = (32, 32)
     rbasis = RealSpaceBasis(lattice, positions, bonds_L, bonds_R, qgrid)
     rbasis_1p = RealSpaceBasis2P(lattice, positions, qgrid_1p)
+    rbasis_response = RealSpaceBasis(lattice, positions, bonds_L, bonds_R, qgrid_1p)
+    basis_response = (; freq=basis_k1_b, r=rbasis_response)
 
     @time Γ, Σ, Π = run_parquet_nonlocal(G0, U, basis_v_bubble, basis_w_bubble, rbasis,
         basis_k1_b, basis_k2_b, basis_k2_f, (; freq=basis_1p, r=rbasis_1p);
         max_iter=30, reltol=1e-4, temperature, mixing_history=5)
 
-    op_suscep_L, op_suscep_R = mfRG.susceptibility_operator_SU2(Val(:MF), rbasis)
-    @time chi = mfRG.compute_response_SU2(op_suscep_L, op_suscep_R, Γ, Π.A);
+    # op_suscep_L, op_suscep_R = ManyBodyVertex.susceptibility_operator_SU2(Val(:MF), rbasis_response)
+    # G = solve_Dyson(G0, Σ)
+    # ΠA_ = compute_bubble(G, G, basis_v_bubble, basis_w_bubble, :A, basis_response.r; temperature)
+    # ΠA = (ΠA_, ΠA_)
+    # @time chi = ManyBodyVertex.compute_response_SU2(op_suscep_L, op_suscep_R, Γ, ΠA, basis_response);
 end;
 
 
@@ -144,10 +149,10 @@ begin
     w_ = fill(w, length(v1_))
 
     xdata = Dict(c => zeros(ComplexF64, length(vv), length(vv)) for c in (:A, :P, :T))
-    for Γ_ in mfRG.get_vertices(Γ)
+    for Γ_ in ManyBodyVertex.get_vertices(Γ)
         C = get_channel(Γ_[1])
-        Γ_dm = mfRG.su2_convert_spin_channel(:A, Γ_)
-        Γ_dm_q = mfRG.interpolate_to_q(Γ_dm[2], qplotlist[c], b0, b0)
+        Γ_dm = ManyBodyVertex.su2_convert_spin_channel(:A, Γ_)
+        Γ_dm_q = ManyBodyVertex.interpolate_to_q(Γ_dm[2], qplotlist[C], b0, b0)
         xdata[C] .+= reshape(Γ_dm_q(v1_, v2_, w_, C), length(vv), length(vv))
     end
 
@@ -180,6 +185,17 @@ end
 # chi[2]: magnetic susceptibility
 
 begin
+    rbasis_response = RealSpaceBasis(lattice, positions, bonds_L, bonds_R, (16, 16))
+    basis_response = (; freq=basis_k1_b, r=rbasis_response)
+
+    op_suscep_L, op_suscep_R = ManyBodyVertex.susceptibility_operator_SU2(Val(:MF), rbasis_response)
+    G = solve_Dyson(G0, Σ)
+    @time ΠA_ = compute_bubble(G, G, basis_v_bubble, basis_w_bubble, :A, basis_response.r; temperature);
+    ΠA = (ΠA_, ΠA_)
+    @time chi = ManyBodyVertex.compute_response_SU2(op_suscep_L, op_suscep_R, Γ, ΠA, basis_response);
+end;
+
+begin
     # Plot susceptibility
     fig, plotaxes = subplots(1, 2, figsize=(12, 5.5))
 
@@ -192,10 +208,16 @@ begin
     labels = ["magnetic, full", "charge, full", "magnetic, disc.", "charge, disc."]
     for (i, x) in enumerate([chi.total[2], chi.total[1], chi.disconnected[2], chi.disconnected[1]])
         yy = map(xqs) do xq
-            mfRG.interpolate_to_q(x, xq, b0, b0).(0)[1, 1]
+            ManyBodyVertex.interpolate_to_q(x, xq, b0, b0).(0)[1, 1]
         end
         plot(qs, real.(yy), ls=i ∈ [1, 3] ? "-" : "--", label=labels[i])
     end
+
+    x = Γ.K1_A[2] / -U^2
+    chi_q_conn = map(xqs) do xq
+        ManyBodyVertex.interpolate_to_q(x, xq, b0, b0)(0, 0, 0)[1, 1]
+    end
+    plot(qs, real.(chi_q_conn), "--", label="K1A")
 
     # Data from Fig. 9 of C. Hille et al, PRResearch 2, 033372 (2020) (Parquet)
     # The susceptibility of C. Hille et al has an additional factor of 1/2 in the definition.
@@ -223,7 +245,11 @@ begin
     plot(xx, real.(getindex.(z.(ww), 1, 1)), "o-", label="Full, this code")
 
     z = interpolate_to_q(chi.disconnected[2], SVector(0.5, 0.5), b0, b0)
-    plot(xx, real.(getindex.(z.(ww), 1, 1)), "o-", label="Disconnected, this code")
+    chi_q_disc = getindex.(z.(ww), 1, 1)
+    plot(xx, real.(chi_q_disc), "o-", label="Disconnected, this code")
+
+    # z = (interpolate_to_q(Γ.K1_A[1], SVector(0.5, 0.5), b0, b0) - interpolate_to_q(Γ.K1_A[2], SVector(0.5, 0.5), b0, b0)) / 2
+    # plot(xx, real.(getindex.(z.(0, 0, ww), 1, 1) ./ 2 .+ chi_q_disc), "o-", label="K1A")
 
     # Data from Fig. 10 of C. Hille et al, PRResearch 2, 033372 (2020) (Parquet)
     # The susceptibility of C. Hille et al has an additional factor of 1/2 in the definition.

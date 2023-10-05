@@ -1,10 +1,10 @@
-module mfRG
+module ManyBodyVertex
 using TimerOutputs
 
 export get_nonequidistant_grid
 
 export nbasis, get_formalism, get_nind, get_channel
-export ConstantBasis, LinearSplineAndTailBasis, ShiftedSplineBasis
+export ConstantBasis, LinearSplineAndTailBasis, ShiftedSplineBasis, ChebyshevAndTailBasis
 export ImagConstantBasis, ImagGridAndTailBasis
 export get_fitting_points
 export concat_constant_basis
@@ -37,7 +37,7 @@ export compute_occupation_matrix, compute_occupation
 export SIAMLazyGreen2P
 export HubbardLazyGreen2P
 
-"""TimerOutput object used to store mfRG timings."""
+"""TimerOutput object used to store ManyBodyVertex timings."""
 const timer = TimerOutput()
 
 include("utility.jl")
@@ -45,6 +45,7 @@ include("acceleration.jl")
 
 include("basis/basis_functions.jl")
 include("basis/basis_functions_imaginary.jl")
+include("basis/chebyshev.jl")
 include("basis/concatenated_basis.jl")
 include("basis/basis_integral.jl")
 include("basis/basis_integral_imaginary.jl")
@@ -75,12 +76,16 @@ include("real_space/RealSpaceBubble.jl")
 include("BSE.jl")
 include("parquet_su2.jl")
 include("parquet_su2_wo_irreducible.jl")
+include("ladder.jl")
 include("analytic_continuation.jl")
 include("response.jl")
 
 include("real_space/self_energy.jl")
 include("real_space/real_space_BSE.jl")
 include("real_space/parquet.jl")
+include("real_space/real_space_ladder.jl")
+include("real_space/parquet_difference.jl")
+include("real_space/ladder_difference.jl")
 
 include("models/siam.jl")
 include("models/hubbard_atom.jl")

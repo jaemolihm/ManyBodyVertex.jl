@@ -1,4 +1,4 @@
-using mfRG
+using ManyBodyVertex
 using Test
 
 @testset "SIAM parquet KF" begin
@@ -21,14 +21,14 @@ using Test
 
     basis_1p = LinearSplineAndTailBasis(1, 3, vgrid_1p)
     basis_v_bubble_tmp = LinearSplineAndTailBasis(2, 4, vgrid_k1)
-    basis_v_bubble, basis_w_bubble = mfRG.basis_for_bubble(basis_v_bubble_tmp, basis_w_k1)
+    basis_v_bubble, basis_w_bubble = ManyBodyVertex.basis_for_bubble(basis_v_bubble_tmp, basis_w_k1)
 
     G0 = SIAMLazyGreen2P{:KF}(; e, Δ, temperature)
 
     # Run parquet calculation
     Γ, Σ = run_parquet(G0, U, basis_v_bubble, basis_w_bubble, basis_w_k1, basis_w_k2,
         basis_aux, basis_1p; max_class=3, max_iter=3)
-    @test Γ isa mfRG.AsymptoticVertex{:KF, ComplexF64}
+    @test Γ isa ManyBodyVertex.AsymptoticVertex{:KF, ComplexF64}
     @test Σ isa Green2P{:KF, ComplexF64}
     @test Γ.basis_k1_b === (; freq=basis_w_k1)
     @test Γ.basis_k2_b === (; freq=basis_w_k2)
@@ -39,7 +39,7 @@ using Test
     # Test SBE decomposition
     vs = vgrid_k2
     ws = wgrid_k2
-    Γ_sbe = mfRG.asymptotic_to_sbe(Γ)
+    Γ_sbe = ManyBodyVertex.asymptotic_to_sbe(Γ)
     @time for ispin in 1:2
         Γ_K123 = (Γ.K1_A[ispin], Γ.K2_A[ispin], Γ.K2p_A[ispin], Γ.K3_A[ispin])
         ∇, M = Γ_sbe.∇_A[ispin], Γ_sbe.M_A[ispin]
@@ -76,7 +76,7 @@ end
     @time Γ₀, Σ₀ = run_parquet(G0₀, U, basis_v_bubble, basis_w_bubble, basis_w_k1, basis_w,
                         basis_v_aux, basis_1p; max_iter=20, reltol=1e-3, temperature)
     G₀ = solve_Dyson(G0₀, Σ₀)
-    Π₀ = mfRG.setup_bubble_SU2(G₀, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble=false)
+    Π₀ = ManyBodyVertex.setup_bubble_SU2(G₀, basis_v_bubble, basis_w_bubble; temperature, smooth_bubble=false)
 
     # Target system
     e = 0.1
@@ -103,7 +103,7 @@ end
     # Test SBE decomposition
     vs = -nmax:nmax
     ws = -nmax:nmax
-    Γ₀_SBE = mfRG.asymptotic_to_sbe(Γ₀)
+    Γ₀_SBE = ManyBodyVertex.asymptotic_to_sbe(Γ₀)
     @time for ispin in 1:2
         Γ_K123 = (Γ₀.K1_A[ispin], Γ₀.K2_A[ispin], Γ₀.K2p_A[ispin], Γ₀.K3_A[ispin])
         ∇, M = Γ₀_SBE.∇_A[ispin], Γ₀_SBE.M_A[ispin]

@@ -1,5 +1,5 @@
 using Test
-using mfRG
+using ManyBodyVertex
 
 @testset "Hubbard atom" begin
     U = 1.0
@@ -13,11 +13,11 @@ using mfRG
     basis_v_bubble = ImagGridAndTailBasis(:Fermion, 2, 4, maximum(get_fitting_points(basis_w_k1)))
     basis_1p = ImagGridAndTailBasis(:Fermion, 1, 3, nmax * 3 + 10)
 
-    @time Γ = mfRG.hubbard_atom_asymptotic_vertex(U, temperature, basis_w_k1, basis_w, basis_v_aux)
+    @time Γ = ManyBodyVertex.hubbard_atom_asymptotic_vertex(U, temperature, basis_w_k1, basis_w, basis_v_aux)
 
     G_HA = HubbardAtomLazyGreen2P{:MF}(; U, temperature)
-    @time ΠA, ΠP = mfRG.setup_bubble_SU2(G_HA, basis_v_bubble, basis_w_bubble; temperature);
-    @time Σ_HA = mfRG.compute_self_energy_SU2(Γ, G_HA, ΠA, ΠP, (; freq=basis_1p); temperature)
+    @time ΠA, ΠP = ManyBodyVertex.setup_bubble_SU2(G_HA, basis_v_bubble, basis_w_bubble; temperature);
+    @time Σ_HA = ManyBodyVertex.compute_self_energy_SU2(Γ, G_HA, ΠA, ΠP, (; freq=basis_1p); temperature)
 
     # Check SDE is satisfied for exact HA vertex
     G0 = SIAMLazyGreen2P{:MF}(; e=0., Δ=0.0, temperature)
