@@ -45,7 +45,7 @@ include("acceleration.jl")
 
 include("basis/basis_functions.jl")
 include("basis/basis_functions_imaginary.jl")
-include("basis/chebyshev.jl")
+# include("basis/chebyshev.jl")
 include("basis/concatenated_basis.jl")
 include("basis/basis_integral.jl")
 include("basis/basis_integral_imaginary.jl")
